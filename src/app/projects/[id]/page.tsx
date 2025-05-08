@@ -73,14 +73,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
+        <Button variant="outline" size="icon" asChild className="flex-shrink-0">
           <Link href="/dashboard"> {/* Corrected href from /projects to /dashboard as per common navigation patterns */}
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to Dashboard</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold md:text-3xl">{project.name}</h1>
-        <Badge variant={project.status === "Launched" ? "default" : "secondary"} className={cn("ml-auto", project.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
+        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{project.name}</h1>
+        <Badge variant={project.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", project.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
           {project.status}
         </Badge>
       </div>
@@ -234,7 +234,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         <TabsContent value="timeline" className="mt-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>Project Milestones & Timeline</CardTitle>
+                    <CardTitle>Project Milestones &amp; Timeline</CardTitle>
                     <CardDescription>Key dates and progress over the 45-day plan.</CardDescription>
                 </CardHeader>
                 <CardContent>

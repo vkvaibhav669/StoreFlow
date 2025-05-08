@@ -49,9 +49,9 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold md:text-3xl">Project Dashboard</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">Project Dashboard</h1>
+        <div className="flex items-center gap-2 flex-shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 gap-1">
