@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from "react";
@@ -8,8 +9,8 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarTrigger,
-  SidebarInset,
   useSidebar,
+  SidebarInset,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +18,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { Bell, Package2 } from "lucide-react";
+import { Bell, Package2, PanelLeft, PanelRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -72,10 +73,38 @@ function SidebarNav({}: SidebarNavProps) {
   );
 }
 
+function DesktopSidebarToggle() {
+  const { open, toggleSidebar, isMobile } = useSidebar();
+
+  if (isMobile) {
+    return null; // This toggle is for the desktop sidebar
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      onClick={toggleSidebar}
+      className={cn(
+        "w-full h-10 flex items-center gap-2 text-sm",
+        open ? "justify-start px-2" : "justify-center px-0" // Adjust padding and justification based on state
+      )}
+      aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
+    >
+      {open ? (
+        <PanelLeft className="h-5 w-5 shrink-0" />
+      ) : (
+        <PanelRight className="h-5 w-5 shrink-0" />
+      )}
+      {open && <span className="truncate">Collapse</span>}
+      {/* Screen reader text is handled by aria-label on the Button */}
+    </Button>
+  );
+}
+
 function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <SidebarTrigger className="sm:hidden" />
+      <SidebarTrigger className="sm:hidden" /> {/* Mobile sidebar toggle */}
       <div className="ml-auto flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-full">
           <Bell className="h-5 w-5" />
@@ -108,7 +137,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Sidebar collapsible="icon" className="hidden border-r md:block">
+        <Sidebar collapsible="icon" className="hidden border-r md:block peer">
           <SidebarHeader className="h-14 flex items-center px-4 border-b">
             <Link
               href="/dashboard"
@@ -128,16 +157,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <SidebarNav />
             </ScrollArea>
           </SidebarContent>
-          <SidebarFooter>
-            {/* Optional: Add footer items like settings or logout */}
+          <SidebarFooter className="p-2 border-t mt-auto">
+            <DesktopSidebarToggle />
           </SidebarFooter>
         </Sidebar>
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <div className={cn(
+            "flex flex-col flex-1", // flex-1 to take remaining space
+            "md:pl-[var(--sidebar-width-icon)]", // Default padding for collapsed sidebar on md+
+            "peer-data-[state=expanded]:md:pl-[var(--sidebar-width)]", // Padding when sidebar (peer) is expanded
+            "transition-[padding-left] duration-300 ease-in-out" // Smooth transition for padding change
+          )}
+        >
           <Header />
-          <SidebarInset>
-             <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
-                {children}
-            </main>
+          <SidebarInset className="p-4 sm:px-6 sm:py-0 md:gap-8"> {/* Apply padding to SidebarInset's main tag */}
+            {children}
           </SidebarInset>
         </div>
       </div>
