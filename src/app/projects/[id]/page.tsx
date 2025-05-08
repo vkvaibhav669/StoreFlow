@@ -7,9 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById } from "@/lib/data";
 import type { Task, DocumentFile } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, PaintBrush, Paperclip, Target, Users, Volume2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, Target, Users, Volume2 } from "lucide-react"; // Changed PaintBrush to Paintbrush
 import Link from "next/link";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
+
 
 interface DepartmentCardProps {
   title: string;
@@ -72,9 +74,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/projects">
+          <Link href="/dashboard"> {/* Corrected href from /projects to /dashboard as per common navigation patterns */}
             <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Projects</span>
+            <span className="sr-only">Back to Dashboard</span>
           </Link>
         </Button>
         <h1 className="text-2xl font-semibold md:text-3xl">{project.name}</h1>
@@ -133,7 +135,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     </div>
                 )}
             </DepartmentCard>
-            <DepartmentCard title="Merchandising Team" icon={PaintBrush} tasks={departments.merchandising.tasks} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} />
+            <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} />
             <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks} notes={departments.hr.recruitmentStatus}>
               {departments.hr.totalNeeded && (
                  <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
