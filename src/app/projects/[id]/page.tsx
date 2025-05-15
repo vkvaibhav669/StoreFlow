@@ -9,15 +9,34 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getProjectById } from "@/lib/data";
-import type { Task, DocumentFile, Comment } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, Target, Users, Volume2 } from "lucide-react";
+import { getProjectById, tasks as allMockTasks } from "@/lib/data"; // Import allMockTasks for initial department tasks
+import type { Task, DocumentFile, Comment, StoreProject, Department } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { CommentCard } from "@/components/comments/CommentCard";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 interface DepartmentCardProps {
@@ -31,7 +50,7 @@ interface DepartmentCardProps {
 function DepartmentCard({ title, icon: Icon, tasks, notes, children }: DepartmentCardProps) {
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const totalTasks = tasks.length;
-  const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
     <Card>
@@ -69,23 +88,100 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
 
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  const project = getProjectById(params.id);
+  const initialProject = getProjectById(params.id);
 
-  if (!project) {
-    notFound();
-  }
-
-  const { departments } = project;
-  
-  const [projectComments, setProjectComments] = React.useState<Comment[]>(project.comments || []);
+  const [projectData, setProjectData] = React.useState<StoreProject | null>(initialProject ? JSON.parse(JSON.stringify(initialProject)) : null); // Deep copy
+  const [projectComments, setProjectComments] = React.useState<Comment[]>(initialProject?.comments || []);
   const [newCommentText, setNewCommentText] = React.useState("");
+
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
+  const [newTaskName, setNewTaskName] = React.useState("");
+  const [newTaskDepartment, setNewTaskDepartment] = React.useState<Department | undefined>(undefined);
+  const [newTaskDescription, setNewTaskDescription] = React.useState("");
+  const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
+
+  React.useEffect(() => {
+    if (initialProject) {
+      // Ensure department tasks are correctly initialized if projectData changes
+      // This might be redundant if initialProject's departments.tasks are already correct
+      // But good for consistency if initialProject could be dynamic later
+      const updatedProject = JSON.parse(JSON.stringify(initialProject)) as StoreProject;
+      setProjectData(updatedProject);
+      setProjectComments(updatedProject.comments || []);
+    } else {
+      notFound();
+    }
+  }, [params.id, initialProject]);
+
+
+  if (!projectData) {
+    // initialProject might be undefined, leading to notFound() if params.id is invalid
+    // If projectData is null after useEffect, it means initialProject was null.
+    return notFound();
+  }
+  
+  const calculateOverallProgress = (tasks: Task[]): number => {
+    if (tasks.length === 0) return 0;
+    const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+    return Math.round((completedTasks / tasks.length) * 100);
+  };
+
+  const handleAddNewTask = () => {
+    if (!newTaskName || !newTaskDepartment) {
+      // Basic validation
+      alert("Task Name and Department are required.");
+      return;
+    }
+
+    const newTask: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: newTaskName,
+      department: newTaskDepartment,
+      description: newTaskDescription || undefined,
+      dueDate: newTaskDueDate || undefined,
+      status: "Pending",
+    };
+    
+    setProjectData(prevProjectData => {
+      if (!prevProjectData) return null;
+
+      const updatedTasks = [...prevProjectData.tasks, newTask];
+      const newOverallProgress = calculateOverallProgress(updatedTasks);
+      
+      const updatedDepartments = { ...prevProjectData.departments };
+      if (updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments]) {
+         // @ts-ignore TODO: fix type for department key
+        updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments].tasks = [
+           // @ts-ignore
+          ...updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments].tasks,
+          newTask
+        ];
+      }
+
+
+      return {
+        ...prevProjectData,
+        tasks: updatedTasks,
+        currentProgress: newOverallProgress,
+        departments: updatedDepartments,
+      };
+    });
+
+    // Reset form and close dialog
+    setNewTaskName("");
+    setNewTaskDepartment(undefined);
+    setNewTaskDescription("");
+    setNewTaskDueDate("");
+    setIsAddTaskDialogOpen(false);
+  };
+
 
   const handleAddComment = () => {
     if (newCommentText.trim()) {
       const newComment: Comment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        author: "Current User", // Placeholder - replace with actual user
-        avatarUrl: "https://picsum.photos/seed/currentUser/40/40", // Placeholder
+        author: "Current User", 
+        avatarUrl: "https://picsum.photos/seed/currentUser/40/40", 
         timestamp: new Date().toISOString(),
         text: newCommentText,
         replies: [],
@@ -101,7 +197,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         if (comment.id === commentId) {
           const newReply: Comment = {
             id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            author: "Current User", // Placeholder
+            author: "Current User", 
             avatarUrl: "https://picsum.photos/seed/replyUser/40/40",
             timestamp: new Date().toISOString(),
             text: replyText,
@@ -109,7 +205,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           };
           return {
             ...comment,
-            replies: [newReply, ...(comment.replies || [])], // Add new reply to the top of replies
+            replies: [newReply, ...(comment.replies || [])], 
           };
         }
         if (comment.replies && comment.replies.length > 0) {
@@ -121,6 +217,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setProjectComments(prevComments => addReplyRecursively(prevComments));
   };
 
+  const { departments } = projectData;
 
   return (
     <div className="flex flex-col gap-6">
@@ -131,39 +228,101 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <span className="sr-only">Back to Dashboard</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{project.name}</h1>
-        <Badge variant={project.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", project.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
-          {project.status}
+        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
+        <Dialog open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="h-8 gap-1 flex-shrink-0">
+              <PlusCircle className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Add New Task
+              </span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Task</DialogTitle>
+              <DialogDescription>
+                Fill in the details for the new task. Click save when you&apos;re done.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="taskName" className="text-right">
+                  Name
+                </Label>
+                <Input id="taskName" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="taskDepartment" className="text-right">
+                  Department
+                </Label>
+                <Select value={newTaskDepartment} onValueChange={(value) => setNewTaskDepartment(value as Department)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Property">Property</SelectItem>
+                    <SelectItem value="Project">Project</SelectItem>
+                    <SelectItem value="Merchandising">Merchandising</SelectItem>
+                    <SelectItem value="HR">HR</SelectItem>
+                    <SelectItem value="Marketing">Marketing</SelectItem>
+                    <SelectItem value="IT">IT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="taskDescription" className="text-right">
+                  Description
+                </Label>
+                <Textarea id="taskDescription" value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} className="col-span-3" placeholder="Optional task description" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="taskDueDate" className="text-right">
+                  Due Date
+                </Label>
+                <Input id="taskDueDate" type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="col-span-3" />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                 <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button onClick={handleAddNewTask}>Save Task</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
+          {projectData.status}
         </Badge>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Project Overview</CardTitle>
-          <CardDescription>{project.location}</CardDescription>
+          <CardDescription>{projectData.location}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm font-medium">Projected Launch Date</p>
-            <p className="text-muted-foreground">{project.projectedLaunchDate}</p>
+            <p className="text-muted-foreground">{projectData.projectedLaunchDate}</p>
           </div>
           <div>
             <p className="text-sm font-medium">Start Date</p>
-            <p className="text-muted-foreground">{project.startDate}</p>
+            <p className="text-muted-foreground">{projectData.startDate}</p>
           </div>
           <div className="md:col-span-2">
-            <p className="text-sm font-medium">Overall Progress: {project.currentProgress}%</p>
-            <Progress value={project.currentProgress} className="mt-1" />
+            <p className="text-sm font-medium">Overall Progress: {projectData.currentProgress}%</p>
+            <Progress value={projectData.currentProgress} className="mt-1" />
           </div>
-          {project.propertyDetails && (
+          {projectData.propertyDetails && (
              <div>
                 <p className="text-sm font-medium">Property Status</p>
-                <p className="text-muted-foreground">{project.propertyDetails.status} - {project.propertyDetails.sqft} sqft</p>
+                <p className="text-muted-foreground">{projectData.propertyDetails.status} - {projectData.propertyDetails.sqft} sqft</p>
             </div>
           )}
            <div>
             <p className="text-sm font-medium">Project Timeline</p>
-            <p className="text-muted-foreground">Day {project.projectTimeline.currentDay} of {project.projectTimeline.totalDays}</p>
+            <p className="text-muted-foreground">Day {projectData.projectTimeline.currentDay} of {projectData.projectTimeline.totalDays}</p>
           </div>
         </CardContent>
       </Card>
@@ -181,10 +340,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks} notes={departments.property.notes} />
             <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks} notes={departments.project.notes}>
-                {project.threeDRenderUrl && (
+                {projectData.threeDRenderUrl && (
                     <div className="my-2">
                         <p className="text-xs font-medium mb-1">3D Store Visual:</p>
-                        <Image src={project.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render" />
+                        <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render" />
                     </div>
                 )}
             </DepartmentCard>
@@ -205,17 +364,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>
+            {/* Assuming IT tasks should be displayed if present */}
+            { initialProject?.departments.it && departments.it.tasks.length > 0 && (
+                <DepartmentCard title="IT Team" icon={MilestoneIcon} /* Replace with actual IT icon */ tasks={departments.it.tasks} notes={departments.it.notes} />
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>All Tasks ({project.tasks.length})</CardTitle>
+              <CardTitle>All Tasks ({projectData.tasks.length})</CardTitle>
               <CardDescription>Comprehensive list of tasks for this project.</CardDescription>
             </CardHeader>
             <CardContent>
-              {project.tasks.length > 0 ? (
+              {projectData.tasks.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -226,7 +389,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {project.tasks.map((task) => (
+                    {projectData.tasks.map((task) => (
                       <TableRow key={task.id}>
                         <TableCell>{task.name}</TableCell>
                         <TableCell>{task.department}</TableCell>
@@ -246,13 +409,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         <TabsContent value="documents" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Documents ({project.documents.length})</CardTitle>
+              <CardTitle>Documents ({projectData.documents.length})</CardTitle>
               <CardDescription>All project-related documents.</CardDescription>
             </CardHeader>
             <CardContent>
-               {project.documents.length > 0 ? (
+               {projectData.documents.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {project.documents.map((doc) => (
+                  {projectData.documents.map((doc) => (
                     <Card key={doc.id} className="overflow-hidden">
                        {doc.type === "3D Render" && doc.url.startsWith("https") && (
                          <Image src={doc.url} alt={doc.name} width={300} height={150} className="w-full h-32 object-cover" data-ai-hint={doc.dataAiHint || "office document"} />
@@ -288,12 +451,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <Card>
                 <CardHeader>
                     <CardTitle>Project Milestones &amp; Timeline</CardTitle>
-                    <CardDescription>Key dates and progress over the 45-day plan.</CardDescription>
+                    <CardDescription>Key dates and progress over the {projectData.projectTimeline.totalDays}-day plan.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="relative pl-6">
                         <div className="absolute left-[calc(0.75rem-1px)] top-2 bottom-2 w-0.5 bg-border"></div>
-                        {project.milestones.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone, index) => (
+                        {projectData.milestones.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone, index) => (
                             <div key={milestone.id} className="relative mb-6">
                                 <div className={cn(
                                     "absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
@@ -313,13 +476,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                             </div>
                         ))}
                         
-                        {project.status !== "Launched" && project.status !== "Planning" && (
+                        {projectData.status !== "Launched" && projectData.status !== "Planning" && (
                              <div className="relative mt-8 mb-6">
                                 <div className="absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary border-2 border-primary-foreground shadow">
                                     <Clock className="h-3.5 w-3.5 text-primary-foreground" />
                                 </div>
                                 <div className="ml-6">
-                                    <h4 className="font-semibold text-primary">Current Day: {project.projectTimeline.currentDay}</h4>
+                                    <h4 className="font-semibold text-primary">Current Day: {projectData.projectTimeline.currentDay}</h4>
                                     <p className="text-sm text-muted-foreground">Project is ongoing.</p>
                                 </div>
                             </div>
@@ -327,13 +490,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
                          <div className="relative mt-8">
                                 <div className={cn("absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
-                                project.status === "Launched" ? "bg-accent" : "bg-muted border-2 border-primary"
+                                projectData.status === "Launched" ? "bg-accent" : "bg-muted border-2 border-primary"
                                 )}>
-                                    {project.status === "Launched" ? <CheckCircle className="h-4 w-4 text-accent-foreground" /> : <Target className="h-3.5 w-3.5 text-primary" />}
+                                    {projectData.status === "Launched" ? <CheckCircle className="h-4 w-4 text-accent-foreground" /> : <Target className="h-3.5 w-3.5 text-primary" />}
                                 </div>
                                 <div className="ml-6">
-                                    <h4 className="font-semibold">{project.status === "Launched" ? "Launched!" : "Projected Launch"}</h4>
-                                    <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1"/>{project.projectedLaunchDate}</p>
+                                    <h4 className="font-semibold">{projectData.status === "Launched" ? "Launched!" : "Projected Launch"}</h4>
+                                    <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1"/>{projectData.projectedLaunchDate}</p>
                                 </div>
                             </div>
                     </div>
@@ -370,7 +533,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </div>
 
               {projectComments.length > 0 ? (
-                <div className="space-y-0"> {/* No extra space here, CommentCard has mb-4 */}
+                <div className="space-y-0"> 
                   {projectComments.map((comment) => (
                     <CommentCard key={comment.id} comment={comment} onReply={handleReplyToComment} />
                   ))}

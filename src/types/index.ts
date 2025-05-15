@@ -49,6 +49,18 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export interface DepartmentDetails {
+    notes?: string;
+    tasks: Task[];
+    virtualPlanUrl?: string; // Specific to Merchandising
+    recruitmentStatus?: string; // Specific to HR
+    staffHired?: number; // Specific to HR
+    totalNeeded?: number; // Specific to HR
+    preLaunchCampaigns?: MarketingCampaign[]; // Specific to Marketing
+    postLaunchCampaigns?: MarketingCampaign[]; // Specific to Marketing
+}
+
+
 export interface StoreProject {
   id: string;
   name: string;
@@ -73,11 +85,13 @@ export interface StoreProject {
   documents: DocumentFile[];
   milestones: Milestone[];
   departments: {
-    property: { notes?: string; tasks: Task[] };
-    project: { notes?: string; tasks: Task[] };
-    merchandising: { notes?: string; virtualPlanUrl?: string; tasks: Task[] };
-    hr: { recruitmentStatus: string; staffHired?: number; totalNeeded?: number; tasks: Task[] };
-    marketing: { preLaunchCampaigns: MarketingCampaign[]; postLaunchCampaigns: MarketingCampaign[]; tasks: Task[] };
+    property: DepartmentDetails;
+    project: DepartmentDetails;
+    merchandising: DepartmentDetails;
+    hr: DepartmentDetails;
+    marketing: DepartmentDetails;
+    it?: DepartmentDetails; // IT department is optional
   };
-  comments?: Comment[]; // Added comments field
+  comments?: Comment[];
 }
+

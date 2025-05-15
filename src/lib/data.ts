@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -82,7 +82,11 @@ export const tasks: Task[] = [
   { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', dueDate: formatDate(addDays(today, -3)) },
   { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', dueDate: formatDate(addDays(today, 5)) },
   { id: 'task-mkt-001', name: 'Social Media Content Calendar', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', dueDate: formatDate(addDays(today, 8)) },
-
+  { id: 'task-proj-001', name: 'Finalize Interior Layout', department: 'Project', status: 'Completed', dueDate: formatDate(addDays(today, -10)) },
+  { id: 'task-proj-002', name: 'Source Local Contractors', department: 'Project', status: 'In Progress', dueDate: formatDate(addDays(today, 2)) },
+  { id: 'task-merch-001', name: 'Select Product SKUs', department: 'Merchandising', status: 'In Progress', dueDate: formatDate(addDays(today, 5)) },
+  { id: 'task-prop-001', name: 'Verify Zoning', department: 'Property', status: 'Completed' },
+  { id: 'task-prop-002', name: 'Negotiate Lease Terms', department: 'Property', status: 'In Progress', dueDate: formatDate(addDays(today, 10)) },
 ];
 
 export const mockProjects: StoreProject[] = [
@@ -103,24 +107,23 @@ export const mockProjects: StoreProject[] = [
     projectTimeline: {
       totalDays: 45,
       currentDay: 15,
- kickoffDate: formatDate(addDays(today, -15)),
+      kickoffDate: formatDate(addDays(today, -15)),
     },
- threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
-    tasks: [
-      { id: 'task-101', name: 'Finalize Interior Layout', department: 'Project', status: 'Completed', dueDate: formatDate(addDays(today, -10)) },
-      { id: 'task-102', name: 'Source Local Contractors', department: 'Project', status: 'In Progress', dueDate: formatDate(addDays(today, 2)) },
-      { id: 'task-103', name: 'Select Product SKUs', department: 'Merchandising', status: 'In Progress', dueDate: formatDate(addDays(today, 5)) },
-      { id: 'task-104', name: 'Post Job Openings (Manager, Staff)', department: 'HR', status: 'Pending', dueDate: formatDate(addDays(today, 1)) },
-      { id: 'task-105', name: 'Develop Pre-Launch Buzz Campaign', department: 'Marketing', status: 'Pending', dueDate: formatDate(addDays(today, 10)) },
-    ],
+    threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
+    tasks: tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001'].includes(t.id)),
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-1-${i}`})),
-        departments: {
-            property: { notes: "Lease signed and secured.", tasks: [{id: 'task-p1', name: "Verify Zoning", department: "Property", status: "Completed"}] },
-            project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project') },
-            merchandising: { virtualPlanUrl: "#", tasks: tasks.filter(t => t.department === 'Merchandising') },
-            hr: { recruitmentStatus: "Interviews Scheduled", staffHired: 1, totalNeeded: 5, tasks: tasks.filter(t => t.department === 'HR') },
-            marketing: { preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-1-${i}`})), postLaunchCampaigns: [], tasks: tasks.filter(t => t.department === 'Marketing') },
+    departments: {
+        property: { notes: "Lease signed and secured.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-001'].includes(t.id)) },
+        project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project' && ['task-proj-001', 'task-proj-002'].includes(t.id)) },
+        merchandising: { virtualPlanUrl: "#", tasks: tasks.filter(t => t.department === 'Merchandising' && ['task-merch-001'].includes(t.id)) },
+        hr: { recruitmentStatus: "Interviews Scheduled", staffHired: 1, totalNeeded: 5, tasks: tasks.filter(t => t.department === 'HR' && ['task-hr-001'].includes(t.id)) },
+        marketing: { 
+            preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-1-${i}`})), 
+            postLaunchCampaigns: [], 
+            tasks: tasks.filter(t => t.department === 'Marketing' && ['task-mkt-001'].includes(t.id)) 
+        },
+        it: { tasks: tasks.filter(t => t.department === 'IT' && t.id.startsWith('task-it-001'))} // Example: include one IT task
     },
     comments: sampleComments,
   },
@@ -143,20 +146,18 @@ export const mockProjects: StoreProject[] = [
       currentDay: 0,
       kickoffDate: formatDate(addDays(today, 5)),
     },
-    tasks: [
-      { id: 'task-201', name: 'Negotiate Lease Terms', department: 'Property', status: 'In Progress', dueDate: formatDate(addDays(today, 10)) },
-      { id: 'task-202', name: 'Initial Design Concept', department: 'Project', status: 'Pending', dueDate: formatDate(addDays(today, 15)) },
-    ],
+    tasks: tasks.filter(t => ['task-prop-002'].includes(t.id)),
     documents: [sampleDocs[0]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})),
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
-        departments: {
-            property: { notes: "Initial site visit completed.", tasks: [{id: 'task-p2', name: "Conduct Feasibility Study", department: "Property", status: "In Progress"}] },
- project: { tasks: tasks.filter(t => t.department === 'Project')  },
- merchandising: { tasks: tasks.filter(t => t.department === 'Merchandising')  },
- hr: { recruitmentStatus: "Pending", tasks: [] },
- marketing: { preLaunchCampaigns: [], postLaunchCampaigns: [], tasks: tasks.filter(t => t.department === 'Marketing').slice(0, 1)  },
+    departments: {
+        property: { notes: "Initial site visit completed.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-002'].includes(t.id)) },
+        project: { tasks: [] },
+        merchandising: { tasks: [] },
+        hr: { recruitmentStatus: "Pending", tasks: [] },
+        marketing: { preLaunchCampaigns: [], postLaunchCampaigns: [], tasks: [] },
+        it: { tasks: tasks.filter(t => t.department === 'IT' && t.id.startsWith('task-it-002'))} // Example: include one IT task
     },
-    comments: [sampleComments[1]], // Only the second comment for this project
+    comments: [sampleComments[1]], 
   },
    {
     id: 'proj-003',
@@ -178,26 +179,28 @@ export const mockProjects: StoreProject[] = [
       kickoffDate: formatDate(addDays(today, -60)),
     },
     threeDRenderUrl: 'https://picsum.photos/seed/kioskrender/800/600',
-    tasks: [
-       { id: 'task-301', name: 'Post-Launch Performance Review', department: 'Marketing', status: 'In Progress', dueDate: formatDate(addDays(today, 5)) },
-    ],
+    tasks: tasks.filter(t => t.id === 'task-it-003'), // Example specific task
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-3-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-3-${i}`, completed: true })),
     departments: {
- property: { tasks: tasks.filter(t => t.department === 'Property') },
- project: { tasks: tasks.filter(t => t.department === 'Project')  },
- merchandising: { tasks: tasks.filter(t => t.department === 'Merchandising')  },
- hr: { recruitmentStatus: "Staff Onboarded", staffHired: 2, totalNeeded: 2, tasks: tasks.filter(t => t.department === 'HR')  },
-            marketing: {
-                preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-3-${i}`, status: "Completed"})),
-        postLaunchCampaigns: [{ id: 'camp-post-3-1', name: "Loyalty Program Push", type: "Digital", status: "Ongoing", startDate: formatDate(addDays(today, -14)), endDate: formatDate(addDays(today, 16)), budget: 2000 }],
-        tasks: [{id: 'task-mkt3-1', name: "Analyze Launch Metrics", department: "Marketing", status: "In Progress"}]
-      },
+        property: { tasks: [] },
+        project: { tasks: [] },
+        merchandising: { tasks: [] },
+        hr: { recruitmentStatus: "Staff Onboarded", staffHired: 2, totalNeeded: 2, tasks: [] },
+        marketing: {
+            preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-3-${i}`, status: "Completed"})),
+            postLaunchCampaigns: [{ id: 'camp-post-3-1', name: "Loyalty Program Push", type: "Digital", status: "Ongoing", startDate: formatDate(addDays(today, -14)), endDate: formatDate(addDays(today, 16)), budget: 2000 }],
+            tasks: []
+        },
+        it: { tasks: tasks.filter(t => t.department === 'IT' && t.id.startsWith('task-it-003'))}
     },
-    comments: [], // No comments for this project initially
+    comments: [],
   }
 ];
 
 export const getProjectById = (id: string): StoreProject | undefined => {
-  return mockProjects.find(p => p.id === id);
+  const project = mockProjects.find(p => p.id === id);
+  // Create a deep copy to avoid modifying the original mockProjects array directly
+  return project ? JSON.parse(JSON.stringify(project)) : undefined;
 };
+
