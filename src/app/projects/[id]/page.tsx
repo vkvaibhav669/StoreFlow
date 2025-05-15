@@ -1,4 +1,3 @@
-
 "use client"; 
 
 import * as React from "react";
@@ -11,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -98,23 +97,25 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newTaskDescription, setNewTaskDescription] = React.useState("");
   const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
 
+  const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = React.useState(false);
+  const [newDocumentFile, setNewDocumentFile] = React.useState<File | null>(null);
+  const [newDocumentName, setNewDocumentName] = React.useState("");
+  const [newDocumentType, setNewDocumentType] = React.useState<DocumentFile['type'] | "">("");
+  const [newDocumentDataAiHint, setNewDocumentDataAiHint] = React.useState("");
+
   React.useEffect(() => {
     const currentProject = getProjectById(params.id);
     if (currentProject) {
-      // getProjectById already returns a deep copy
       setProjectData(currentProject);
       setProjectComments(currentProject.comments || []);
     } else {
       notFound();
     }
-  }, [params.id]); // Only depends on params.id
+  }, [params.id]); 
 
 
   if (!projectData) {
-    // If projectData is null, it means useEffect hasn't run yet with a valid project,
-    // or notFound() was called within useEffect. In either case, not rendering further is correct.
-    // notFound() throws an error that Next.js handles, so this might just be a loading state.
-    return null; // Or a loading spinner
+    return null; 
   }
   
   const calculateOverallProgress = (tasks: Task[]): number => {
@@ -125,7 +126,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const handleAddNewTask = () => {
     if (!newTaskName || !newTaskDepartment) {
-      // Basic validation
       alert("Task Name and Department are required.");
       return;
     }
@@ -141,21 +141,15 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
-
       const updatedTasks = [...prevProjectData.tasks, newTask];
       const newOverallProgress = calculateOverallProgress(updatedTasks);
-      
       const updatedDepartments = { ...prevProjectData.departments };
       if (updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments]) {
-         // @ts-ignore TODO: fix type for department key
         updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments].tasks = [
-           // @ts-ignore
           ...updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments].tasks,
           newTask
         ];
       }
-
-
       return {
         ...prevProjectData,
         tasks: updatedTasks,
@@ -164,12 +158,56 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       };
     });
 
-    // Reset form and close dialog
     setNewTaskName("");
     setNewTaskDepartment(undefined);
     setNewTaskDescription("");
     setNewTaskDueDate("");
     setIsAddTaskDialogOpen(false);
+  };
+
+  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setNewDocumentFile(file);
+      setNewDocumentName(file.name);
+    }
+  };
+
+  const handleAddNewDocument = () => {
+    if (!newDocumentFile || !newDocumentName || !newDocumentType) {
+      alert("File, Document Name, and Document Type are required.");
+      return;
+    }
+
+    const newDocument: DocumentFile = {
+      id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      name: newDocumentName,
+      type: newDocumentType as DocumentFile['type'], // Ensure type is valid
+      url: newDocumentType === "3D Render" && newDocumentFile.type.startsWith('image/') ? URL.createObjectURL(newDocumentFile) : `https://placehold.co/300x150.png`, // Placeholder for non-images or if not an image
+      size: `${(newDocumentFile.size / 1024).toFixed(1)} KB`,
+      uploadedAt: new Date().toISOString().split('T')[0],
+      uploadedBy: "Current User",
+      dataAiHint: newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : undefined,
+    };
+
+    setProjectData(prevProjectData => {
+      if (!prevProjectData) return null;
+      return {
+        ...prevProjectData,
+        documents: [newDocument, ...prevProjectData.documents],
+      };
+    });
+
+    setNewDocumentFile(null);
+    setNewDocumentName("");
+    setNewDocumentType("");
+    setNewDocumentDataAiHint("");
+    setIsAddDocumentDialogOpen(false);
+    
+    // Clean up the object URL after it's no longer needed if we were to display it directly and then remove it
+    // For now, picsum is fine for renders, and # for others.
+    // If using URL.createObjectURL, and the image component is unmounted or document removed, it should be revoked:
+    // if (newDocument.url.startsWith('blob:')) { URL.revokeObjectURL(newDocument.url); }
   };
 
 
@@ -226,68 +264,133 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           </Link>
         </Button>
         <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
-        <Dialog open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="h-8 gap-1 flex-shrink-0">
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Add New Task
-              </span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Task</DialogTitle>
-              <DialogDescription>
-                Fill in the details for the new task. Click save when you&apos;re done.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="taskName" className="text-right">
-                  Name
-                </Label>
-                <Input id="taskName" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="taskDepartment" className="text-right">
-                  Department
-                </Label>
-                <Select value={newTaskDepartment} onValueChange={(value) => setNewTaskDepartment(value as Department)}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Property">Property</SelectItem>
-                    <SelectItem value="Project">Project</SelectItem>
-                    <SelectItem value="Merchandising">Merchandising</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="taskDescription" className="text-right">
-                  Description
-                </Label>
-                <Textarea id="taskDescription" value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} className="col-span-3" placeholder="Optional task description" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="taskDueDate" className="text-right">
-                  Due Date
-                </Label>
-                <Input id="taskDueDate" type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="col-span-3" />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                 <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button onClick={handleAddNewTask}>Save Task</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2 flex-shrink-0">
+            <Dialog open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 gap-1">
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Add Task
+                  </span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Task</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details for the new task. Click save when you&apos;re done.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="taskName" className="text-right">
+                      Name
+                    </Label>
+                    <Input id="taskName" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="taskDepartment" className="text-right">
+                      Department
+                    </Label>
+                    <Select value={newTaskDepartment} onValueChange={(value) => setNewTaskDepartment(value as Department)}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Property">Property</SelectItem>
+                        <SelectItem value="Project">Project</SelectItem>
+                        <SelectItem value="Merchandising">Merchandising</SelectItem>
+                        <SelectItem value="HR">HR</SelectItem>
+                        <SelectItem value="Marketing">Marketing</SelectItem>
+                        <SelectItem value="IT">IT</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="taskDescription" className="text-right">
+                      Description
+                    </Label>
+                    <Textarea id="taskDescription" value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} className="col-span-3" placeholder="Optional task description" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="taskDueDate" className="text-right">
+                      Due Date
+                    </Label>
+                    <Input id="taskDueDate" type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="col-span-3" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                     <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleAddNewTask}>Save Task</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddDocumentDialogOpen} onOpenChange={setIsAddDocumentDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 gap-1">
+                  <UploadCloud className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Add Document
+                  </span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Document</DialogTitle>
+                  <DialogDescription>
+                    Upload a file and provide its details.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="docFile" className="text-right">
+                      File
+                    </Label>
+                    <Input id="docFile" type="file" onChange={handleFileSelected} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="docName" className="text-right">
+                      Name
+                    </Label>
+                    <Input id="docName" value={newDocumentName} onChange={(e) => setNewDocumentName(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="docType" className="text-right">
+                      Type
+                    </Label>
+                    <Select value={newDocumentType} onValueChange={(value) => setNewDocumentType(value as DocumentFile['type'] | "")}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select document type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3D Render">3D Render</SelectItem>
+                        <SelectItem value="Property Document">Property Document</SelectItem>
+                        <SelectItem value="Marketing Collateral">Marketing Collateral</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {newDocumentType === "3D Render" && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="docAiHint" className="text-right">
+                        AI Hint
+                      </Label>
+                      <Input id="docAiHint" value={newDocumentDataAiHint} onChange={(e) => setNewDocumentDataAiHint(e.target.value)} className="col-span-3" placeholder="e.g., modern storefront"/>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                     <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleAddNewDocument} disabled={!newDocumentFile}>Save Document</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+        </div>
         <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
           {projectData.status}
         </Badge>
@@ -413,10 +516,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {projectData.documents.map((doc) => (
                     <Card key={doc.id} className="overflow-hidden">
-                       {doc.type === "3D Render" && doc.url.startsWith("https") && (
+                       {(doc.type === "3D Render" && doc.url.startsWith("blob:")) || (doc.type === "3D Render" && doc.url.startsWith("https")) ? (
                          <Image src={doc.url} alt={doc.name} width={300} height={150} className="w-full h-32 object-cover" data-ai-hint={doc.dataAiHint || "office document"} />
-                       )}
-                       {doc.type !== "3D Render" && (
+                       ) : (
                          <div className="h-32 bg-muted flex items-center justify-center">
                            <FileText className="w-12 h-12 text-muted-foreground" />
                          </div>
@@ -428,7 +530,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       </CardContent>
                       <CardFooter className="p-3 border-t">
                          <Button variant="outline" size="sm" className="w-full" asChild>
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer" download={!doc.url.startsWith("https")}>
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer" download={!doc.url.startsWith("blob:") && !doc.url.startsWith("https")}>
                                 <Download className="mr-2 h-3.5 w-3.5" /> Download
                             </a>
                         </Button>
@@ -547,4 +649,3 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
-
