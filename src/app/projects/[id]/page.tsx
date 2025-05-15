@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getProjectById, tasks as allMockTasks } from "@/lib/data"; // Import allMockTasks for initial department tasks
+import { getProjectById } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2 } from "lucide-react";
 import Link from "next/link";
@@ -88,10 +88,8 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
 
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  const initialProject = getProjectById(params.id);
-
-  const [projectData, setProjectData] = React.useState<StoreProject | null>(initialProject ? JSON.parse(JSON.stringify(initialProject)) : null); // Deep copy
-  const [projectComments, setProjectComments] = React.useState<Comment[]>(initialProject?.comments || []);
+  const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
+  const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
@@ -101,23 +99,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
 
   React.useEffect(() => {
-    if (initialProject) {
-      // Ensure department tasks are correctly initialized if projectData changes
-      // This might be redundant if initialProject's departments.tasks are already correct
-      // But good for consistency if initialProject could be dynamic later
-      const updatedProject = JSON.parse(JSON.stringify(initialProject)) as StoreProject;
-      setProjectData(updatedProject);
-      setProjectComments(updatedProject.comments || []);
+    const currentProject = getProjectById(params.id);
+    if (currentProject) {
+      // getProjectById already returns a deep copy
+      setProjectData(currentProject);
+      setProjectComments(currentProject.comments || []);
     } else {
       notFound();
     }
-  }, [params.id, initialProject]);
+  }, [params.id]); // Only depends on params.id
 
 
   if (!projectData) {
-    // initialProject might be undefined, leading to notFound() if params.id is invalid
-    // If projectData is null after useEffect, it means initialProject was null.
-    return notFound();
+    // If projectData is null, it means useEffect hasn't run yet with a valid project,
+    // or notFound() was called within useEffect. In either case, not rendering further is correct.
+    // notFound() throws an error that Next.js handles, so this might just be a loading state.
+    return null; // Or a loading spinner
   }
   
   const calculateOverallProgress = (tasks: Task[]): number => {
@@ -354,7 +351,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               )}
             </DepartmentCard>
             <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks}>
-              {departments.marketing.preLaunchCampaigns.length > 0 && (
+              {departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
                   <ul className="space-y-0.5 text-xs">
@@ -364,8 +361,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>
-            {/* Assuming IT tasks should be displayed if present */}
-            { initialProject?.departments.it && departments.it.tasks.length > 0 && (
+            {projectData.departments.it && departments.it.tasks.length > 0 && (
                 <DepartmentCard title="IT Team" icon={MilestoneIcon} /* Replace with actual IT icon */ tasks={departments.it.tasks} notes={departments.it.notes} />
             )}
           </div>
