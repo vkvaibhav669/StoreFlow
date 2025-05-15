@@ -1,3 +1,7 @@
+
+"use client";
+
+import * as React from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +11,10 @@ import { mockProjects } from "@/lib/data";
 import { ArrowUpRight, PlusCircle } from "lucide-react";
 
 export default function AllProjectsPage() {
+  // By being a client component, when it renders (e.g., due to navigation),
+  // it will use the current state of the imported `mockProjects` array.
+  const projects = mockProjects;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
@@ -38,7 +46,7 @@ export default function AllProjectsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockProjects.map((project) => (
+              {projects.map((project) => (
                 <TableRow key={project.id}>
                   <TableCell>
                     <div className="font-medium">{project.name}</div>
