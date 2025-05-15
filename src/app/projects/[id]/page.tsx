@@ -1,16 +1,23 @@
+
+"use client"; 
+
+import * as React from "react";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById } from "@/lib/data";
-import type { Task, DocumentFile } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, Target, Users, Volume2 } from "lucide-react"; // Changed PaintBrush to Paintbrush
+import type { Task, DocumentFile, Comment } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, CircleAlert, Clock, Download, FileText, Landmark, MapPin, Milestone as MilestoneIcon, Paintbrush, Paperclip, Target, Users, Volume2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { CommentCard } from "@/components/comments/CommentCard";
 
 
 interface DepartmentCardProps {
@@ -43,7 +50,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
         {children}
         {tasks.length > 0 && (
           <ul className="space-y-1 text-sm">
-            {tasks.slice(0, 3).map(task => ( // Show max 3 tasks
+            {tasks.slice(0, 3).map(task => ( 
               <li key={task.id} className="flex items-center justify-between">
                 <span className={task.status === 'Completed' ? 'line-through text-muted-foreground' : ''}>{task.name}</span>
                 <Badge variant={task.status === 'Completed' ? 'outline' : 'secondary'} className="text-xs">
@@ -69,12 +76,57 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }
 
   const { departments } = project;
+  
+  const [projectComments, setProjectComments] = React.useState<Comment[]>(project.comments || []);
+  const [newCommentText, setNewCommentText] = React.useState("");
+
+  const handleAddComment = () => {
+    if (newCommentText.trim()) {
+      const newComment: Comment = {
+        id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        author: "Current User", // Placeholder - replace with actual user
+        avatarUrl: "https://picsum.photos/seed/currentUser/40/40", // Placeholder
+        timestamp: new Date().toISOString(),
+        text: newCommentText,
+        replies: [],
+      };
+      setProjectComments(prevComments => [newComment, ...prevComments]);
+      setNewCommentText("");
+    }
+  };
+
+  const handleReplyToComment = (commentId: string, replyText: string) => {
+    const addReplyRecursively = (currentComments: Comment[]): Comment[] => {
+      return currentComments.map(comment => {
+        if (comment.id === commentId) {
+          const newReply: Comment = {
+            id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            author: "Current User", // Placeholder
+            avatarUrl: "https://picsum.photos/seed/replyUser/40/40",
+            timestamp: new Date().toISOString(),
+            text: replyText,
+            replies: [],
+          };
+          return {
+            ...comment,
+            replies: [newReply, ...(comment.replies || [])], // Add new reply to the top of replies
+          };
+        }
+        if (comment.replies && comment.replies.length > 0) {
+          return { ...comment, replies: addReplyRecursively(comment.replies) };
+        }
+        return comment;
+      });
+    };
+    setProjectComments(prevComments => addReplyRecursively(prevComments));
+  };
+
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild className="flex-shrink-0">
-          <Link href="/dashboard"> {/* Corrected href from /projects to /dashboard as per common navigation patterns */}
+          <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to Dashboard</span>
           </Link>
@@ -117,11 +169,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       </Card>
 
       <Tabs defaultValue="departments">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="comments">Comments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="departments" className="mt-4">
@@ -239,9 +292,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </CardHeader>
                 <CardContent>
                     <div className="relative pl-6">
-                        {/* Timeline Line */}
                         <div className="absolute left-[calc(0.75rem-1px)] top-2 bottom-2 w-0.5 bg-border"></div>
-
                         {project.milestones.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone, index) => (
                             <div key={milestone.id} className="relative mb-6">
                                 <div className={cn(
@@ -262,7 +313,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                             </div>
                         ))}
                         
-                        {/* Current Day Marker if project is active */}
                         {project.status !== "Launched" && project.status !== "Planning" && (
                              <div className="relative mt-8 mb-6">
                                 <div className="absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary border-2 border-primary-foreground shadow">
@@ -275,7 +325,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                             </div>
                         )}
 
-                        {/* Launch Date Marker */}
                          <div className="relative mt-8">
                                 <div className={cn("absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
                                 project.status === "Launched" ? "bg-accent" : "bg-muted border-2 border-primary"
@@ -287,14 +336,56 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                                     <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1"/>{project.projectedLaunchDate}</p>
                                 </div>
                             </div>
-
-
                     </div>
                 </CardContent>
             </Card>
+        </TabsContent>
+
+        <TabsContent value="comments" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Project Discussion ({projectComments.length})</CardTitle>
+              <CardDescription>Share updates, ask questions, and collaborate with the team.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-start space-x-3">
+                <Avatar className="h-10 w-10 mt-1 flex-shrink-0">
+                  <AvatarImage src="https://picsum.photos/seed/currentUser/40/40" alt="Current User" data-ai-hint="user avatar" />
+                  <AvatarFallback>CU</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Textarea
+                    placeholder="Write a comment..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    className="mb-2"
+                    rows={3}
+                  />
+                  <div className="flex justify-end">
+                    <Button onClick={handleAddComment} disabled={!newCommentText.trim()}>
+                      Post Comment
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {projectComments.length > 0 ? (
+                <div className="space-y-0"> {/* No extra space here, CommentCard has mb-4 */}
+                  {projectComments.map((comment) => (
+                    <CommentCard key={comment.id} comment={comment} onReply={handleReplyToComment} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No comments yet. Be the first to start the discussion!
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
       </Tabs>
     </div>
   );
 }
+

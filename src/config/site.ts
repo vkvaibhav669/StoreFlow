@@ -30,16 +30,18 @@ export const siteConfig: SiteConfig = {
       icon: ClipboardList,
     },
     {
-      title: "My Tasks",
+      title: "My Task",
       href: "/tasks",
       icon: ListChecks,
-      disabled: true, // For future implementation
     },
     {
-      title: "Settings",
-      href: "/settings",
+      title: "Updates",
+      href: "/updates",
       icon: Settings,
-      disabled: true, // For future implementation
+      //disabled: true, // For future implementation
     },
+    
+    
+    
   ],
 };

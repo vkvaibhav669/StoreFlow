@@ -135,14 +135,14 @@ function Header() {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Sidebar collapsible="icon" className="hidden border-r md:block peer">
-          <SidebarHeader className="h-14 flex items-center px-4 border-b">
+      <div className='flex min-h-screen w-full flex-col bg-muted/40'>
+        <Sidebar collapsible='icon' className='hidden border-r md:block peer'>
+          <SidebarHeader className='h-14 flex items-center px-4 border-b sticky top-0 z-10'>
             <Link
-              href="/dashboard"
-              className="flex items-center gap-2 font-semibold"
+              href='/dashboard'
+              className='flex items-center gap-2 font-semibold'
             >
-              <Package2 className="h-6 w-6 text-primary" />
+              <Package2 className='h-6 w-6 text-primary' />
               <span className={cn(
                 "text-lg",
                 "group-data-[collapsible=icon]/sidebar:hidden delay-300 whitespace-nowrap"
@@ -151,18 +151,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </span>
             </Link>
           </SidebarHeader>
-          <SidebarContent>
-            <ScrollArea className="h-full">
+          <SidebarContent className='flex-1 overflow-y-auto'>
+            <ScrollArea className='h-full'>
               <SidebarNav />
             </ScrollArea>
           </SidebarContent>
-          <SidebarFooter className="p-2 border-t mt-auto">
+          <SidebarFooter className='p-2 border-t'>
             <DesktopSidebarToggle />
           </SidebarFooter>
         </Sidebar>
         <div className={cn(
             "flex flex-col flex-1", // flex-1 to take remaining space
-            "md:pl-[var(--sidebar-width-icon)]", // Default padding for collapsed sidebar on md+
+            "md:pl-[var(--sidebar-width-icon)]", // Default padding for collapsed sidebar on md+git diff
             "peer-data-[state=expanded]:md:pl-[var(--sidebar-width)]", // Padding when sidebar (peer) is expanded
             "transition-[padding-left] duration-300 ease-in-out" // Smooth transition for padding change
           )}

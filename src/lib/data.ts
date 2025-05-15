@@ -1,4 +1,5 @@
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign } from '@/types';
+
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -9,9 +10,9 @@ const addDays = (date: Date, days: number) => {
 };
 
 const commonTasks: Omit<Task, 'id' | 'department'>[] = [
-  { name: "Initial Briefing", status: "Completed", dueDate: formatDate(addDays(today, -5)) },
-  { name: "Weekly Sync", status: "In Progress", dueDate: formatDate(addDays(today, 2)) },
-  { name: "Final Review", status: "Pending", dueDate: formatDate(addDays(today, 40)) },
+  { name: "Property Lease Agreement.pdf", type: "Property Document", url: "#", uploadedAt: formatDate(addDays(today, -10)), size: "2.5MB", uploadedBy: "Legal Team" },
+  { name: "Store_Front_Render_V3.png", type: "3D Render", url: "https://picsum.photos/seed/render1/600/400", uploadedAt: formatDate(addDays(today, -2)), size: "5.1MB", uploadedBy: "Design Team", dataAiHint: "store render" },
+  { name: "Launch Campaign Brief.docx", type: "Marketing Collateral", url: "#", uploadedAt: formatDate(addDays(today, -1)), size: "1.2MB", uploadedBy: "Marketing Team" },
 ];
 
 const sampleDocs: Omit<DocumentFile, 'id'>[] = [
@@ -32,6 +33,58 @@ const sampleCampaigns: Omit<MarketingCampaign, 'id'>[] = [
     { name: "Local Influencer Collab", type: "Influencer", status: "Planned", startDate: formatDate(addDays(today, 35)), endDate: formatDate(addDays(today, 50)), budget: 3000 },
 ];
 
+const sampleComments: Comment[] = [
+  {
+    id: 'comment-1',
+    author: 'Alice Wonderland',
+    avatarUrl: 'https://picsum.photos/seed/alice/40/40',
+    timestamp: addDays(today, -2).toISOString(),
+    text: 'This project is looking great! Really excited about the Downtown Flagship. The progress is impressive.',
+    replies: [
+      {
+        id: 'comment-1-1',
+        author: 'Bob The Builder',
+        avatarUrl: 'https://picsum.photos/seed/bob/40/40',
+        timestamp: addDays(today, -1).toISOString(),
+        text: 'Agreed! The 3D render looks fantastic. The team has outdone themselves.',
+        replies: [
+          {
+            id: 'comment-1-1-1',
+            author: 'Alice Wonderland',
+            avatarUrl: 'https://picsum.photos/seed/alice/40/40',
+            timestamp: new Date().toISOString(),
+            text: 'Thanks, Bob! The design team did an amazing job. We should celebrate this milestone.',
+          }
+        ]
+      },
+      {
+        id: 'comment-1-2',
+        author: 'Carol Danvers',
+        avatarUrl: 'https://picsum.photos/seed/carol/40/40',
+        timestamp: addDays(today, -1).toISOString(),
+        text: 'What are the next steps for merchandising after the layout finalization?',
+      }
+    ],
+  },
+  {
+    id: 'comment-2',
+    author: 'Charlie Brown',
+    avatarUrl: 'https://picsum.photos/seed/charlie/40/40',
+    timestamp: addDays(today, -1).toISOString(),
+    text: 'Any updates on the suburban mall outlet lease negotiations? Holding my breath for this one!',
+  },
+];
+
+
+export const tasks: Task[] = [
+  { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', dueDate: formatDate(addDays(today, 7)) },
+  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', dueDate: formatDate(addDays(today, 10)) },
+  { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', dueDate: formatDate(addDays(today, -3)) },
+  { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', dueDate: formatDate(addDays(today, 5)) },
+  { id: 'task-mkt-001', name: 'Social Media Content Calendar', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', dueDate: formatDate(addDays(today, 8)) },
+
+];
+
 export const mockProjects: StoreProject[] = [
   {
     id: 'proj-001',
@@ -50,9 +103,9 @@ export const mockProjects: StoreProject[] = [
     projectTimeline: {
       totalDays: 45,
       currentDay: 15,
-      kickoffDate: formatDate(addDays(today, -15)),
+ kickoffDate: formatDate(addDays(today, -15)),
     },
-    threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
+ threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
     tasks: [
       { id: 'task-101', name: 'Finalize Interior Layout', department: 'Project', status: 'Completed', dueDate: formatDate(addDays(today, -10)) },
       { id: 'task-102', name: 'Source Local Contractors', department: 'Project', status: 'In Progress', dueDate: formatDate(addDays(today, 2)) },
@@ -62,13 +115,14 @@ export const mockProjects: StoreProject[] = [
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-1-${i}`})),
-    departments: {
-      property: { notes: "Lease signed and secured.", tasks: [{id: 'task-p1', name: "Verify Zoning", department: "Property", status: "Completed"}] },
-      project: { notes: "Construction underway, on schedule.", tasks: commonTasks.map((t, i) => ({ ...t, id: `task-proj1-${i}`, department: "Project" })) },
-      merchandising: { virtualPlanUrl: "#", tasks: commonTasks.map((t, i) => ({ ...t, id: `task-merch1-${i}`, department: "Merchandising" })) },
-      hr: { recruitmentStatus: "Interviews Scheduled", staffHired: 1, totalNeeded: 5, tasks: commonTasks.map((t, i) => ({ ...t, id: `task-hr1-${i}`, department: "HR" })) },
-      marketing: { preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-1-${i}`})), postLaunchCampaigns: [], tasks: commonTasks.map((t, i) => ({ ...t, id: `task-mkt1-${i}`, department: "Marketing" })) },
-    }
+        departments: {
+            property: { notes: "Lease signed and secured.", tasks: [{id: 'task-p1', name: "Verify Zoning", department: "Property", status: "Completed"}] },
+            project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project') },
+            merchandising: { virtualPlanUrl: "#", tasks: tasks.filter(t => t.department === 'Merchandising') },
+            hr: { recruitmentStatus: "Interviews Scheduled", staffHired: 1, totalNeeded: 5, tasks: tasks.filter(t => t.department === 'HR') },
+            marketing: { preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-1-${i}`})), postLaunchCampaigns: [], tasks: tasks.filter(t => t.department === 'Marketing') },
+    },
+    comments: sampleComments,
   },
   {
     id: 'proj-002',
@@ -95,13 +149,14 @@ export const mockProjects: StoreProject[] = [
     ],
     documents: [sampleDocs[0]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})),
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
-    departments: {
-      property: { notes: "Initial site visit completed.", tasks: [{id: 'task-p2', name: "Conduct Feasibility Study", department: "Property", status: "In Progress"}] },
-      project: { tasks: commonTasks.slice(0,1).map((t, i) => ({ ...t, id: `task-proj2-${i}`, department: "Project" })) },
-      merchandising: { tasks: [] },
-      hr: { recruitmentStatus: "Pending", tasks: [] },
-      marketing: { preLaunchCampaigns: [], postLaunchCampaigns: [], tasks: [] },
-    }
+        departments: {
+            property: { notes: "Initial site visit completed.", tasks: [{id: 'task-p2', name: "Conduct Feasibility Study", department: "Property", status: "In Progress"}] },
+ project: { tasks: tasks.filter(t => t.department === 'Project')  },
+ merchandising: { tasks: tasks.filter(t => t.department === 'Merchandising')  },
+ hr: { recruitmentStatus: "Pending", tasks: [] },
+ marketing: { preLaunchCampaigns: [], postLaunchCampaigns: [], tasks: tasks.filter(t => t.department === 'Marketing').slice(0, 1)  },
+    },
+    comments: [sampleComments[1]], // Only the second comment for this project
   },
    {
     id: 'proj-003',
@@ -119,7 +174,7 @@ export const mockProjects: StoreProject[] = [
     },
     projectTimeline: {
       totalDays: 45,
-      currentDay: 45, // Assuming it launched on day 45
+      currentDay: 45, 
       kickoffDate: formatDate(addDays(today, -60)),
     },
     threeDRenderUrl: 'https://picsum.photos/seed/kioskrender/800/600',
@@ -129,16 +184,17 @@ export const mockProjects: StoreProject[] = [
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-3-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-3-${i}`, completed: true })),
     departments: {
-      property: { tasks: [] },
-      project: { tasks: [] },
-      merchandising: { tasks: [] },
-      hr: { recruitmentStatus: "Staff Onboarded", staffHired: 2, totalNeeded: 2, tasks: [] },
-      marketing: { 
-        preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-3-${i}`, status: "Completed"})), 
+ property: { tasks: tasks.filter(t => t.department === 'Property') },
+ project: { tasks: tasks.filter(t => t.department === 'Project')  },
+ merchandising: { tasks: tasks.filter(t => t.department === 'Merchandising')  },
+ hr: { recruitmentStatus: "Staff Onboarded", staffHired: 2, totalNeeded: 2, tasks: tasks.filter(t => t.department === 'HR')  },
+            marketing: {
+                preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-3-${i}`, status: "Completed"})),
         postLaunchCampaigns: [{ id: 'camp-post-3-1', name: "Loyalty Program Push", type: "Digital", status: "Ongoing", startDate: formatDate(addDays(today, -14)), endDate: formatDate(addDays(today, 16)), budget: 2000 }],
-        tasks: [{id: 'task-mkt3-1', name: "Analyze Launch Metrics", department: "Marketing", status: "In Progress"}] 
+        tasks: [{id: 'task-mkt3-1', name: "Analyze Launch Metrics", department: "Marketing", status: "In Progress"}]
       },
-    }
+    },
+    comments: [], // No comments for this project initially
   }
 ];
 
