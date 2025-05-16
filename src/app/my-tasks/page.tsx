@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 interface UserTask extends Task {
   projectName: string;
@@ -18,12 +19,19 @@ interface UserTask extends Task {
 
 export default function MyTasksPage() {
   const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
+  const { user } = useAuth(); // Get the current user
 
   React.useEffect(() => {
     const tasksForCurrentUser: UserTask[] = [];
     mockProjects.forEach((project: StoreProject) => {
       project.tasks.forEach((task: Task) => {
-        if (task.assignedTo === "Current User") {
+        // Check if task is assigned to the current user's name, email, or the generic "Current User" string
+        const isAssignedToCurrentUser = 
+          task.assignedTo === "Current User" ||
+          (user && user.name && task.assignedTo === user.name) ||
+          (user && user.email && task.assignedTo === user.email);
+
+        if (isAssignedToCurrentUser) {
           tasksForCurrentUser.push({
             ...task,
             projectName: project.name,
@@ -33,7 +41,7 @@ export default function MyTasksPage() {
       });
     });
     setUserTasks(tasksForCurrentUser);
-  }, []);
+  }, [user]); // Add user as a dependency
 
   return (
     <div className="flex flex-col gap-6">
