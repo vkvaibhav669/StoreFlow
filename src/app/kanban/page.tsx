@@ -12,7 +12,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Package2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge"; // Added this import
+import { Badge } from "@/components/ui/badge";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -141,7 +141,7 @@ export default function KanbanBoardPage() {
       <ScrollArea className="flex-grow">
         <div className="flex gap-4 pb-4 min-w-max">
           {KANBAN_COLUMNS.map((status) => (
-            <Card key={status} className="w-[300px] flex-shrink-0 h-full flex flex-col">
+            <Card key={status} className="w-[250px] flex-shrink-0 h-full flex flex-col"> {/* Changed width here */}
               <CardHeader className="p-3 border-b">
                 <CardTitle className="text-base font-medium flex justify-between items-center">
                   {status}
