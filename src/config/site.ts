@@ -1,5 +1,6 @@
+
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus } from "lucide-react"; // Added UserPlus
 
 interface SiteConfig {
   name: string;
@@ -30,9 +31,9 @@ export const siteConfig: SiteConfig = {
       icon: ClipboardList,
     },
     {
-      title: "My Task",
+      title: "Assign a Task", // Changed title
       href: "/tasks",
-      icon: ListChecks,
+      icon: UserPlus, // Changed icon to UserPlus
     },
     {
       title: "Updates",
@@ -40,8 +41,5 @@ export const siteConfig: SiteConfig = {
       icon: Settings,
       //disabled: true, // For future implementation
     },
-    
-    
-    
   ],
 };
