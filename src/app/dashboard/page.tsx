@@ -74,6 +74,12 @@ export default function DashboardPage() {
     }, {} as Record<Department, boolean>)
   );
 
+  const [filterSettings, setFilterSettings] = React.useState({
+    showActive: true,
+    showLaunched: true,
+    planningOnly: false,
+  });
+
   const handleDepartmentChange = (department: Department, checked: boolean) => {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
   };
@@ -98,10 +104,9 @@ export default function DashboardPage() {
     if (selectedDepartments.IT) {
       departments.it = { tasks: [] };
     }
-    // Optionally, add a default task or note to selected departments
+    
     allDepartmentKeys.forEach(deptKey => {
       if (selectedDepartments[deptKey] && departments[deptKey.toLowerCase() as keyof typeof departments]) {
-        // Example: Add a default note or task if desired
         // (departments[deptKey.toLowerCase() as keyof typeof departments] as DepartmentDetails).notes = "Initial setup pending.";
       }
     });
@@ -117,12 +122,12 @@ export default function DashboardPage() {
       currentProgress: 0,
       propertyDetails: {
         address: newProjectLocation,
-        sqft: 0, // Default, can be updated later
+        sqft: 0, 
         status: 'Identified',
         notes: 'Newly added project.',
       },
       projectTimeline: {
-        totalDays: 60, // Default
+        totalDays: 60, 
         currentDay: 0,
         kickoffDate: formatDate(today),
       },
@@ -133,10 +138,9 @@ export default function DashboardPage() {
       comments: [],
     };
 
-    mockProjects.push(newProject); // Add to the global mock data
-    setDashboardProjects([...mockProjects]); // Update local state to trigger re-render
+    mockProjects.push(newProject); 
+    setDashboardProjects([...mockProjects]); 
 
-    // Reset form and close dialog
     setNewProjectName("");
     setNewProjectLocation("");
     setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => {
@@ -147,8 +151,19 @@ export default function DashboardPage() {
   };
 
 
-  const activeProjects = dashboardProjects.filter(p => p.status !== "Launched");
-  const launchedProjects = dashboardProjects.filter(p => p.status === "Launched");
+  const activeProjects = React.useMemo(() => {
+    if (!filterSettings.showActive) return [];
+    let projects = dashboardProjects.filter(p => p.status !== "Launched");
+    if (filterSettings.planningOnly) {
+      projects = projects.filter(p => p.status === "Planning");
+    }
+    return projects;
+  }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly]);
+
+  const launchedProjects = React.useMemo(() => {
+    if (!filterSettings.showLaunched) return [];
+    return dashboardProjects.filter(p => p.status === "Launched");
+  }, [dashboardProjects, filterSettings.showLaunched]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -165,14 +180,26 @@ export default function DashboardPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem checked>
+                <DropdownMenuCheckboxItem
+                  checked={filterSettings.showActive}
+                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showActive: !!checked }))}
+                >
                   Active
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Launched</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>
-                  Planning
+                <DropdownMenuCheckboxItem
+                  checked={filterSettings.showLaunched}
+                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showLaunched: !!checked }))}
+                >
+                  Launched
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={filterSettings.planningOnly}
+                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, planningOnly: !!checked }))}
+                  disabled={!filterSettings.showActive} // Planning only makes sense if Active is shown
+                >
+                  Planning (within Active)
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -247,32 +274,43 @@ export default function DashboardPage() {
           </div>
       </div>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Active Projects ({activeProjects.length})</h2>
-        {activeProjects.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">No active projects.</p>
-        )}
-      </section>
+      {filterSettings.showActive && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">
+            {filterSettings.planningOnly ? "Planning Projects" : "Active Projects"} ({activeProjects.length})
+          </h2>
+          {activeProjects.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {activeProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              {filterSettings.planningOnly ? "No projects currently in planning phase." : "No active projects matching filters."}
+            </p>
+          )}
+        </section>
+      )}
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Recently Launched ({launchedProjects.length})</h2>
-         {launchedProjects.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {launchedProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">No recently launched projects.</p>
-        )}
-      </section>
+      {filterSettings.showLaunched && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Recently Launched ({launchedProjects.length})</h2>
+          {launchedProjects.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {launchedProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No recently launched projects.</p>
+          )}
+        </section>
+      )}
+
+      {!filterSettings.showActive && !filterSettings.showLaunched && (
+         <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
+      )}
     </div>
   );
 }
-
