@@ -10,8 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud } from "lucide-react";
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -104,6 +104,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newTaskDescription, setNewTaskDescription] = React.useState("");
   const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
   const [newTaskAssignedTo, setNewTaskAssignedTo] = React.useState("");
+  const [newTaskPriority, setNewTaskPriority] = React.useState<TaskPriority>("Medium");
 
 
   const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = React.useState(false);
@@ -156,6 +157,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       department: newTaskDepartment as Department,
       description: newTaskDescription || undefined,
       dueDate: newTaskDueDate || undefined,
+      priority: newTaskPriority,
       status: "Pending",
       assignedTo: newTaskAssignedTo,
     };
@@ -172,13 +174,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       allPossibleDepartmentKeys.forEach(deptKey => {
         const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
         
-        if (!newDepartmentsState[deptKey]) { // Ensure department object exists
+        if (!newDepartmentsState[deptKey]) { 
             if (departmentNameFromKey === newTaskToAdd.department) { 
                 (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
             }
         }
         
-        // Re-derive department tasks from the single source of truth (updatedRootTasks)
         if (newDepartmentsState[deptKey]) {
              (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
         }
@@ -208,6 +209,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setNewTaskDescription("");
     setNewTaskDueDate("");
     setNewTaskAssignedTo("");
+    setNewTaskPriority("Medium");
     setIsAddTaskDialogOpen(false);
   };
 
@@ -400,12 +402,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         <div className="flex items-center gap-2 flex-shrink-0">
             <Dialog open={isAddTaskDialogOpen} onOpenChange={(isOpen) => {
                 setIsAddTaskDialogOpen(isOpen);
-                if (!isOpen) { // Reset form on close
+                if (!isOpen) { 
                     setNewTaskName("");
                     setNewTaskDepartment("");
                     setNewTaskDescription("");
                     setNewTaskDueDate("");
                     setNewTaskAssignedTo("");
+                    setNewTaskPriority("Medium");
                 }
             }}>
               <DialogTrigger asChild>
@@ -416,7 +419,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   </span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add New Task</DialogTitle>
                   <DialogDescription>
@@ -455,7 +458,23 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="col-span-3" placeholder="e.g. John Doe" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="taskDescription" className="text-right">
+                    <Label htmlFor="taskPriority" className="text-right">
+                      Priority
+                    </Label>
+                    <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as TaskPriority)}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="taskDescription" className="text-right pt-1">
                       Description
                     </Label>
                     <Textarea id="taskDescription" value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} className="col-span-3" placeholder="Optional task description" />
@@ -827,6 +846,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <div className="col-span-2">{selectedTask.department}</div>
               </div>
               <div className="grid grid-cols-3 items-center gap-2">
+                <Label className="text-right text-muted-foreground">Priority:</Label>
+                <div className="col-span-2">
+                  <Badge 
+                    variant={selectedTask.priority === "High" ? "destructive" : selectedTask.priority === "Low" ? "outline" : "secondary"}
+                    className={cn(
+                      selectedTask.priority === "High" && "bg-red-100 text-red-700 border-red-300",
+                      selectedTask.priority === "Medium" && "bg-yellow-100 text-yellow-700 border-yellow-300",
+                      selectedTask.priority === "Low" && "bg-blue-100 text-blue-700 border-blue-300",
+                      selectedTask.priority === "None" && "bg-gray-100 text-gray-700 border-gray-300"
+                    )}
+                  >
+                    {selectedTask.priority || "None"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-2">
                 <Label htmlFor="taskStatusEdit" className="text-right text-muted-foreground">Status:</Label>
                  <Select 
                     value={editingTaskStatus} 
@@ -934,6 +969,3 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
-
-
-    

@@ -1,11 +1,14 @@
 
 export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT";
 
+export type TaskPriority = "High" | "Medium" | "Low" | "None";
+
 export interface Task {
   id: string;
   name: string;
   department: Department;
   status: "Pending" | "In Progress" | "Completed" | "Blocked";
+  priority?: TaskPriority;
   assignedTo?: string;
   dueDate?: string;
   description?: string;
@@ -94,4 +97,3 @@ export interface StoreProject {
   };
   comments?: Comment[];
 }
-

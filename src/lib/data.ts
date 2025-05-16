@@ -77,16 +77,16 @@ const sampleComments: Comment[] = [
 
 
 export const tasks: Task[] = [
-  { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', dueDate: formatDate(addDays(today, 7)), assignedTo: "IT Department Lead" },
-  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', dueDate: formatDate(addDays(today, 10)), assignedTo: "Current User" },
-  { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', dueDate: formatDate(addDays(today, -3)), assignedTo: "IT Support" },
-  { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', dueDate: formatDate(addDays(today, 5)), assignedTo: "HR Specialist" },
-  { id: 'task-mkt-001', name: 'Social Media Content Calendar', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', dueDate: formatDate(addDays(today, 8)), assignedTo: "Current User" },
-  { id: 'task-proj-001', name: 'Finalize Interior Layout', department: 'Project', status: 'Completed', dueDate: formatDate(addDays(today, -10)), assignedTo: "Project Manager" },
-  { id: 'task-proj-002', name: 'Source Local Contractors', department: 'Project', status: 'In Progress', dueDate: formatDate(addDays(today, 2)), assignedTo: "Project Coordinator" },
-  { id: 'task-merch-001', name: 'Select Product SKUs', department: 'Merchandising', status: 'In Progress', dueDate: formatDate(addDays(today, 5)), assignedTo: "Merchandising Lead" },
-  { id: 'task-prop-001', name: 'Verify Zoning', department: 'Property', status: 'Completed', assignedTo: "Property Analyst" },
-  { id: 'task-prop-002', name: 'Negotiate Lease Terms', department: 'Property', status: 'In Progress', dueDate: formatDate(addDays(today, 10)), assignedTo: "Legal Team" },
+  { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 7)), assignedTo: "IT Department Lead" },
+  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "Current User" },
+  { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', priority: 'Medium', dueDate: formatDate(addDays(today, -3)), assignedTo: "IT Support" },
+  { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "HR Specialist" },
+  { id: 'task-mkt-001', name: 'Social Media Content Calendar', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "Current User" },
+  { id: 'task-proj-001', name: 'Finalize Interior Layout', department: 'Project', status: 'Completed', priority: 'High', dueDate: formatDate(addDays(today, -10)), assignedTo: "Project Manager" },
+  { id: 'task-proj-002', name: 'Source Local Contractors', department: 'Project', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 2)), assignedTo: "Project Coordinator" },
+  { id: 'task-merch-001', name: 'Select Product SKUs', department: 'Merchandising', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "Merchandising Lead" },
+  { id: 'task-prop-001', name: 'Verify Zoning', department: 'Property', status: 'Completed', priority: 'High', assignedTo: "Property Analyst" },
+  { id: 'task-prop-002', name: 'Negotiate Lease Terms', department: 'Property', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "Legal Team" },
 ];
 
 export const mockProjects: StoreProject[] = [
@@ -112,13 +112,13 @@ export const mockProjects: StoreProject[] = [
     threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
     tasks: [
         ...tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001'].includes(t.id)),
-        { id: 'task-df-001', name: 'Review safety protocols', department: 'Project', status: 'Pending', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 3)) }
+        { id: 'task-df-001', name: 'Review safety protocols', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 3)) }
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-1-${i}`})),
     departments: {
         property: { notes: "Lease signed and secured.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-001'].includes(t.id)) },
-        project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project' && ['task-proj-001', 'task-proj-002'].includes(t.id)) },
+        project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project' && ['task-proj-001', 'task-proj-002', 'task-df-001'].includes(t.id)) },
         merchandising: { virtualPlanUrl: "#", tasks: tasks.filter(t => t.department === 'Merchandising' && ['task-merch-001'].includes(t.id)) },
         hr: { recruitmentStatus: "Interviews Scheduled", staffHired: 1, totalNeeded: 5, tasks: tasks.filter(t => t.department === 'HR' && ['task-hr-001'].includes(t.id)) },
         marketing: { 
@@ -151,13 +151,13 @@ export const mockProjects: StoreProject[] = [
     },
     tasks: [
         ...tasks.filter(t => ['task-prop-002'].includes(t.id)),
-        { id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)) }
+        { id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)) }
     ],
     documents: [sampleDocs[0]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})),
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
     departments: {
         property: { notes: "Initial site visit completed.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-002'].includes(t.id)) },
-        project: { tasks: [{ id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)) }] },
+        project: { tasks: [{ id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)) }] },
         merchandising: { tasks: [] },
         hr: { recruitmentStatus: "Pending", tasks: [] },
         marketing: { preLaunchCampaigns: [], postLaunchCampaigns: [], tasks: [] },
@@ -209,4 +209,3 @@ export const getProjectById = (id: string): StoreProject | undefined => {
   // Create a deep copy to avoid modifying the original mockProjects array directly
   return project ? JSON.parse(JSON.stringify(project)) : undefined;
 };
-
