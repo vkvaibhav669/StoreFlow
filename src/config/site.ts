@@ -1,6 +1,6 @@
 
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare } from "lucide-react";
 
 interface SiteConfig {
   name: string;
@@ -41,6 +41,11 @@ export const siteConfig: SiteConfig = {
       href: "/my-tasks",
       icon: ListChecks,
     },
+    {
+      title: "Kanban Board",
+      href: "/kanban",
+      icon: KanbanSquare,
+    }
      // Example: Settings link, might be conditionally shown based on role
     // {
     //   title: "Settings",
@@ -56,3 +61,4 @@ export const siteConfig: SiteConfig = {
     },
   ]
 };
+
