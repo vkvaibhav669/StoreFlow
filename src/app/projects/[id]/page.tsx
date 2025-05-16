@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, Eye } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ import { useToast } from "@/hooks/use-toast";
 interface DepartmentCardProps {
   title: string;
   icon: React.ElementType;
-  tasks: Task[];
+  tasks: Task[]; // All tasks for this department
   notes?: string;
   children?: React.ReactNode;
 }
@@ -52,6 +52,8 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const totalTasks = tasks.length;
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const activeTasksToList = tasks.filter(task => task.status === 'Pending' || task.status === 'In Progress');
 
   return (
     <Card>
@@ -68,9 +70,9 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
         {totalTasks > 0 && <Progress value={progress} className="h-2" />}
         {notes && <p className="text-sm text-muted-foreground italic">{notes}</p>}
         {children}
-        {tasks.length > 0 && (
+        {activeTasksToList.length > 0 && (
           <ul className="space-y-1 text-sm">
-            {tasks.slice(0, 3).map(task => ( 
+            {activeTasksToList.slice(0, 3).map(task => ( 
               <li key={task.id} className="flex items-center justify-between">
                 <span className={task.status === 'Completed' ? 'line-through text-muted-foreground' : ''}>{task.name}</span>
                 <Badge variant={task.status === 'Completed' ? 'outline' : 'secondary'} className="text-xs">
@@ -78,9 +80,10 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
                 </Badge>
               </li>
             ))}
-            {tasks.length > 3 && <li className="text-xs text-muted-foreground text-center">+{tasks.length - 3} more tasks</li>}
+            {activeTasksToList.length > 3 && <li className="text-xs text-muted-foreground text-center">+{activeTasksToList.length - 3} more active tasks</li>}
           </ul>
         )}
+        {activeTasksToList.length === 0 && tasks.length > 0 && !children && <p className="text-sm text-muted-foreground">No active (Pending/In Progress) tasks for this department.</p>}
         {tasks.length === 0 && !children && <p className="text-sm text-muted-foreground">No tasks for this department yet.</p>}
       </CardContent>
     </Card>
@@ -99,6 +102,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newTaskDepartment, setNewTaskDepartment] = React.useState<Department | "">("");
   const [newTaskDescription, setNewTaskDescription] = React.useState("");
   const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
+  const [newTaskAssignedTo, setNewTaskAssignedTo] = React.useState("");
+
 
   const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = React.useState(false);
   const [newDocumentFile, setNewDocumentFile] = React.useState<File | null>(null);
@@ -117,6 +122,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       setProjectData(currentProject);
       setProjectComments(currentProject.comments || []);
     } else {
+      // setProjectData(null); // Ensure projectData is null if not found
       notFound();
     }
   }, [params.id]); 
@@ -133,8 +139,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   };
 
   const handleAddNewTask = () => {
-    if (!newTaskName || !newTaskDepartment) {
-      toast({ title: "Error", description: "Task Name and Department are required.", variant: "destructive" });
+    if (!newTaskName || !newTaskDepartment || !newTaskAssignedTo) {
+      toast({ title: "Error", description: "Task Name, Department, and Assignee are required.", variant: "destructive" });
       return;
     }
 
@@ -145,6 +151,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       description: newTaskDescription || undefined,
       dueDate: newTaskDueDate || undefined,
       status: "Pending",
+      assignedTo: newTaskAssignedTo,
     };
     
     setProjectData(prevProjectData => {
@@ -152,6 +159,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
       
+      // Deep clone to ensure no direct mutation of nested objects from mockProjects
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
       
       const allPossibleDepartmentKeys = Object.keys(newDepartmentsState) as Array<keyof StoreProject['departments']>;
@@ -159,12 +167,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       allPossibleDepartmentKeys.forEach(deptKey => {
         const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
         
+        // Ensure department object exists, especially for IT
         if (!newDepartmentsState[deptKey]) {
             if (departmentNameFromKey === newTaskToAdd.department) { 
                 (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
             }
         }
-
+        // If department object exists (or was just created for IT), rebuild its task list
         if (newDepartmentsState[deptKey]) {
              (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
         }
@@ -179,6 +188,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         departments: newDepartmentsState,
       };
 
+      // Update mockProjects
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = { ...finalUpdatedProjectData }; 
@@ -188,10 +198,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       return finalUpdatedProjectData;
     });
 
+    // Reset form
     setNewTaskName("");
     setNewTaskDepartment("");
     setNewTaskDescription("");
     setNewTaskDueDate("");
+    setNewTaskAssignedTo("");
     setIsAddTaskDialogOpen(false);
   };
 
@@ -323,14 +335,17 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       );
 
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
-      const taskDepartmentKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
       
-      if (newDepartmentsState[taskDepartmentKey]) {
-        (newDepartmentsState[taskDepartmentKey] as DepartmentDetails).tasks = 
-        (newDepartmentsState[taskDepartmentKey] as DepartmentDetails).tasks.map(task =>
-            task.id === selectedTask.id ? { ...task, status: editingTaskStatus as Task['status'] } : task
-        );
-      }
+      // Iterate over all department keys to update the task in the correct department
+      Object.keys(newDepartmentsState).forEach(deptKeyStr => {
+        const deptKey = deptKeyStr as keyof StoreProject['departments'];
+        if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
+              dTask.id === selectedTask.id ? { ...dTask, status: editingTaskStatus as Task['status'] } : dTask
+          );
+        }
+      });
       
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
 
@@ -409,6 +424,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         <SelectItem value="IT">IT</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="taskAssignedTo" className="text-right">
+                      Assign To
+                    </Label>
+                    <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="col-span-3" placeholder="e.g. John Doe" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="taskDescription" className="text-right">
@@ -568,8 +589,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>
-            {departments.it && (departments.it.tasks || []).length > 0 && (
-                <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks} notes={departments.it.notes} />
+            {departments.it && (departments.it.tasks.length > 0 || departments.it.notes) && (
+                <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} />
             )}
           </div>
         </TabsContent>
@@ -598,7 +619,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         <TableCell>
                            <Button 
                               variant="link" 
-                              className="p-0 h-auto font-medium text-left whitespace-normal"
+                              className="p-0 h-auto font-medium text-left whitespace-normal text-base"
                               onClick={() => handleViewTaskDetails(task)}
                             >
                               {task.name}
