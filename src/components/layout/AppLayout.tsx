@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from "react";
@@ -27,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge"; // Added Badge import
 
 interface SidebarNavProps {
   // Add any specific props if needed
@@ -101,14 +103,55 @@ function DesktopSidebarToggle() {
 }
 
 function Header() {
+  // Mock notification data
+  const notifications = [
+    { id: 1, text: "Project Alpha: Task 'Finalize Design' overdue.", href: "#" },
+    { id: 2, text: "New comment on Downtown Flagship project.", href: "#" },
+    { id: 3, text: "StoreFlow version 1.1 is now available.", href: "#" },
+  ];
+  const notificationCount = notifications.length;
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <SidebarTrigger className="md:hidden" /> {/* Mobile sidebar toggle, changed from sm:hidden to md:hidden */}
       <div className="ml-auto flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Toggle notifications</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full relative">
+              <Bell className="h-5 w-5" />
+              {notificationCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
+                  {notificationCount}
+                </Badge>
+              )}
+              <span className="sr-only">Toggle notifications</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[300px] sm:w-[350px]">
+            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length > 0 ? (
+              notifications.map(notification => (
+                <DropdownMenuItem key={notification.id} asChild>
+                  <Link href={notification.href} className="text-sm p-2 block hover:bg-accent">
+                    {notification.text}
+                  </Link>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled>
+                <span className="text-sm p-2 text-muted-foreground">No new notifications</span>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="justify-center p-0">
+              <Button variant="link" asChild className="w-full text-sm text-primary hover:underline">
+                <Link href="#">View all notifications</Link>
+              </Button>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="overflow-hidden rounded-full">
@@ -162,7 +205,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </Sidebar>
         <div className={cn(
             "flex flex-col flex-1", // flex-1 to take remaining space
-            "md:pl-[var(--sidebar-width-icon)]", // Default padding for collapsed sidebar on md+git diff
+            "md:pl-[var(--sidebar-width-icon)]", // Default padding for collapsed sidebar on md+
             "peer-data-[state=expanded]:md:pl-[var(--sidebar-width)]", // Padding when sidebar (peer) is expanded
             "transition-[padding-left] duration-300 ease-in-out" // Smooth transition for padding change
           )}
