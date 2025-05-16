@@ -2,7 +2,7 @@
 "use client"; 
 
 import * as React from "react";
-import { notFound } from "next/navigation";
+import { notFound, useRouter } from "next/navigation"; // Added useRouter
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter, Edit3 } from "lucide-react";
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter, Edit3, Package2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -38,12 +38,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 
 interface DepartmentCardProps {
   title: string;
   icon: React.ElementType;
-  tasks: Task[]; // All tasks for this department
+  tasks: Task[]; 
   notes?: string;
   children?: React.ReactNode;
   onClick?: () => void;
@@ -94,6 +95,9 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth(); // Get user and loading state
+  const router = useRouter();
+
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
   const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
@@ -123,22 +127,46 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [departmentDialogTitle, setDepartmentDialogTitle] = React.useState("");
   const [departmentDialogTasks, setDepartmentDialogTasks] = React.useState<Task[]>([]);
 
-  // Mock current user role - in a real app, this would come from auth context
-  const currentUserRole: 'admin' | 'hod' | 'user' = 'admin'; // Can be 'admin', 'hod', or 'user'
+  const currentUserRole = React.useMemo(() => {
+    if (!user) return 'user'; // Default if no user
+    return user.role;
+  }, [user]);
 
   React.useEffect(() => {
-    const currentProject = getProjectById(params.id);
-    if (currentProject) {
-      setProjectData(currentProject);
-      setProjectComments(currentProject.comments || []);
-    } else {
-      notFound();
+    if (!authLoading && !user) {
+      router.replace("/auth/signin");
     }
-  }, [params.id]); 
+  }, [user, authLoading, router]);
+
+  React.useEffect(() => {
+    if (user) { // Only fetch project if user is loaded
+      const currentProject = getProjectById(params.id);
+      if (currentProject) {
+        setProjectData(currentProject);
+        setProjectComments(currentProject.comments || []);
+      } else {
+        notFound();
+      }
+    }
+  }, [params.id, user]); 
 
 
+  if (authLoading || !user) {
+     return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">{authLoading ? "Loading project details..." : "Please sign in."}</p>
+      </div>
+    );
+  }
+  
   if (!projectData) {
-    return null; 
+    // This might be shown briefly before notFound() or actual data is loaded
+    return (
+       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <p className="text-muted-foreground">Loading project data...</p>
+      </div>
+    );
   }
   
   const calculateOverallProgress = (tasks: Task[]): number => {
@@ -198,10 +226,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             }
         }
         
+        // Rebuild department tasks from the updated root tasks list
         if (newDepartmentsState[deptKey]) {
              (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
         }
       });
+
+      // Special handling if IT department was selected and didn't exist
+       if (newTaskToAdd.department === 'IT' && !newDepartmentsState.it) {
+        newDepartmentsState.it = { tasks: updatedRootTasks.filter(task => task.department === 'IT') };
+      } else if (newDepartmentsState.it) { // Ensure IT tasks are also updated if IT exists
+        newDepartmentsState.it.tasks = updatedRootTasks.filter(task => task.department === 'IT');
+      }
       
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
 
@@ -221,7 +257,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       return finalUpdatedProjectData;
     });
 
-    // Reset form
     setNewTaskName("");
     setNewTaskDepartment("");
     setNewTaskDescription("");
@@ -252,7 +287,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       url: newDocumentType === "3D Render" && newDocumentFile.type.startsWith('image/') ? URL.createObjectURL(newDocumentFile) : `https://placehold.co/300x150.png`, 
       size: `${(newDocumentFile.size / 1024).toFixed(1)} KB`,
       uploadedAt: new Date().toISOString().split('T')[0],
-      uploadedBy: "Current User",
+      uploadedBy: user?.name || user?.email || "System",
       dataAiHint: newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : undefined,
     };
 
@@ -282,8 +317,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     if (newCommentText.trim()) {
       const newComment: Comment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        author: "Current User", 
-        avatarUrl: "https://picsum.photos/seed/currentUser/40/40", 
+        author: user?.name || user?.email || "Anonymous User", 
+        avatarUrl: `https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`, 
         timestamp: new Date().toISOString(),
         text: newCommentText,
         replies: [],
@@ -311,8 +346,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         if (comment.id === commentId) {
           const newReply: Comment = {
             id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            author: "Current User", 
-            avatarUrl: "https://picsum.photos/seed/replyUser/40/40",
+            author: user?.name || user?.email || "Anonymous User", 
+            avatarUrl: `https://picsum.photos/seed/${user?.id || 'replyUser'}/40/40`,
             timestamp: new Date().toISOString(),
             text: replyText,
             replies: [],
@@ -350,10 +385,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   };
 
   const handleUpdateTaskDetails = () => {
-    if (!selectedTask || (!editingTaskStatus && !editingTaskAssignedTo)) return;
+    if (!selectedTask) return;
 
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
     const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
+    
+    // Check if anything actually changed
+    if (newStatus === selectedTask.status && newAssignedTo === (selectedTask.assignedTo || "")) {
+        toast({ title: "No Changes", description: "No details were modified for this task.", variant: "default" });
+        setIsViewTaskDialogOpen(false);
+        setSelectedTask(null);
+        setEditingTaskStatus("");
+        setEditingTaskAssignedTo("");
+        return;
+    }
+
 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
@@ -827,8 +873,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <CardContent className="space-y-6">
               <div className="flex items-start space-x-3">
                 <Avatar className="h-10 w-10 mt-1 flex-shrink-0">
-                  <AvatarImage src="https://picsum.photos/seed/currentUser/40/40" alt="Current User" data-ai-hint="user avatar" />
-                  <AvatarFallback>CU</AvatarFallback>
+                  <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar" />
+                  <AvatarFallback>{(user?.name || user?.email || "CU").substring(0,2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <Textarea
@@ -890,10 +936,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   <Badge 
                     variant={selectedTask.priority === "High" ? "destructive" : selectedTask.priority === "Low" ? "outline" : "secondary"}
                     className={cn(
-                      selectedTask.priority === "High" && "bg-red-100 text-red-700 border-red-300",
-                      selectedTask.priority === "Medium" && "bg-yellow-100 text-yellow-700 border-yellow-300",
-                      selectedTask.priority === "Low" && "bg-blue-100 text-blue-700 border-blue-300",
-                      selectedTask.priority === "None" && "bg-gray-100 text-gray-700 border-gray-300"
+                      selectedTask.priority === "High" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
+                      selectedTask.priority === "Medium" && "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
+                      selectedTask.priority === "Low" && "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700",
+                      selectedTask.priority === "None" && "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500"
                     )}
                   >
                     {selectedTask.priority || "None"}
@@ -1008,5 +1054,3 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
-
-    

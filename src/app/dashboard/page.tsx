@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { mockProjects } from "@/lib/data";
 import type { StoreProject, Department, DepartmentDetails } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle } from "lucide-react";
+import { ArrowUpRight, ListFilter, PlusCircle, Package2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -32,6 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate, addDays } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useRouter } from "next/navigation"; // Import useRouter
 
 function ProjectCard({ project }: { project: StoreProject }) {
   return (
@@ -63,6 +65,9 @@ function ProjectCard({ project }: { project: StoreProject }) {
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
 export default function DashboardPage() {
+  const { user, loading } = useAuth(); // Get user and loading state
+  const router = useRouter(); // Get router for redirection
+
   const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(() => [...mockProjects]);
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
   const [newProjectName, setNewProjectName] = React.useState("");
@@ -79,6 +84,29 @@ export default function DashboardPage() {
     showLaunched: true,
     planningOnly: false,
   });
+
+  // Redirect if not authenticated
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/auth/signin");
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    // Show a loading state or a minimal message while checking auth or if not logged in
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">{loading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
+        {!loading && !user && (
+          <Button onClick={() => router.push('/auth/signin')} className="mt-4">
+            Go to Sign In
+          </Button>
+        )}
+      </div>
+    );
+  }
+
 
   const handleDepartmentChange = (department: Department, checked: boolean) => {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
@@ -105,12 +133,10 @@ export default function DashboardPage() {
       departments.it = { tasks: [] };
     }
     
-    allDepartmentKeys.forEach(deptKey => {
-      if (selectedDepartments[deptKey] && departments[deptKey.toLowerCase() as keyof typeof departments]) {
-        // (departments[deptKey.toLowerCase() as keyof typeof departments] as DepartmentDetails).notes = "Initial setup pending.";
-      }
-    });
-
+    // This part seems to be correctly initializing the departments object.
+    // The issue with `(departments[deptKey.toLowerCase() as keyof typeof departments] as DepartmentDetails).notes`
+    // might be if a department (like 'it') isn't guaranteed to exist yet.
+    // The current logic for `departments.it` handles this specific case.
 
     const newProject: StoreProject = {
       id: newProjectId,
@@ -197,7 +223,7 @@ export default function DashboardPage() {
                 <DropdownMenuCheckboxItem
                   checked={filterSettings.planningOnly}
                   onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, planningOnly: !!checked }))}
-                  disabled={!filterSettings.showActive} // Planning only makes sense if Active is shown
+                  disabled={!filterSettings.showActive} 
                 >
                   Planning (within Active)
                 </DropdownMenuCheckboxItem>

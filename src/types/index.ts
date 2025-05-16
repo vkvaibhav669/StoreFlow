@@ -97,3 +97,11 @@ export interface StoreProject {
   };
   comments?: Comment[];
 }
+
+export interface User {
+  id: string;
+  name?: string;
+  email: string;
+  role: "admin" | "user" | "hod"; // Added 'hod' for consistency with previous request
+  // Do NOT store password here in a real app
+}
