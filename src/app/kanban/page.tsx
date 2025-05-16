@@ -13,6 +13,8 @@ import { Package2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
+import { cn } from "@/lib/utils"; // Import cn
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -27,6 +29,7 @@ const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandis
 export default function KanbanBoardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { open: sidebarOpen } = useSidebar(); // Get sidebar state
 
   const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
@@ -50,7 +53,7 @@ export default function KanbanBoardPage() {
       });
     });
     setTasksWithProjectInfo(allTasks);
-  }, []); // Runs once on mount, or if mockProjects were dynamic, it would be a dependency
+  }, []);
 
   const filteredTasks = React.useMemo(() => {
     return tasksWithProjectInfo.filter((task) => {
@@ -58,16 +61,12 @@ export default function KanbanBoardPage() {
         const isSpecificProjectSelected = selectedProject !== "All";
 
         if (isSpecificDepartmentSelected && isSpecificProjectSelected) {
-            // If both a specific department and project are selected, show tasks matching EITHER.
             return task.department === selectedDepartment || task.projectId === selectedProject;
         } else if (isSpecificDepartmentSelected) {
-            // If only a specific department is selected, show tasks matching that department.
             return task.department === selectedDepartment;
         } else if (isSpecificProjectSelected) {
-            // If only a specific project is selected, show tasks matching that project.
             return task.projectId === selectedProject;
         } else {
-            // If neither filter is specific (both are "All"), show all tasks.
             return true;
         }
     });
@@ -141,7 +140,13 @@ export default function KanbanBoardPage() {
       <ScrollArea className="flex-grow">
         <div className="flex gap-4 pb-4 min-w-max">
           {KANBAN_COLUMNS.map((status) => (
-            <Card key={status} className="w-[250px] flex-shrink-0 h-full flex flex-col"> {/* Changed width here */}
+            <Card 
+              key={status} 
+              className={cn(
+                "flex-shrink-0 h-full flex flex-col transition-all duration-300 ease-in-out", 
+                sidebarOpen ? "w-[220px]" : "w-[280px]" // Dynamically set width
+              )}
+            >
               <CardHeader className="p-3 border-b">
                 <CardTitle className="text-base font-medium flex justify-between items-center">
                   {status}
@@ -169,4 +174,3 @@ export default function KanbanBoardPage() {
     </div>
   );
 }
-
