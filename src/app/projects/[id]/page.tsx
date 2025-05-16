@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface DepartmentCardProps {
@@ -88,6 +89,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
 
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
+  const { toast } = useToast();
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
   const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
@@ -106,6 +108,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
+  const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
 
 
   React.useEffect(() => {
@@ -131,7 +134,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const handleAddNewTask = () => {
     if (!newTaskName || !newTaskDepartment) {
-      alert("Task Name and Department are required.");
+      toast({ title: "Error", description: "Task Name and Department are required.", variant: "destructive" });
       return;
     }
 
@@ -151,25 +154,30 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
       
-      for (const deptKey of Object.keys(newDepartmentsState) as Array<keyof typeof newDepartmentsState>) {
-        const deptDefinition = newDepartmentsState[deptKey];
-        if (deptDefinition) {
-            const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
-            
-            newDepartmentsState[deptKey] = {
-                ...deptDefinition, 
-                tasks: updatedRootTasks.filter(task => task.department === departmentNameFromKey),
-            };
-        }
-      }
-      
-      if (newTaskToAdd.department === "IT") {
-        newDepartmentsState.it = {
-          ...(prevProjectData.departments.it || { tasks: [] }), 
-          tasks: updatedRootTasks.filter(task => task.department === "IT")
-        };
-      }
+      // Iterate over all department keys defined in the type, not just those present in the object
+      const allPossibleDepartmentKeys = Object.keys(newDepartmentsState) as Array<keyof StoreProject['departments']>;
 
+      allPossibleDepartmentKeys.forEach(deptKey => {
+        const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
+        
+        // Ensure department exists in the state, or initialize if it's a new task for a department like IT
+        if (!newDepartmentsState[deptKey]) {
+            if (departmentNameFromKey === newTaskToAdd.department) { // Only initialize if relevant
+                 // This handles cases where 'it' might not exist initially
+                (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
+            } else {
+                // If the department key isn't in the current project data (e.g. 'it' initially missing)
+                // and the task isn't for this department, we might not need to create it unless it was pre-defined.
+                // For simplicity, if it's a standard department like 'property', 'project' etc., it's expected to be there.
+                // If 'it' is the new task's department and 'it' doesn't exist, it needs to be created.
+            }
+        }
+
+        if (newDepartmentsState[deptKey]) {
+             (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
+        }
+      });
+      
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
 
       const finalUpdatedProjectData: StoreProject = {
@@ -184,6 +192,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         mockProjects[projectIndex] = { ...finalUpdatedProjectData }; 
       }
       
+      toast({ title: "Task Added", description: `Task "${newTaskToAdd.name}" has been added.` });
       return finalUpdatedProjectData;
     });
 
@@ -204,7 +213,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const handleAddNewDocument = () => {
     if (!newDocumentFile || !newDocumentName || !newDocumentType) {
-      alert("File, Document Name, and Document Type are required.");
+      toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
       return;
     }
 
@@ -229,6 +238,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
       }
+      toast({ title: "Document Added", description: `Document "${newDocument.name}" has been uploaded.` });
       return updatedProject;
     });
 
@@ -262,6 +272,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
         return updatedProject;
       });
+      toast({ title: "Comment Posted", description: "Your comment has been added." });
       setNewCommentText("");
     }
   };
@@ -300,12 +311,62 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
         return updatedProject;
     });
+    toast({ title: "Reply Posted", description: "Your reply has been added." });
   };
 
   const handleViewTaskDetails = (task: Task) => {
     setSelectedTask(task);
+    setEditingTaskStatus(task.status); // Initialize editing status
     setIsViewTaskDialogOpen(true);
   };
+
+  const handleUpdateTaskStatus = () => {
+    if (!selectedTask || !editingTaskStatus) return;
+
+    setProjectData(prevProjectData => {
+      if (!prevProjectData) return null;
+
+      // Update task in the main tasks list
+      const updatedRootTasks = prevProjectData.tasks.map(task =>
+        task.id === selectedTask.id ? { ...task, status: editingTaskStatus as Task['status'] } : task
+      );
+
+      // Update task in the department-specific tasks list
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
+      const taskDepartmentKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
+      
+      if (newDepartmentsState[taskDepartmentKey]) {
+        (newDepartmentsState[taskDepartmentKey] as DepartmentDetails).tasks = 
+        (newDepartmentsState[taskDepartmentKey] as DepartmentDetails).tasks.map(task =>
+            task.id === selectedTask.id ? { ...task, status: editingTaskStatus as Task['status'] } : task
+        );
+      }
+      
+      // Recalculate overall progress
+      const newOverallProgress = calculateOverallProgress(updatedRootTasks);
+
+      const finalUpdatedProjectData: StoreProject = {
+        ...prevProjectData,
+        tasks: updatedRootTasks,
+        currentProgress: newOverallProgress,
+        departments: newDepartmentsState,
+      };
+
+      // Update mockProjects array
+      const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = { ...finalUpdatedProjectData };
+      }
+      
+      toast({ title: "Task Status Updated", description: `Status for "${selectedTask.name}" changed to ${editingTaskStatus}.` });
+      return finalUpdatedProjectData;
+    });
+
+    setIsViewTaskDialogOpen(false);
+    setSelectedTask(null);
+    setEditingTaskStatus("");
+  };
+
 
   const { departments } = projectData;
 
@@ -519,7 +580,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>
-            {departments.it && departments.it.tasks.length > 0 && (
+            {departments.it && (departments.it.tasks || []).length > 0 && (
                 <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks} notes={departments.it.notes} />
             )}
           </div>
@@ -720,26 +781,43 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </TabsContent>
       </Tabs>
 
-      {/* Dialog for Viewing Task Details */}
-      <Dialog open={isViewTaskDialogOpen} onOpenChange={setIsViewTaskDialogOpen}>
+      {/* Dialog for Viewing/Editing Task Details */}
+      <Dialog open={isViewTaskDialogOpen} onOpenChange={(isOpen) => {
+        setIsViewTaskDialogOpen(isOpen);
+        if (!isOpen) {
+            setSelectedTask(null);
+            setEditingTaskStatus("");
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedTask?.name || "Task Details"}</DialogTitle>
             <DialogDescription>
-              Detailed information about the task.
+              Detailed information about the task. You can update the status here.
             </DialogDescription>
           </DialogHeader>
           {selectedTask && (
-            <div className="grid gap-3 py-4 text-sm">
+            <div className="grid gap-4 py-4 text-sm">
               <div className="grid grid-cols-3 items-center gap-2">
                 <Label className="text-right text-muted-foreground">Department:</Label>
                 <div className="col-span-2">{selectedTask.department}</div>
               </div>
               <div className="grid grid-cols-3 items-center gap-2">
-                <Label className="text-right text-muted-foreground">Status:</Label>
-                <div className="col-span-2">
-                    <Badge variant={selectedTask.status === "Completed" ? "outline" : "secondary"}>{selectedTask.status}</Badge>
-                </div>
+                <Label htmlFor="taskStatusEdit" className="text-right text-muted-foreground">Status:</Label>
+                 <Select 
+                    value={editingTaskStatus} 
+                    onValueChange={(value) => setEditingTaskStatus(value as Task['status'] | "")}
+                  >
+                      <SelectTrigger id="taskStatusEdit" className="col-span-2">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Blocked">Blocked</SelectItem>
+                      </SelectContent>
+                    </Select>
               </div>
               {selectedTask.description && (
                 <div className="grid grid-cols-3 items-start gap-2">
@@ -763,8 +841,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           )}
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Close</Button>
+              <Button variant="outline">Cancel</Button>
             </DialogClose>
+            <Button onClick={handleUpdateTaskStatus} disabled={!selectedTask || !editingTaskStatus || editingTaskStatus === selectedTask?.status}>Update Status</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -772,3 +851,4 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
