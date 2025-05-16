@@ -93,10 +93,12 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
   );
 }
 
+const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth(); // Get user and loading state
+  const { user, loading: authLoading } = useAuth(); 
   const router = useRouter();
 
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
@@ -122,6 +124,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
+  const [editingSelectedTaskDepartment, setEditingSelectedTaskDepartment] = React.useState<Department | "">("");
+  const [editingSelectedTaskPriority, setEditingSelectedTaskPriority] = React.useState<TaskPriority | "">("");
   const [newTaskCommentText, setNewTaskCommentText] = React.useState("");
 
 
@@ -130,7 +134,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [departmentDialogTasks, setDepartmentDialogTasks] = React.useState<Task[]>([]);
 
   const currentUserRole = React.useMemo(() => {
-    if (!user) return 'user'; // Default if no user
+    if (!user) return 'user'; 
     return user.role;
   }, [user]);
 
@@ -141,7 +145,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    if (user) { // Only fetch project if user is loaded
+    if (user) { 
       const currentProject = getProjectById(params.id);
       if (currentProject) {
         setProjectData(currentProject);
@@ -163,7 +167,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }
   
   if (!projectData) {
-    // This might be shown briefly before notFound() or actual data is loaded
     return (
        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <p className="text-muted-foreground">Loading project data...</p>
@@ -218,27 +221,19 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
       
-      const allPossibleDepartmentKeys = Object.keys(newDepartmentsState) as Array<keyof StoreProject['departments']>;
-
-      allPossibleDepartmentKeys.forEach(deptKey => {
-        const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
+      allPossibleDepartments.forEach(deptKey => {
+        const departmentKeyString = deptKey.toLowerCase() as keyof StoreProject['departments'];
         
-        if (!newDepartmentsState[deptKey]) { 
-            if (departmentNameFromKey === newTaskToAdd.department) { 
-                (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
+        if (!newDepartmentsState[departmentKeyString]) { 
+            if (deptKey === newTaskToAdd.department) { 
+                (newDepartmentsState[departmentKeyString] as DepartmentDetails) = { tasks: [] };
             }
         }
         
-        if (newDepartmentsState[deptKey]) {
-             (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
+        if (newDepartmentsState[departmentKeyString]) {
+             (newDepartmentsState[departmentKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptKey);
         }
       });
-
-       if (newTaskToAdd.department === 'IT' && !newDepartmentsState.it) {
-        newDepartmentsState.it = { tasks: updatedRootTasks.filter(task => task.department === 'IT') };
-      } else if (newDepartmentsState.it) { 
-        newDepartmentsState.it.tasks = updatedRootTasks.filter(task => task.department === 'IT');
-      }
       
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
 
@@ -382,7 +377,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setSelectedTask(task);
     setEditingTaskStatus(task.status); 
     setEditingTaskAssignedTo(task.assignedTo || "");
-    setNewTaskCommentText(""); // Reset task comment input
+    setEditingSelectedTaskDepartment(task.department);
+    setEditingSelectedTaskPriority(task.priority || "Medium");
+    setNewTaskCommentText(""); 
     setIsViewTaskDialogOpen(true);
   };
 
@@ -391,14 +388,27 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
     const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
+    const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
+    const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority;
     
-    if (newStatus === selectedTask.status && newAssignedTo === (selectedTask.assignedTo || "")) {
+    const hasChanges = newStatus !== selectedTask.status ||
+                       newAssignedTo !== (selectedTask.assignedTo || "") ||
+                       newDepartment !== selectedTask.department ||
+                       newPriority !== (selectedTask.priority || "Medium");
+
+    if (!hasChanges) {
         toast({ title: "No Changes", description: "No details were modified for this task.", variant: "default" });
         setIsViewTaskDialogOpen(false);
         return;
     }
 
-    const updatedTask = { ...selectedTask, status: newStatus, assignedTo: newAssignedTo };
+    const updatedTask: Task = { 
+        ...selectedTask, 
+        status: newStatus, 
+        assignedTo: newAssignedTo,
+        department: newDepartment,
+        priority: newPriority
+    };
 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
@@ -409,16 +419,41 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
       
-      Object.keys(newDepartmentsState).forEach(deptKeyStr => {
-        const deptKey = deptKeyStr as keyof StoreProject['departments'];
+      // If department changed, remove from old and add to new department's task list
+      if (newDepartment !== selectedTask.department) {
+        const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
+        if (newDepartmentsState[oldDeptKey] && (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks) {
+          (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
+            (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks.filter(dTask => dTask.id !== selectedTask.id);
+        }
+
+        const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
+        if (!newDepartmentsState[newDeptKey]) {
+          (newDepartmentsState[newDeptKey] as DepartmentDetails) = { tasks: [] };
+        }
+        (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks.push(updatedTask);
+      } else {
+        // If department didn't change, just update the task in its existing department list
+        const deptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
-          (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
+            (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
               dTask.id === selectedTask.id ? updatedTask : dTask
-          );
+            );
+        }
+      }
+      
+      // Ensure all department task lists are correctly derived from the root tasks after an update
+      allPossibleDepartments.forEach(deptName => {
+        const deptKey = deptName.toLowerCase() as keyof StoreProject['departments'];
+        if (newDepartmentsState[deptKey]) {
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptName);
+        } else if (updatedTask.department === deptName && deptKey === newDepartment.toLowerCase()){ // if task moved to a new dept that wasn't there before
+           (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [updatedTask] };
         }
       });
-      
+
+
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
 
       const finalUpdatedProjectData: StoreProject = {
@@ -434,12 +469,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       }
       
       toast({ title: "Task Details Updated", description: `Details for "${selectedTask.name}" have been updated.` });
-      setSelectedTask(updatedTask); // Keep dialog updated if it remains open
+      setSelectedTask(updatedTask); 
       return finalUpdatedProjectData;
     });
 
     setIsViewTaskDialogOpen(false);
-    // Don't reset selectedTask here if we want comments to persist after status/assignee update
   };
 
   const handlePostNewTaskComment = () => {
@@ -482,7 +516,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       return finalProjectData;
     });
     
-    setSelectedTask(updatedTask); // Update the selectedTask state to refresh comments in dialog
+    setSelectedTask(updatedTask); 
     setNewTaskCommentText("");
     toast({ title: "Comment Added to Task", description: "Your comment has been posted." });
   };
@@ -539,7 +573,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       return finalProjectData;
     });
     
-    // If the currently selected task is the one being replied to, update its state
     if (selectedTask && selectedTask.id === taskId) {
         setSelectedTask(updatedTaskWithReply);
     }
@@ -560,6 +593,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
 
   const { departments } = projectData;
+  const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -614,12 +649,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Property">Property</SelectItem>
-                        <SelectItem value="Project">Project</SelectItem>
-                        <SelectItem value="Merchandising">Merchandising</SelectItem>
-                        <SelectItem value="HR">HR</SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
-                        <SelectItem value="IT">IT</SelectItem>
+                        {allPossibleDepartments.map(dept => (
+                           <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -730,7 +762,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </DialogContent>
             </Dialog>
         </div>
-        {(currentUserRole === 'admin' || currentUserRole === 'hod') ? (
+        {isUserAdminOrHod ? (
           <Select 
             value={projectData.status} 
             onValueChange={(value) => handleProjectStatusChange(value as StoreProject['status'])}
@@ -1015,10 +1047,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       <Dialog open={isViewTaskDialogOpen} onOpenChange={(isOpen) => {
         setIsViewTaskDialogOpen(isOpen);
         if (!isOpen) {
-            setSelectedTask(null); // Clear selected task when dialog closes
+            setSelectedTask(null); 
             setEditingTaskStatus("");
             setEditingTaskAssignedTo("");
-            setNewTaskCommentText(""); // Clear task comment input too
+            setEditingSelectedTaskDepartment("");
+            setEditingSelectedTaskPriority("");
+            setNewTaskCommentText(""); 
         }
       }}>
         <DialogContent className="sm:max-w-2xl">
@@ -1031,25 +1065,40 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           {selectedTask && (
             <ScrollArea className="max-h-[70vh] pr-6">
               <div className="grid gap-4 py-4 text-sm">
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <Label className="text-right text-muted-foreground">Department:</Label>
-                  <div className="col-span-2">{selectedTask.department}</div>
+                 <div className="grid grid-cols-3 items-center gap-2">
+                  <Label htmlFor="taskDepartmentEdit" className="text-right text-muted-foreground">Department:</Label>
+                  <Select 
+                      value={editingSelectedTaskDepartment} 
+                      onValueChange={(value) => setEditingSelectedTaskDepartment(value as Department | "")}
+                      disabled={!isUserAdminOrHod}
+                    >
+                        <SelectTrigger id="taskDepartmentEdit" className="col-span-2">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allPossibleDepartments.map(dept => (
+                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                 </div>
                 <div className="grid grid-cols-3 items-center gap-2">
-                  <Label className="text-right text-muted-foreground">Priority:</Label>
-                  <div className="col-span-2">
-                    <Badge 
-                      variant={selectedTask.priority === "High" ? "destructive" : selectedTask.priority === "Low" ? "outline" : "secondary"}
-                      className={cn(
-                        selectedTask.priority === "High" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
-                        selectedTask.priority === "Medium" && "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
-                        selectedTask.priority === "Low" && "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700",
-                        selectedTask.priority === "None" && "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500"
-                      )}
+                  <Label htmlFor="taskPriorityEdit" className="text-right text-muted-foreground">Priority:</Label>
+                  <Select 
+                      value={editingSelectedTaskPriority} 
+                      onValueChange={(value) => setEditingSelectedTaskPriority(value as TaskPriority | "")}
+                      disabled={!isUserAdminOrHod}
                     >
-                      {selectedTask.priority || "None"}
-                    </Badge>
-                  </div>
+                      <SelectTrigger id="taskPriorityEdit" className="col-span-2">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
                 </div>
                 <div className="grid grid-cols-3 items-center gap-2">
                   <Label htmlFor="taskStatusEdit" className="text-right text-muted-foreground">Status:</Label>
@@ -1137,7 +1186,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             </DialogClose>
             <Button 
               onClick={handleUpdateTaskDetails} 
-              disabled={!selectedTask || (editingTaskStatus === selectedTask?.status && editingTaskAssignedTo === (selectedTask?.assignedTo || ""))}
+              disabled={!selectedTask || 
+                (editingTaskStatus === selectedTask?.status && 
+                 editingTaskAssignedTo === (selectedTask?.assignedTo || "") &&
+                 editingSelectedTaskDepartment === selectedTask?.department &&
+                 editingSelectedTaskPriority === (selectedTask?.priority || "Medium")
+                )
+              }
             >
                 Save Changes
             </Button>
@@ -1147,7 +1202,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
        {/* Dialog for Department Tasks */}
       <Dialog open={isDepartmentTasksDialogOpen} onOpenChange={setIsDepartmentTasksDialogOpen}>
-        <DialogContent className="sm:max-w-2xl"> {/* Made dialog wider */}
+        <DialogContent className="sm:max-w-2xl"> 
           <DialogHeader>
             <DialogTitle>{departmentDialogTitle}</DialogTitle>
             <DialogDescription>
@@ -1173,8 +1228,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                           variant="link" 
                           className="p-0 h-auto font-medium text-left whitespace-normal"
                           onClick={() => {
-                            setIsDepartmentTasksDialogOpen(false); // Close department dialog
-                            handleViewTaskDetails(task); // Open main task detail dialog
+                            setIsDepartmentTasksDialogOpen(false); 
+                            handleViewTaskDetails(task); 
                           }}
                         >
                           {task.name}
@@ -1207,3 +1262,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
+
+    
