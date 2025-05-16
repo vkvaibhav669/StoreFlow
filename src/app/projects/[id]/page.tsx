@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, Eye } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -94,7 +94,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [newTaskName, setNewTaskName] = React.useState("");
-  const [newTaskDepartment, setNewTaskDepartment] = React.useState<Department | undefined>(undefined);
+  const [newTaskDepartment, setNewTaskDepartment] = React.useState<Department | "">("");
   const [newTaskDescription, setNewTaskDescription] = React.useState("");
   const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
 
@@ -103,6 +103,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newDocumentName, setNewDocumentName] = React.useState("");
   const [newDocumentType, setNewDocumentType] = React.useState<DocumentFile['type'] | "">("");
   const [newDocumentDataAiHint, setNewDocumentDataAiHint] = React.useState("");
+
+  const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
+  const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
+
 
   React.useEffect(() => {
     const currentProject = getProjectById(params.id);
@@ -134,7 +138,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     const newTaskToAdd: Task = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: newTaskName,
-      department: newTaskDepartment,
+      department: newTaskDepartment as Department,
       description: newTaskDescription || undefined,
       dueDate: newTaskDueDate || undefined,
       status: "Pending",
@@ -143,10 +147,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
 
-      // 1. Update the root tasks list
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
       
-      // 2. Re-derive department tasks from the new updatedRootTasks
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
       
       for (const deptKey of Object.keys(newDepartmentsState) as Array<keyof typeof newDepartmentsState>) {
@@ -161,10 +163,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
       }
       
-      // Explicitly handle IT department if new task is for IT, as IT might not be in Object.keys if it was optional and not initially present
       if (newTaskToAdd.department === "IT") {
         newDepartmentsState.it = {
-          ...(prevProjectData.departments.it || { tasks: [] }), // Initialize if IT didn't exist, keep old notes
+          ...(prevProjectData.departments.it || { tasks: [] }), 
           tasks: updatedRootTasks.filter(task => task.department === "IT")
         };
       }
@@ -178,17 +179,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         departments: newDepartmentsState,
       };
 
-      // Update the global mockProjects array
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
       if (projectIndex !== -1) {
-        mockProjects[projectIndex] = { ...finalUpdatedProjectData }; // Store a copy
+        mockProjects[projectIndex] = { ...finalUpdatedProjectData }; 
       }
       
       return finalUpdatedProjectData;
     });
 
     setNewTaskName("");
-    setNewTaskDepartment(undefined);
+    setNewTaskDepartment("");
     setNewTaskDescription("");
     setNewTaskDueDate("");
     setIsAddTaskDialogOpen(false);
@@ -302,6 +302,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     });
   };
 
+  const handleViewTaskDetails = (task: Task) => {
+    setSelectedTask(task);
+    setIsViewTaskDialogOpen(true);
+  };
+
   const { departments } = projectData;
 
   return (
@@ -342,7 +347,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     <Label htmlFor="taskDepartment" className="text-right">
                       Department
                     </Label>
-                    <Select value={newTaskDepartment} onValueChange={(value) => setNewTaskDepartment(value as Department)}>
+                    <Select value={newTaskDepartment} onValueChange={(value) => setNewTaskDepartment(value as Department | "")}>
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
@@ -514,9 +519,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>
-            {/* Ensure IT department card is rendered only if 'it' department data exists and has tasks */}
             {departments.it && departments.it.tasks.length > 0 && (
-                <DepartmentCard title="IT Team" icon={MilestoneIcon} /* Replace with actual IT icon */ tasks={departments.it.tasks} notes={departments.it.notes} />
+                <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks} notes={departments.it.notes} />
             )}
           </div>
         </TabsContent>
@@ -536,15 +540,34 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {projectData.tasks.map((task) => (
                       <TableRow key={task.id}>
-                        <TableCell>{task.name}</TableCell>
+                        <TableCell>
+                           <Button 
+                              variant="link" 
+                              className="p-0 h-auto font-medium text-left whitespace-normal"
+                              onClick={() => handleViewTaskDetails(task)}
+                            >
+                              {task.name}
+                            </Button>
+                        </TableCell>
                         <TableCell>{task.department}</TableCell>
                         <TableCell><Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge></TableCell>
                         <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
+                        <TableCell className="text-right">
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleViewTaskDetails(task)}
+                                aria-label="View task details"
+                            >
+                                <Eye className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -695,9 +718,57 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
+
+      {/* Dialog for Viewing Task Details */}
+      <Dialog open={isViewTaskDialogOpen} onOpenChange={setIsViewTaskDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedTask?.name || "Task Details"}</DialogTitle>
+            <DialogDescription>
+              Detailed information about the task.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTask && (
+            <div className="grid gap-3 py-4 text-sm">
+              <div className="grid grid-cols-3 items-center gap-2">
+                <Label className="text-right text-muted-foreground">Department:</Label>
+                <div className="col-span-2">{selectedTask.department}</div>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-2">
+                <Label className="text-right text-muted-foreground">Status:</Label>
+                <div className="col-span-2">
+                    <Badge variant={selectedTask.status === "Completed" ? "outline" : "secondary"}>{selectedTask.status}</Badge>
+                </div>
+              </div>
+              {selectedTask.description && (
+                <div className="grid grid-cols-3 items-start gap-2">
+                  <Label className="text-right text-muted-foreground pt-1">Description:</Label>
+                  <div className="col-span-2 whitespace-pre-wrap">{selectedTask.description}</div>
+                </div>
+              )}
+              {selectedTask.dueDate && (
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label className="text-right text-muted-foreground">Due Date:</Label>
+                  <div className="col-span-2">{selectedTask.dueDate}</div>
+                </div>
+              )}
+              {selectedTask.assignedTo && (
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label className="text-right text-muted-foreground">Assigned To:</Label>
+                  <div className="col-span-2">{selectedTask.assignedTo}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
-
