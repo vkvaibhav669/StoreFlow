@@ -3,6 +3,15 @@ export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Mark
 
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
 
+export interface Comment {
+  id: string;
+  author: string;
+  avatarUrl?: string;
+  timestamp: string; // ISO string
+  text: string;
+  replies?: Comment[];
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -12,6 +21,7 @@ export interface Task {
   assignedTo?: string;
   dueDate?: string;
   description?: string;
+  comments?: Comment[]; // Added for task-specific comments
 }
 
 export interface DocumentFile {
@@ -41,15 +51,6 @@ export interface MarketingCampaign {
   startDate: string;
   endDate: string;
   budget?: number;
-}
-
-export interface Comment {
-  id: string;
-  author: string;
-  avatarUrl?: string;
-  timestamp: string; // ISO string
-  text: string;
-  replies?: Comment[];
 }
 
 export interface DepartmentDetails {

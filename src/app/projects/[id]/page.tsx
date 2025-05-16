@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter, Edit3, Package2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter, Edit3, Package2, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
@@ -121,6 +122,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
+  const [newTaskCommentText, setNewTaskCommentText] = React.useState("");
 
 
   const [isDepartmentTasksDialogOpen, setIsDepartmentTasksDialogOpen] = React.useState(false);
@@ -206,6 +208,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       priority: newTaskPriority,
       status: "Pending",
       assignedTo: newTaskAssignedTo,
+      comments: [],
     };
     
     setProjectData(prevProjectData => {
@@ -226,16 +229,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             }
         }
         
-        // Rebuild department tasks from the updated root tasks list
         if (newDepartmentsState[deptKey]) {
              (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
         }
       });
 
-      // Special handling if IT department was selected and didn't exist
        if (newTaskToAdd.department === 'IT' && !newDepartmentsState.it) {
         newDepartmentsState.it = { tasks: updatedRootTasks.filter(task => task.department === 'IT') };
-      } else if (newDepartmentsState.it) { // Ensure IT tasks are also updated if IT exists
+      } else if (newDepartmentsState.it) { 
         newDepartmentsState.it.tasks = updatedRootTasks.filter(task => task.department === 'IT');
       }
       
@@ -381,31 +382,29 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setSelectedTask(task);
     setEditingTaskStatus(task.status); 
     setEditingTaskAssignedTo(task.assignedTo || "");
+    setNewTaskCommentText(""); // Reset task comment input
     setIsViewTaskDialogOpen(true);
   };
 
   const handleUpdateTaskDetails = () => {
-    if (!selectedTask) return;
+    if (!selectedTask || !projectData) return;
 
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
     const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
     
-    // Check if anything actually changed
     if (newStatus === selectedTask.status && newAssignedTo === (selectedTask.assignedTo || "")) {
         toast({ title: "No Changes", description: "No details were modified for this task.", variant: "default" });
         setIsViewTaskDialogOpen(false);
-        setSelectedTask(null);
-        setEditingTaskStatus("");
-        setEditingTaskAssignedTo("");
         return;
     }
 
+    const updatedTask = { ...selectedTask, status: newStatus, assignedTo: newAssignedTo };
 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
 
       const updatedRootTasks = prevProjectData.tasks.map(task =>
-        task.id === selectedTask.id ? { ...task, status: newStatus, assignedTo: newAssignedTo } : task
+        task.id === selectedTask.id ? updatedTask : task
       );
 
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
@@ -415,7 +414,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
-              dTask.id === selectedTask.id ? { ...dTask, status: newStatus, assignedTo: newAssignedTo } : dTask
+              dTask.id === selectedTask.id ? updatedTask : dTask
           );
         }
       });
@@ -435,14 +434,118 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       }
       
       toast({ title: "Task Details Updated", description: `Details for "${selectedTask.name}" have been updated.` });
+      setSelectedTask(updatedTask); // Keep dialog updated if it remains open
       return finalUpdatedProjectData;
     });
 
     setIsViewTaskDialogOpen(false);
-    setSelectedTask(null);
-    setEditingTaskStatus("");
-    setEditingTaskAssignedTo("");
+    // Don't reset selectedTask here if we want comments to persist after status/assignee update
   };
+
+  const handlePostNewTaskComment = () => {
+    if (!selectedTask || !newTaskCommentText.trim() || !projectData) return;
+
+    const newComment: Comment = {
+      id: `task-comment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      author: user?.name || user?.email || "Anonymous User",
+      avatarUrl: `https://picsum.photos/seed/${user?.id || 'taskUser'}/40/40`,
+      timestamp: new Date().toISOString(),
+      text: newTaskCommentText,
+      replies: [],
+    };
+
+    const updatedTask = {
+      ...selectedTask,
+      comments: [newComment, ...(selectedTask.comments || [])],
+    };
+
+    setProjectData(prevProjectData => {
+      if (!prevProjectData) return null;
+      const updatedRootTasks = prevProjectData.tasks.map(t => t.id === selectedTask.id ? updatedTask : t);
+      
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
+      Object.keys(newDepartmentsState).forEach(deptKeyStr => {
+        const deptKey = deptKeyStr as keyof StoreProject['departments'];
+        if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
+              dTask.id === selectedTask.id ? updatedTask : dTask
+          );
+        }
+      });
+
+      const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState };
+      const projectIndex = mockProjects.findIndex(p => p.id === finalProjectData.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = finalProjectData;
+      }
+      return finalProjectData;
+    });
+    
+    setSelectedTask(updatedTask); // Update the selectedTask state to refresh comments in dialog
+    setNewTaskCommentText("");
+    toast({ title: "Comment Added to Task", description: "Your comment has been posted." });
+  };
+
+  const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: string) => {
+    if (!projectData) return;
+    
+    let taskToUpdate = projectData.tasks.find(t => t.id === taskId);
+    if (!taskToUpdate || !taskToUpdate.comments) return;
+
+    const addReplyRecursively = (currentComments: Comment[]): Comment[] => {
+        return currentComments.map(comment => {
+            if (comment.id === commentId) {
+                const newReply: Comment = {
+                    id: `task-reply-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                    author: user?.name || user?.email || "Anonymous User",
+                    avatarUrl: `https://picsum.photos/seed/${user?.id || 'taskReplyUser'}/40/40`,
+                    timestamp: new Date().toISOString(),
+                    text: replyText,
+                    replies: [],
+                };
+                return { ...comment, replies: [newReply, ...(comment.replies || [])] };
+            }
+            if (comment.replies && comment.replies.length > 0) {
+                return { ...comment, replies: addReplyRecursively(comment.replies) };
+            }
+            return comment;
+        });
+    };
+    
+    const updatedTaskComments = addReplyRecursively(taskToUpdate.comments);
+    const updatedTaskWithReply = { ...taskToUpdate, comments: updatedTaskComments };
+
+    setProjectData(prevProjectData => {
+      if (!prevProjectData) return null;
+      const updatedRootTasks = prevProjectData.tasks.map(t => t.id === taskId ? updatedTaskWithReply : t);
+
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
+      Object.keys(newDepartmentsState).forEach(deptKeyStr => {
+        const deptKey = deptKeyStr as keyof StoreProject['departments'];
+        if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
+          (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
+              dTask.id === taskId ? updatedTaskWithReply : dTask
+          );
+        }
+      });
+
+      const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState };
+      const projectIndex = mockProjects.findIndex(p => p.id === finalProjectData.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = finalProjectData;
+      }
+      return finalProjectData;
+    });
+    
+    // If the currently selected task is the one being replied to, update its state
+    if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask(updatedTaskWithReply);
+    }
+    toast({ title: "Reply Posted to Task Comment", description: "Your reply has been added." });
+  };
+
 
   const handleOpenDepartmentDialog = (title: string, tasks: Task[]) => {
     setDepartmentDialogTitle(`${title} - Tasks`);
@@ -912,82 +1015,123 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       <Dialog open={isViewTaskDialogOpen} onOpenChange={(isOpen) => {
         setIsViewTaskDialogOpen(isOpen);
         if (!isOpen) {
-            setSelectedTask(null);
+            setSelectedTask(null); // Clear selected task when dialog closes
             setEditingTaskStatus("");
             setEditingTaskAssignedTo("");
+            setNewTaskCommentText(""); // Clear task comment input too
         }
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedTask?.name || "Task Details"}</DialogTitle>
             <DialogDescription>
-              Detailed information about the task. You can update its details here.
+              View or update task details and manage comments.
             </DialogDescription>
           </DialogHeader>
           {selectedTask && (
-            <div className="grid gap-4 py-4 text-sm">
-              <div className="grid grid-cols-3 items-center gap-2">
-                <Label className="text-right text-muted-foreground">Department:</Label>
-                <div className="col-span-2">{selectedTask.department}</div>
-              </div>
-              <div className="grid grid-cols-3 items-center gap-2">
-                <Label className="text-right text-muted-foreground">Priority:</Label>
-                <div className="col-span-2">
-                  <Badge 
-                    variant={selectedTask.priority === "High" ? "destructive" : selectedTask.priority === "Low" ? "outline" : "secondary"}
-                    className={cn(
-                      selectedTask.priority === "High" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
-                      selectedTask.priority === "Medium" && "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
-                      selectedTask.priority === "Low" && "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700",
-                      selectedTask.priority === "None" && "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500"
-                    )}
-                  >
-                    {selectedTask.priority || "None"}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 items-center gap-2">
-                <Label htmlFor="taskStatusEdit" className="text-right text-muted-foreground">Status:</Label>
-                 <Select 
-                    value={editingTaskStatus} 
-                    onValueChange={(value) => setEditingTaskStatus(value as Task['status'] | "")}
-                  >
-                      <SelectTrigger id="taskStatusEdit" className="col-span-2">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Blocked">Blocked</SelectItem>
-                      </SelectContent>
-                    </Select>
-              </div>
-              {selectedTask.description && (
-                <div className="grid grid-cols-3 items-start gap-2">
-                  <Label className="text-right text-muted-foreground pt-1">Description:</Label>
-                  <div className="col-span-2 whitespace-pre-wrap">{selectedTask.description}</div>
-                </div>
-              )}
-              {selectedTask.dueDate && (
+            <ScrollArea className="max-h-[70vh] pr-6">
+              <div className="grid gap-4 py-4 text-sm">
                 <div className="grid grid-cols-3 items-center gap-2">
-                  <Label className="text-right text-muted-foreground">Due Date:</Label>
-                  <div className="col-span-2">{selectedTask.dueDate}</div>
+                  <Label className="text-right text-muted-foreground">Department:</Label>
+                  <div className="col-span-2">{selectedTask.department}</div>
                 </div>
-              )}
-              <div className="grid grid-cols-3 items-center gap-2">
-                <Label htmlFor="taskAssignedToEdit" className="text-right text-muted-foreground">Assigned To:</Label>
-                <Input 
-                    id="taskAssignedToEdit"
-                    value={editingTaskAssignedTo} 
-                    onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
-                    className="col-span-2"
-                    placeholder="Assignee name"
-                />
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label className="text-right text-muted-foreground">Priority:</Label>
+                  <div className="col-span-2">
+                    <Badge 
+                      variant={selectedTask.priority === "High" ? "destructive" : selectedTask.priority === "Low" ? "outline" : "secondary"}
+                      className={cn(
+                        selectedTask.priority === "High" && "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
+                        selectedTask.priority === "Medium" && "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
+                        selectedTask.priority === "Low" && "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700",
+                        selectedTask.priority === "None" && "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500"
+                      )}
+                    >
+                      {selectedTask.priority || "None"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label htmlFor="taskStatusEdit" className="text-right text-muted-foreground">Status:</Label>
+                  <Select 
+                      value={editingTaskStatus} 
+                      onValueChange={(value) => setEditingTaskStatus(value as Task['status'] | "")}
+                    >
+                        <SelectTrigger id="taskStatusEdit" className="col-span-2">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="In Progress">In Progress</SelectItem>
+                          <SelectItem value="Completed">Completed</SelectItem>
+                          <SelectItem value="Blocked">Blocked</SelectItem>
+                        </SelectContent>
+                      </Select>
+                </div>
+                {selectedTask.description && (
+                  <div className="grid grid-cols-3 items-start gap-2">
+                    <Label className="text-right text-muted-foreground pt-1">Description:</Label>
+                    <div className="col-span-2 whitespace-pre-wrap">{selectedTask.description}</div>
+                  </div>
+                )}
+                {selectedTask.dueDate && (
+                  <div className="grid grid-cols-3 items-center gap-2">
+                    <Label className="text-right text-muted-foreground">Due Date:</Label>
+                    <div className="col-span-2">{selectedTask.dueDate}</div>
+                  </div>
+                )}
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label htmlFor="taskAssignedToEdit" className="text-right text-muted-foreground">Assigned To:</Label>
+                  <Input 
+                      id="taskAssignedToEdit"
+                      value={editingTaskAssignedTo} 
+                      onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
+                      className="col-span-2"
+                      placeholder="Assignee name"
+                  />
+                </div>
               </div>
-            </div>
+
+              {/* Task Comments Section */}
+              <div className="mt-6 pt-4 border-t">
+                <h3 className="text-md font-semibold mb-3">Task Comments ({selectedTask.comments?.length || 0})</h3>
+                <div className="flex items-start space-x-3 mb-4">
+                  <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
+                    <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUserTaskComment'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar" />
+                    <AvatarFallback>{(user?.name || user?.email || "CU").substring(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Textarea
+                      placeholder="Write a comment for this task..."
+                      value={newTaskCommentText}
+                      onChange={(e) => setNewTaskCommentText(e.target.value)}
+                      className="mb-2"
+                      rows={2}
+                    />
+                    <div className="flex justify-end">
+                      <Button onClick={handlePostNewTaskComment} disabled={!newTaskCommentText.trim()} size="sm">
+                        <MessageSquare className="mr-2 h-4 w-4" /> Post Task Comment
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                {(selectedTask.comments && selectedTask.comments.length > 0) ? (
+                  <div className="space-y-0">
+                    {selectedTask.comments.map(comment => (
+                      <CommentCard 
+                        key={comment.id} 
+                        comment={comment} 
+                        onReply={(commentId, replyText) => handleReplyToTaskComment(selectedTask.id, commentId, replyText)} 
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No comments for this task yet.</p>
+                )}
+              </div>
+            </ScrollArea>
           )}
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
@@ -1003,11 +1147,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
        {/* Dialog for Department Tasks */}
       <Dialog open={isDepartmentTasksDialogOpen} onOpenChange={setIsDepartmentTasksDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl"> {/* Made dialog wider */}
           <DialogHeader>
             <DialogTitle>{departmentDialogTitle}</DialogTitle>
             <DialogDescription>
-              List of tasks for this department in the current project.
+              List of tasks for this department in the current project. Click a task name to view/edit.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -1025,7 +1169,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   {departmentDialogTasks.map((task) => (
                     <TableRow key={task.id}>
                       <TableCell>
-                        <div className="font-medium">{task.name}</div>
+                        <Button 
+                          variant="link" 
+                          className="p-0 h-auto font-medium text-left whitespace-normal"
+                          onClick={() => {
+                            setIsDepartmentTasksDialogOpen(false); // Close department dialog
+                            handleViewTaskDetails(task); // Open main task detail dialog
+                          }}
+                        >
+                          {task.name}
+                        </Button>
                         {task.description && (
                             <div className="text-xs text-muted-foreground truncate max-w-xs">{task.description}</div>
                         )}
