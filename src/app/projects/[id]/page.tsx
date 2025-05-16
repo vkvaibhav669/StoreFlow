@@ -115,6 +115,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
+  const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
+
 
   const [isDepartmentTasksDialogOpen, setIsDepartmentTasksDialogOpen] = React.useState(false);
   const [departmentDialogTitle, setDepartmentDialogTitle] = React.useState("");
@@ -127,7 +129,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       setProjectData(currentProject);
       setProjectComments(currentProject.comments || []);
     } else {
-      // setProjectData(null); // Ensure projectData is null if not found
       notFound();
     }
   }, [params.id]); 
@@ -171,12 +172,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       allPossibleDepartmentKeys.forEach(deptKey => {
         const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
         
-        if (!newDepartmentsState[deptKey]) {
+        if (!newDepartmentsState[deptKey]) { // Ensure department object exists
             if (departmentNameFromKey === newTaskToAdd.department) { 
                 (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
             }
         }
         
+        // Re-derive department tasks from the single source of truth (updatedRootTasks)
         if (newDepartmentsState[deptKey]) {
              (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
         }
@@ -323,17 +325,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const handleViewTaskDetails = (task: Task) => {
     setSelectedTask(task);
     setEditingTaskStatus(task.status); 
+    setEditingTaskAssignedTo(task.assignedTo || "");
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleUpdateTaskStatus = () => {
-    if (!selectedTask || !editingTaskStatus) return;
+  const handleUpdateTaskDetails = () => {
+    if (!selectedTask || (!editingTaskStatus && !editingTaskAssignedTo)) return;
+
+    const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
+    const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
 
       const updatedRootTasks = prevProjectData.tasks.map(task =>
-        task.id === selectedTask.id ? { ...task, status: editingTaskStatus as Task['status'] } : task
+        task.id === selectedTask.id ? { ...task, status: newStatus, assignedTo: newAssignedTo } : task
       );
 
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
@@ -343,7 +349,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
-              dTask.id === selectedTask.id ? { ...dTask, status: editingTaskStatus as Task['status'] } : dTask
+              dTask.id === selectedTask.id ? { ...dTask, status: newStatus, assignedTo: newAssignedTo } : dTask
           );
         }
       });
@@ -362,13 +368,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         mockProjects[projectIndex] = { ...finalUpdatedProjectData };
       }
       
-      toast({ title: "Task Status Updated", description: `Status for "${selectedTask.name}" changed to ${editingTaskStatus}.` });
+      toast({ title: "Task Details Updated", description: `Details for "${selectedTask.name}" have been updated.` });
       return finalUpdatedProjectData;
     });
 
     setIsViewTaskDialogOpen(false);
     setSelectedTask(null);
     setEditingTaskStatus("");
+    setEditingTaskAssignedTo("");
   };
 
   const handleOpenDepartmentDialog = (title: string, tasks: Task[]) => {
@@ -391,7 +398,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </Button>
         <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
         <div className="flex items-center gap-2 flex-shrink-0">
-            <Dialog open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
+            <Dialog open={isAddTaskDialogOpen} onOpenChange={(isOpen) => {
+                setIsAddTaskDialogOpen(isOpen);
+                if (!isOpen) { // Reset form on close
+                    setNewTaskName("");
+                    setNewTaskDepartment("");
+                    setNewTaskDescription("");
+                    setNewTaskDueDate("");
+                    setNewTaskAssignedTo("");
+                }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1">
                   <PlusCircle className="h-3.5 w-3.5" />
@@ -794,13 +810,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         if (!isOpen) {
             setSelectedTask(null);
             setEditingTaskStatus("");
+            setEditingTaskAssignedTo("");
         }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedTask?.name || "Task Details"}</DialogTitle>
             <DialogDescription>
-              Detailed information about the task. You can update the status here.
+              Detailed information about the task. You can update its details here.
             </DialogDescription>
           </DialogHeader>
           {selectedTask && (
@@ -838,19 +855,28 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   <div className="col-span-2">{selectedTask.dueDate}</div>
                 </div>
               )}
-              {selectedTask.assignedTo && (
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <Label className="text-right text-muted-foreground">Assigned To:</Label>
-                  <div className="col-span-2">{selectedTask.assignedTo}</div>
-                </div>
-              )}
+              <div className="grid grid-cols-3 items-center gap-2">
+                <Label htmlFor="taskAssignedToEdit" className="text-right text-muted-foreground">Assigned To:</Label>
+                <Input 
+                    id="taskAssignedToEdit"
+                    value={editingTaskAssignedTo} 
+                    onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
+                    className="col-span-2"
+                    placeholder="Assignee name"
+                />
+              </div>
             </div>
           )}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleUpdateTaskStatus} disabled={!selectedTask || !editingTaskStatus || editingTaskStatus === selectedTask?.status}>Update Status</Button>
+            <Button 
+              onClick={handleUpdateTaskDetails} 
+              disabled={!selectedTask || (editingTaskStatus === selectedTask?.status && editingTaskAssignedTo === (selectedTask?.assignedTo || ""))}
+            >
+                Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
