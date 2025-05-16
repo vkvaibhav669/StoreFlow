@@ -12,6 +12,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Package2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge"; // Added this import
 
 interface KanbanTask extends Task {
   projectName: string;
