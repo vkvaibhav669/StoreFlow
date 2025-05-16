@@ -2,7 +2,7 @@
 "use client"; 
 
 import * as React from "react";
-import { notFound, useRouter } from "next/navigation"; // Added useRouter
+import { notFound, useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter, Edit3, Package2, MessageSquare } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useAuth } from "@/contexts/AuthContext";
+import { Package2 } from "lucide-react";
 
 
 interface DepartmentCardProps {
@@ -219,19 +220,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
       
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
+      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       
-      allPossibleDepartments.forEach(deptKey => {
-        const departmentKeyString = deptKey.toLowerCase() as keyof StoreProject['departments'];
+      allPossibleDepartments.forEach(deptEnumKey => {
+        const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
         
-        if (!newDepartmentsState[departmentKeyString]) { 
-            if (deptKey === newTaskToAdd.department) { 
-                (newDepartmentsState[departmentKeyString] as DepartmentDetails) = { tasks: [] };
-            }
+        if (!newDepartmentsState[currentDeptKeyString] && deptEnumKey === newTaskToAdd.department) {
+          if (deptEnumKey === "Marketing") {
+            newDepartmentsState[currentDeptKeyString] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+          } else {
+            newDepartmentsState[currentDeptKeyString] = { tasks: [] };
+          }
         }
         
-        if (newDepartmentsState[departmentKeyString]) {
-             (newDepartmentsState[departmentKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptKey);
+        if (newDepartmentsState[currentDeptKeyString]) {
+             (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
       
@@ -417,39 +420,28 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         task.id === selectedTask.id ? updatedTask : task
       );
 
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
+      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       
-      // If department changed, remove from old and add to new department's task list
       if (newDepartment !== selectedTask.department) {
         const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
         if (newDepartmentsState[oldDeptKey] && (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks) {
           (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
             (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks.filter(dTask => dTask.id !== selectedTask.id);
         }
-
-        const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
-        if (!newDepartmentsState[newDeptKey]) {
-          (newDepartmentsState[newDeptKey] as DepartmentDetails) = { tasks: [] };
-        }
-        (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks.push(updatedTask);
-      } else {
-        // If department didn't change, just update the task in its existing department list
-        const deptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
-          (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
-            (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
-              dTask.id === selectedTask.id ? updatedTask : dTask
-            );
-        }
       }
       
-      // Ensure all department task lists are correctly derived from the root tasks after an update
       allPossibleDepartments.forEach(deptName => {
-        const deptKey = deptName.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[deptKey]) {
-          (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptName);
-        } else if (updatedTask.department === deptName && deptKey === newDepartment.toLowerCase()){ // if task moved to a new dept that wasn't there before
-           (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [updatedTask] };
+        const deptKeyToSync = deptName.toLowerCase() as keyof StoreProject['departments'];
+        
+        if (!newDepartmentsState[deptKeyToSync] && updatedTask.department === deptName) {
+           if (deptName === "Marketing") {
+             (newDepartmentsState[deptKeyToSync] as DepartmentDetails) = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+           } else {
+             (newDepartmentsState[deptKeyToSync] as DepartmentDetails) = { tasks: [] };
+           }
+        }
+        if (newDepartmentsState[deptKeyToSync]) {
+          (newDepartmentsState[deptKeyToSync] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptName);
         }
       });
 
@@ -497,7 +489,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === selectedTask.id ? updatedTask : t);
       
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
@@ -554,7 +546,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === taskId ? updatedTaskWithReply : t);
 
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
@@ -580,7 +572,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   };
 
 
-  const handleOpenDepartmentDialog = (title: string, tasks: Task[]) => {
+  const handleOpenDepartmentDialog = (title: string, tasks: Task[] = []) => {
     setDepartmentDialogTitle(`${title} - Tasks`);
     setDepartmentDialogTasks(tasks);
     setIsDepartmentTasksDialogOpen(true);
@@ -592,7 +584,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   ];
 
 
-  const { departments } = projectData;
+  const { departments = {} } = projectData; // Default to empty object if departments is undefined
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
 
 
@@ -825,22 +817,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
         <TabsContent value="departments" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property.tasks)} />
-            <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project.tasks)}>
+            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property?.tasks || [])} />}
+            {departments.project && <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project?.tasks || [])}>
                 {projectData.threeDRenderUrl && (
                     <div className="my-2">
                         <p className="text-xs font-medium mb-1">3D Store Visual:</p>
                         <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render" />
                     </div>
                 )}
-            </DepartmentCard>
-            <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising.tasks)} />
-            <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr.tasks)}>
+            </DepartmentCard>}
+            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising?.tasks || [])} />}
+            {departments.hr && <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [])}>
               {departments.hr.totalNeeded && (
                  <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
               )}
-            </DepartmentCard>
-            <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing.tasks)}>
+            </DepartmentCard>}
+            {departments.marketing && <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing?.tasks || [])}>
               {departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
@@ -850,7 +842,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   </ul>
                 </div>
               )}
-            </DepartmentCard>
+            </DepartmentCard>}
             {departments.it && (departments.it.tasks.length > 0 || departments.it.notes) && (
                 <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [])}/>
             )}
@@ -1043,7 +1035,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </TabsContent>
       </Tabs>
 
-      {/* Dialog for Viewing/Editing Task Details */}
       <Dialog open={isViewTaskDialogOpen} onOpenChange={(isOpen) => {
         setIsViewTaskDialogOpen(isOpen);
         if (!isOpen) {
@@ -1141,7 +1132,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               </div>
 
-              {/* Task Comments Section */}
               <div className="mt-6 pt-4 border-t">
                 <h3 className="text-md font-semibold mb-3">Task Comments ({selectedTask.comments?.length || 0})</h3>
                 <div className="flex items-start space-x-3 mb-4">
@@ -1200,7 +1190,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </DialogContent>
       </Dialog>
 
-       {/* Dialog for Department Tasks */}
       <Dialog open={isDepartmentTasksDialogOpen} onOpenChange={setIsDepartmentTasksDialogOpen}>
         <DialogContent className="sm:max-w-2xl"> 
           <DialogHeader>
@@ -1262,6 +1251,3 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
-
-
-    

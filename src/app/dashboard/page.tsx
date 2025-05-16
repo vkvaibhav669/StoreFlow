@@ -32,8 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate, addDays } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 function ProjectCard({ project }: { project: StoreProject }) {
   return (
@@ -65,8 +65,8 @@ function ProjectCard({ project }: { project: StoreProject }) {
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth(); // Get user and loading state
-  const router = useRouter(); // Get router for redirection
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(() => [...mockProjects]);
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
@@ -74,7 +74,7 @@ export default function DashboardPage() {
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [selectedDepartments, setSelectedDepartments] = React.useState<Record<Department, boolean>>(
     allDepartmentKeys.reduce((acc, curr) => {
-      acc[curr] = false;
+      acc[curr] = false; // Default all to false
       return acc;
     }, {} as Record<Department, boolean>)
   );
@@ -87,7 +87,6 @@ export default function DashboardPage() {
     planningOnly: false,
   });
 
-  // Redirect if not authenticated
   React.useEffect(() => {
     if (!loading && !user) {
       router.replace("/auth/signin");
@@ -108,7 +107,6 @@ export default function DashboardPage() {
     );
   }
 
-
   const handleDepartmentChange = (department: Department, checked: boolean) => {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
   };
@@ -122,23 +120,24 @@ export default function DashboardPage() {
     const today = new Date();
     const newProjectId = `proj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     
-    const departments: StoreProject['departments'] = {
-      property: { tasks: [] },
-      project: { tasks: [] },
-      merchandising: { tasks: [] },
-      hr: { tasks: [] },
-      marketing: { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] },
-    };
+    const projectDepartments: Partial<StoreProject['departments']> = {};
 
-    if (selectedDepartments.IT) {
-      departments.it = { tasks: [] };
-    }
+    allDepartmentKeys.forEach(dept => {
+      if (selectedDepartments[dept]) {
+        const deptKey = dept.toLowerCase() as keyof StoreProject['departments'];
+        if (dept === "Marketing") {
+          projectDepartments[deptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+        } else {
+          projectDepartments[deptKey] = { tasks: [] };
+        }
+      }
+    });
     
     const newProject: StoreProject = {
       id: newProjectId,
       name: newProjectName,
       location: newProjectLocation,
-      status: "Planning", // New projects default to Planning
+      status: "Planning",
       isUpcoming: markAsUpcoming,
       startDate: formatDate(today),
       projectedLaunchDate: formatDate(addDays(today, 60)),
@@ -157,7 +156,7 @@ export default function DashboardPage() {
       tasks: [],
       documents: [],
       milestones: [],
-      departments: departments,
+      departments: projectDepartments,
       comments: [],
     };
 
@@ -178,7 +177,6 @@ export default function DashboardPage() {
     if (!filterSettings.showUpcoming) return [];
     return dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
   }, [dashboardProjects, filterSettings.showUpcoming]);
-
 
   const activeProjects = React.useMemo(() => {
     if (!filterSettings.showActive) return [];
@@ -242,7 +240,10 @@ export default function DashboardPage() {
             <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
                 setIsAddProjectDialogOpen(isOpen);
                 if (!isOpen) {
-                    setMarkAsUpcoming(false); // Reset checkbox state on close
+                    setMarkAsUpcoming(false); 
+                    setNewProjectName("");
+                    setNewProjectLocation("");
+                    setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
                 }
             }}>
               <DialogTrigger asChild>
@@ -386,4 +387,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

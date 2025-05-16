@@ -21,7 +21,7 @@ export interface Task {
   assignedTo?: string;
   dueDate?: string;
   description?: string;
-  comments?: Comment[]; // Added for task-specific comments
+  comments?: Comment[];
 }
 
 export interface DocumentFile {
@@ -73,7 +73,7 @@ export interface StoreProject {
   startDate: string;
   projectedLaunchDate: string;
   currentProgress: number;
-  isUpcoming?: boolean; // Added for upcoming projects feature
+  isUpcoming?: boolean;
   propertyDetails?: {
     address: string;
     sqft: number;
@@ -90,12 +90,12 @@ export interface StoreProject {
   documents: DocumentFile[];
   milestones: Milestone[];
   departments: {
-    property: DepartmentDetails;
-    project: DepartmentDetails;
-    merchandising: DepartmentDetails;
-    hr: DepartmentDetails;
-    marketing: DepartmentDetails;
-    it?: DepartmentDetails; // IT department is optional
+    property?: DepartmentDetails;
+    project?: DepartmentDetails;
+    merchandising?: DepartmentDetails;
+    hr?: DepartmentDetails;
+    marketing?: DepartmentDetails;
+    it?: DepartmentDetails;
   };
   comments?: Comment[];
 }
@@ -104,7 +104,5 @@ export interface User {
   id: string;
   name?: string;
   email: string;
-  role: "admin" | "user" | "hod"; // Added 'hod' for consistency with previous request
-  // Do NOT store password here in a real app
+  role: "admin" | "user" | "hod";
 }
-
