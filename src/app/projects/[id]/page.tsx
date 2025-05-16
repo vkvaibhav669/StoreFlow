@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, ListFilter, Edit3 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -123,6 +123,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [departmentDialogTitle, setDepartmentDialogTitle] = React.useState("");
   const [departmentDialogTasks, setDepartmentDialogTasks] = React.useState<Task[]>([]);
 
+  // Mock current user role - in a real app, this would come from auth context
+  const currentUserRole: 'admin' | 'hod' | 'user' = 'admin'; // Can be 'admin', 'hod', or 'user'
 
   React.useEffect(() => {
     const currentProject = getProjectById(params.id);
@@ -143,6 +145,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     if (tasks.length === 0) return 0;
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     return Math.round((completedTasks / tasks.length) * 100);
+  };
+
+  const handleProjectStatusChange = (newStatus: StoreProject['status']) => {
+    if (!projectData) return;
+
+    setProjectData(prev => {
+      if (!prev) return null;
+      const updatedProject = { ...prev, status: newStatus };
+      
+      const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = { ...updatedProject };
+      }
+      toast({ title: "Project Status Updated", description: `Project status changed to "${newStatus}".` });
+      return updatedProject;
+    });
   };
 
   const handleAddNewTask = () => {
@@ -386,6 +404,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setIsDepartmentTasksDialogOpen(true);
   };
 
+  const projectStatuses: StoreProject['status'][] = [
+    "Planning", "Property Finalized", "Project Kickoff", "Execution", 
+    "Merchandising", "Recruitment", "Pre-Launch Marketing", "Launched", "Post-Launch Marketing"
+  ];
+
 
   const { departments } = projectData;
 
@@ -558,9 +581,25 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </DialogContent>
             </Dialog>
         </div>
-        <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
-          {projectData.status}
-        </Badge>
+        {(currentUserRole === 'admin' || currentUserRole === 'hod') ? (
+          <Select 
+            value={projectData.status} 
+            onValueChange={(value) => handleProjectStatusChange(value as StoreProject['status'])}
+          >
+            <SelectTrigger className="w-[200px] flex-shrink-0 text-sm h-8">
+              <SelectValue placeholder="Set project status" />
+            </SelectTrigger>
+            <SelectContent>
+              {projectStatuses.map(status => (
+                <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
+            {projectData.status}
+          </Badge>
+        )}
       </div>
 
       <Card>
@@ -969,3 +1008,5 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
+    
