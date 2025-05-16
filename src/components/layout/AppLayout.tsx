@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react"; // Added this line
+import * as React from "react"; 
 import type { ReactNode } from "react";
 import {
   SidebarProvider,
@@ -18,8 +18,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
-import { usePathname, useRouter } from "next/navigation"; // Added useRouter
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Home } from "lucide-react"; // Added LogIn, UserPlus, LogOut
+import { usePathname, useRouter } from "next/navigation"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Home } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useAuth } from "@/contexts/AuthContext"; 
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SidebarNavProps {
@@ -308,7 +308,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           )}
         >
           <Header />
-          <SidebarInset className="p-4 sm:px-6 sm:py-0 md:gap-8">
+          <SidebarInset className="p-4 sm:px-6 sm:py-4 md:gap-8"> {/* Changed sm:py-0 to sm:py-4 */}
             {children}
           </SidebarInset>
         </div>
