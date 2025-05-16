@@ -154,22 +154,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
       
-      // Iterate over all department keys defined in the type, not just those present in the object
       const allPossibleDepartmentKeys = Object.keys(newDepartmentsState) as Array<keyof StoreProject['departments']>;
 
       allPossibleDepartmentKeys.forEach(deptKey => {
         const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
         
-        // Ensure department exists in the state, or initialize if it's a new task for a department like IT
         if (!newDepartmentsState[deptKey]) {
-            if (departmentNameFromKey === newTaskToAdd.department) { // Only initialize if relevant
-                 // This handles cases where 'it' might not exist initially
+            if (departmentNameFromKey === newTaskToAdd.department) { 
                 (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
-            } else {
-                // If the department key isn't in the current project data (e.g. 'it' initially missing)
-                // and the task isn't for this department, we might not need to create it unless it was pre-defined.
-                // For simplicity, if it's a standard department like 'property', 'project' etc., it's expected to be there.
-                // If 'it' is the new task's department and 'it' doesn't exist, it needs to be created.
             }
         }
 
@@ -326,12 +318,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
 
-      // Update task in the main tasks list
       const updatedRootTasks = prevProjectData.tasks.map(task =>
         task.id === selectedTask.id ? { ...task, status: editingTaskStatus as Task['status'] } : task
       );
 
-      // Update task in the department-specific tasks list
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
       const taskDepartmentKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
       
@@ -342,7 +332,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         );
       }
       
-      // Recalculate overall progress
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
 
       const finalUpdatedProjectData: StoreProject = {
@@ -352,7 +341,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         departments: newDepartmentsState,
       };
 
-      // Update mockProjects array
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = { ...finalUpdatedProjectData };
@@ -601,7 +589,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="hidden md:table-cell">Due Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-right">Assignee</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -619,16 +607,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         <TableCell>{task.department}</TableCell>
                         <TableCell><Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge></TableCell>
                         <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
-                        <TableCell className="text-right">
-                            <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleViewTaskDetails(task)}
-                                aria-label="View task details"
-                            >
-                                <Eye className="h-4 w-4" />
-                            </Button>
-                        </TableCell>
+                        <TableCell className="text-right">{task.assignedTo || "N/A"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
