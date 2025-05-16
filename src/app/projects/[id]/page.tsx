@@ -1003,7 +1003,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
        {/* Dialog for Department Tasks */}
       <Dialog open={isDepartmentTasksDialogOpen} onOpenChange={setIsDepartmentTasksDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{departmentDialogTitle}</DialogTitle>
             <DialogDescription>
