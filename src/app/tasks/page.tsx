@@ -16,12 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { mockProjects, getProjectById } from "@/lib/data"; // Assuming getProjectById might be useful, though direct mutation is happening
-import type { StoreProject, Task, Department } from "@/types";
+import { mockProjects } from "@/lib/data";
+import type { StoreProject, Task, Department, TaskPriority } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
@@ -33,12 +35,29 @@ const calculateOverallProgress = (tasks: Task[]): number => {
 
 export default function AssignTaskPage() {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get current user
+
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
   const [assignedTo, setAssignedTo] = React.useState("");
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "">("");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
+  const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
+  const [assignToSelf, setAssignToSelf] = React.useState(false);
+
+  React.useEffect(() => {
+    if (assignToSelf && user) {
+      setAssignedTo(user.name || user.email || "Current User");
+    } else if (!assignToSelf) {
+      // If assignToSelf was true and now false, clear the field
+      // or allow user to edit. For now, let's clear it if it was auto-filled.
+      if (assignedTo === (user?.name || user?.email || "Current User")) {
+         setAssignedTo("");
+      }
+    }
+  }, [assignToSelf, user, assignedTo]);
+
 
   const resetForm = () => {
     setSelectedProjectId("");
@@ -47,11 +66,15 @@ export default function AssignTaskPage() {
     setAssignedTo("");
     setSelectedDepartment("");
     setDueDate(undefined);
+    setTaskPriority("Medium");
+    setAssignToSelf(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProjectId || !taskName || !selectedDepartment || !assignedTo) {
+    const finalAssignedTo = assignToSelf ? (user?.name || user?.email || "Current User") : assignedTo;
+
+    if (!selectedProjectId || !taskName || !selectedDepartment || !finalAssignedTo) {
       toast({
         title: "Error",
         description: "Please fill in Project, Task Name, Department, and Assign To fields.",
@@ -77,32 +100,28 @@ export default function AssignTaskPage() {
       name: taskName,
       department: selectedDepartment as Department,
       description: taskDescription || undefined,
-      assignedTo: assignedTo,
+      assignedTo: finalAssignedTo,
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
       status: "Pending",
+      priority: taskPriority,
+      comments: [],
     };
 
-    // Add task to the project's main task list
     targetProject.tasks.push(newTask);
 
-    // Add task to the specific department's task list within the project
     const deptKey = selectedDepartment.toLowerCase() as keyof StoreProject['departments'];
     
     if (targetProject.departments[deptKey]) {
       (targetProject.departments[deptKey] as { tasks: Task[] }).tasks.push(newTask);
-    } else if (deptKey === 'it') { // Handle case where IT department might not exist yet
+    } else if (deptKey === 'it') { 
        targetProject.departments.it = { tasks: [newTask] };
     }
 
-    // Recalculate project progress
     targetProject.currentProgress = calculateOverallProgress(targetProject.tasks);
     
-    // No need to call setMockProjects if mockProjects is mutated directly and other components re-read it.
-    // However, for a more robust solution with proper state management, a centralized state (like Context or Zustand) would be better.
-
     toast({
       title: "Success!",
-      description: `Task "${taskName}" assigned successfully to ${assignedTo} for project "${targetProject.name}".`,
+      description: `Task "${taskName}" assigned successfully to ${finalAssignedTo} for project "${targetProject.name}".`,
     });
     resetForm();
   };
@@ -161,9 +180,21 @@ export default function AssignTaskPage() {
                   id="assignedTo"
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
-                  placeholder="e.g., Jane Doe"
+                  placeholder="e.g., Jane Doe or check below"
                   required
+                  disabled={assignToSelf}
                 />
+                 <div className="flex items-center space-x-2 pt-1">
+                    <Checkbox
+                        id="assignToSelf"
+                        checked={assignToSelf}
+                        onCheckedChange={(checked) => setAssignToSelf(!!checked)}
+                        disabled={!user} // Disable if no user is logged in
+                    />
+                    <Label htmlFor="assignToSelf" className="text-sm font-normal text-muted-foreground">
+                        Assign to me ({user ? (user.name || user.email) : 'Not logged in'})
+                    </Label>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -183,30 +214,46 @@ export default function AssignTaskPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date (Optional)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dueDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={setDueDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="taskPriority">Priority</Label>
+                    <Select value={taskPriority} onValueChange={(value) => setTaskPriority(value as TaskPriority)}>
+                      <SelectTrigger id="taskPriority">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dueDate">Due Date (Optional)</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={setDueDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
             </div>
 
             <Button type="submit" className="w-full">Assign Task</Button>
@@ -216,3 +263,4 @@ export default function AssignTaskPage() {
     </div>
   );
 }
+
