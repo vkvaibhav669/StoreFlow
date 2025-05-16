@@ -46,9 +46,10 @@ interface DepartmentCardProps {
   tasks: Task[]; // All tasks for this department
   notes?: string;
   children?: React.ReactNode;
+  onClick?: () => void;
 }
 
-function DepartmentCard({ title, icon: Icon, tasks, notes, children }: DepartmentCardProps) {
+function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: DepartmentCardProps) {
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const totalTasks = tasks.length;
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -56,7 +57,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children }: Departmen
   const activeTasksToList = tasks.filter(task => task.status === 'Pending' || task.status === 'In Progress');
 
   return (
-    <Card>
+    <Card onClick={onClick} className={cn(onClick ? "cursor-pointer hover:shadow-lg transition-shadow" : "")}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Icon className="h-5 w-5 text-primary" />
@@ -115,6 +116,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
 
+  const [isDepartmentTasksDialogOpen, setIsDepartmentTasksDialogOpen] = React.useState(false);
+  const [departmentDialogTitle, setDepartmentDialogTitle] = React.useState("");
+  const [departmentDialogTasks, setDepartmentDialogTasks] = React.useState<Task[]>([]);
+
 
   React.useEffect(() => {
     const currentProject = getProjectById(params.id);
@@ -159,7 +164,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
       
-      // Deep clone to ensure no direct mutation of nested objects from mockProjects
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
       
       const allPossibleDepartmentKeys = Object.keys(newDepartmentsState) as Array<keyof StoreProject['departments']>;
@@ -167,13 +171,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       allPossibleDepartmentKeys.forEach(deptKey => {
         const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
         
-        // Ensure department object exists, especially for IT
         if (!newDepartmentsState[deptKey]) {
             if (departmentNameFromKey === newTaskToAdd.department) { 
                 (newDepartmentsState[deptKey] as DepartmentDetails) = { tasks: [] };
             }
         }
-        // If department object exists (or was just created for IT), rebuild its task list
+        
         if (newDepartmentsState[deptKey]) {
              (newDepartmentsState[deptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === departmentNameFromKey);
         }
@@ -188,7 +191,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         departments: newDepartmentsState,
       };
 
-      // Update mockProjects
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = { ...finalUpdatedProjectData }; 
@@ -320,7 +322,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const handleViewTaskDetails = (task: Task) => {
     setSelectedTask(task);
-    setEditingTaskStatus(task.status); // Initialize editing status
+    setEditingTaskStatus(task.status); 
     setIsViewTaskDialogOpen(true);
   };
 
@@ -336,7 +338,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments'];
       
-      // Iterate over all department keys to update the task in the correct department
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
@@ -368,6 +369,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setIsViewTaskDialogOpen(false);
     setSelectedTask(null);
     setEditingTaskStatus("");
+  };
+
+  const handleOpenDepartmentDialog = (title: string, tasks: Task[]) => {
+    setDepartmentDialogTitle(`${title} - Tasks`);
+    setDepartmentDialogTasks(tasks);
+    setIsDepartmentTasksDialogOpen(true);
   };
 
 
@@ -563,8 +570,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
         <TabsContent value="departments" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks} notes={departments.property.notes} />
-            <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks} notes={departments.project.notes}>
+            <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property.tasks)} />
+            <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project.tasks)}>
                 {projectData.threeDRenderUrl && (
                     <div className="my-2">
                         <p className="text-xs font-medium mb-1">3D Store Visual:</p>
@@ -572,13 +579,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     </div>
                 )}
             </DepartmentCard>
-            <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} />
-            <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks} notes={departments.hr.recruitmentStatus}>
+            <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising.tasks)} />
+            <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr.tasks)}>
               {departments.hr.totalNeeded && (
                  <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
               )}
             </DepartmentCard>
-            <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks}>
+            <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing.tasks)}>
               {departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
@@ -590,7 +597,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               )}
             </DepartmentCard>
             {departments.it && (departments.it.tasks.length > 0 || departments.it.notes) && (
-                <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} />
+                <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [])}/>
             )}
           </div>
         </TabsContent>
@@ -848,7 +855,59 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </DialogContent>
       </Dialog>
 
+       {/* Dialog for Department Tasks */}
+      <Dialog open={isDepartmentTasksDialogOpen} onOpenChange={setIsDepartmentTasksDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{departmentDialogTitle}</DialogTitle>
+            <DialogDescription>
+              List of tasks for this department in the current project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {departmentDialogTasks.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden sm:table-cell">Assignee</TableHead>
+                    <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {departmentDialogTasks.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell>
+                        <div className="font-medium">{task.name}</div>
+                        {task.description && (
+                            <div className="text-xs text-muted-foreground truncate max-w-xs">{task.description}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{task.assignedTo || "N/A"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-muted-foreground text-center">No tasks found for this department.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
 
+
+    
