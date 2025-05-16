@@ -220,19 +220,23 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
       
-      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
+      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
+      // Ensure the target department exists, especially if it wasn't selected during project creation
+      const targetDeptKey = newTaskToAdd.department.toLowerCase() as keyof StoreProject['departments'];
+      if (!newDepartmentsState[targetDeptKey]) {
+        if (newTaskToAdd.department === "Marketing") {
+          newDepartmentsState[targetDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+        } else {
+          newDepartmentsState[targetDeptKey] = { tasks: [] };
+        }
+      }
+
+      // Rebuild all department task lists from the single source of truth (updatedRootTasks)
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
         
-        if (!newDepartmentsState[currentDeptKeyString] && deptEnumKey === newTaskToAdd.department) {
-          if (deptEnumKey === "Marketing") {
-            newDepartmentsState[currentDeptKeyString] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
-          } else {
-            newDepartmentsState[currentDeptKeyString] = { tasks: [] };
-          }
-        }
-        
+        // Only process if the department exists for this project
         if (newDepartmentsState[currentDeptKeyString]) {
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
@@ -420,28 +424,35 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         task.id === selectedTask.id ? updatedTask : task
       );
 
-      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
+      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
-      if (newDepartment !== selectedTask.department) {
-        const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[oldDeptKey] && (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks) {
-          (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
-            (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks.filter(dTask => dTask.id !== selectedTask.id);
-        }
+      const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
+      const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
+
+      // Remove task from old department if it changed
+      if (newDepartment !== selectedTask.department && newDepartmentsState[oldDeptKey]) {
+        (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
+          ((newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id);
       }
       
-      allPossibleDepartments.forEach(deptName => {
-        const deptKeyToSync = deptName.toLowerCase() as keyof StoreProject['departments'];
-        
-        if (!newDepartmentsState[deptKeyToSync] && updatedTask.department === deptName) {
-           if (deptName === "Marketing") {
-             (newDepartmentsState[deptKeyToSync] as DepartmentDetails) = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
-           } else {
-             (newDepartmentsState[deptKeyToSync] as DepartmentDetails) = { tasks: [] };
-           }
-        }
-        if (newDepartmentsState[deptKeyToSync]) {
-          (newDepartmentsState[deptKeyToSync] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptName);
+      // Ensure new department exists and add task
+      if (!newDepartmentsState[newDeptKey]) {
+         if (newDepartment === "Marketing") {
+           newDepartmentsState[newDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+         } else {
+           newDepartmentsState[newDeptKey] = { tasks: [] };
+         }
+      }
+      // Add task to new department (or update in existing if department didn't change)
+      // by rebuilding the tasks list for the new/current department from the updatedRootTasks.
+      (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === newDepartment);
+
+
+      // Rebuild all department task lists to ensure consistency
+      allPossibleDepartments.forEach(deptEnumKey => {
+        const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
+        if (newDepartmentsState[currentDeptKeyString]) { // Only if department exists on project
+             (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
 
@@ -489,12 +500,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === selectedTask.id ? updatedTask : t);
       
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
-          (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
+          ((newDepartmentsState[deptKey] as DepartmentDetails).tasks || []).map(dTask =>
               dTask.id === selectedTask.id ? updatedTask : dTask
           );
         }
@@ -546,12 +557,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === taskId ? updatedTaskWithReply : t);
 
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
           (newDepartmentsState[deptKey] as DepartmentDetails).tasks = 
-          (newDepartmentsState[deptKey] as DepartmentDetails).tasks.map(dTask =>
+          ((newDepartmentsState[deptKey] as DepartmentDetails).tasks || []).map(dTask =>
               dTask.id === taskId ? updatedTaskWithReply : dTask
           );
         }
@@ -584,7 +595,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   ];
 
 
-  const { departments = {} } = projectData; // Default to empty object if departments is undefined
+  const { departments = {} } = projectData; 
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
 
 
@@ -843,7 +854,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>}
-            {departments.it && (departments.it.tasks.length > 0 || departments.it.notes) && (
+            {departments.it && (
                 <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [])}/>
             )}
           </div>
