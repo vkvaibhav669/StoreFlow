@@ -53,9 +53,22 @@ export default function KanbanBoardPage() {
 
   const filteredTasks = React.useMemo(() => {
     return tasksWithProjectInfo.filter((task) => {
-      const departmentMatch = selectedDepartment === "All" || task.department === selectedDepartment;
-      const projectMatch = selectedProject === "All" || task.projectId === selectedProject;
-      return departmentMatch && projectMatch;
+        const isSpecificDepartmentSelected = selectedDepartment !== "All";
+        const isSpecificProjectSelected = selectedProject !== "All";
+
+        if (isSpecificDepartmentSelected && isSpecificProjectSelected) {
+            // If both a specific department and project are selected, show tasks matching EITHER.
+            return task.department === selectedDepartment || task.projectId === selectedProject;
+        } else if (isSpecificDepartmentSelected) {
+            // If only a specific department is selected, show tasks matching that department.
+            return task.department === selectedDepartment;
+        } else if (isSpecificProjectSelected) {
+            // If only a specific project is selected, show tasks matching that project.
+            return task.projectId === selectedProject;
+        } else {
+            // If neither filter is specific (both are "All"), show all tasks.
+            return true;
+        }
     });
   }, [tasksWithProjectInfo, selectedDepartment, selectedProject]);
 
