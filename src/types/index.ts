@@ -72,6 +72,7 @@ export interface StoreProject {
   startDate: string;
   projectedLaunchDate: string;
   currentProgress: number;
+  isUpcoming?: boolean; // Added for upcoming projects feature
   propertyDetails?: {
     address: string;
     sqft: number;
@@ -105,3 +106,4 @@ export interface User {
   role: "admin" | "user" | "hod"; // Added 'hod' for consistency with previous request
   // Do NOT store password here in a real app
 }
+

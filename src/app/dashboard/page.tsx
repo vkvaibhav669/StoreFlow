@@ -78,8 +78,10 @@ export default function DashboardPage() {
       return acc;
     }, {} as Record<Department, boolean>)
   );
+  const [markAsUpcoming, setMarkAsUpcoming] = React.useState(false);
 
   const [filterSettings, setFilterSettings] = React.useState({
+    showUpcoming: true,
     showActive: true,
     showLaunched: true,
     planningOnly: false,
@@ -93,7 +95,6 @@ export default function DashboardPage() {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    // Show a loading state or a minimal message while checking auth or if not logged in
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
@@ -133,16 +134,12 @@ export default function DashboardPage() {
       departments.it = { tasks: [] };
     }
     
-    // This part seems to be correctly initializing the departments object.
-    // The issue with `(departments[deptKey.toLowerCase() as keyof typeof departments] as DepartmentDetails).notes`
-    // might be if a department (like 'it') isn't guaranteed to exist yet.
-    // The current logic for `departments.it` handles this specific case.
-
     const newProject: StoreProject = {
       id: newProjectId,
       name: newProjectName,
       location: newProjectLocation,
-      status: "Planning",
+      status: "Planning", // New projects default to Planning
+      isUpcoming: markAsUpcoming,
       startDate: formatDate(today),
       projectedLaunchDate: formatDate(addDays(today, 60)),
       currentProgress: 0,
@@ -173,13 +170,19 @@ export default function DashboardPage() {
       acc[curr] = false;
       return acc;
     }, {} as Record<Department, boolean>));
+    setMarkAsUpcoming(false);
     setIsAddProjectDialogOpen(false);
   };
+
+  const upcomingProjects = React.useMemo(() => {
+    if (!filterSettings.showUpcoming) return [];
+    return dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
+  }, [dashboardProjects, filterSettings.showUpcoming]);
 
 
   const activeProjects = React.useMemo(() => {
     if (!filterSettings.showActive) return [];
-    let projects = dashboardProjects.filter(p => p.status !== "Launched");
+    let projects = dashboardProjects.filter(p => p.status !== "Launched" && !p.isUpcoming);
     if (filterSettings.planningOnly) {
       projects = projects.filter(p => p.status === "Planning");
     }
@@ -208,11 +211,17 @@ export default function DashboardPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                 <DropdownMenuCheckboxItem
+                  checked={filterSettings.showUpcoming}
+                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showUpcoming: !!checked }))}
+                >
+                  Upcoming
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={filterSettings.showActive}
                   onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showActive: !!checked }))}
                 >
-                  Active
+                  Active (Not Upcoming)
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={filterSettings.showLaunched}
@@ -230,7 +239,12 @@ export default function DashboardPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <Dialog open={isAddProjectDialogOpen} onOpenChange={setIsAddProjectDialogOpen}>
+            <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
+                setIsAddProjectDialogOpen(isOpen);
+                if (!isOpen) {
+                    setMarkAsUpcoming(false); // Reset checkbox state on close
+                }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1">
                   <PlusCircle className="h-3.5 w-3.5" />
@@ -288,6 +302,19 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="markUpcoming" className="text-right">
+                      Options
+                    </Label>
+                    <div className="col-span-3 flex items-center space-x-2">
+                      <Checkbox
+                        id="markUpcoming"
+                        checked={markAsUpcoming}
+                        onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
+                      />
+                      <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
@@ -300,10 +327,29 @@ export default function DashboardPage() {
           </div>
       </div>
 
+      {filterSettings.showUpcoming && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">
+            Upcoming Projects ({upcomingProjects.length})
+          </h2>
+          {upcomingProjects.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {upcomingProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              No projects currently marked as upcoming.
+            </p>
+          )}
+        </section>
+      )}
+
       {filterSettings.showActive && (
         <section>
           <h2 className="text-xl font-semibold mb-4">
-            {filterSettings.planningOnly ? "Planning Projects" : "Active Projects"} ({activeProjects.length})
+            {filterSettings.planningOnly ? "Planning Projects (Active)" : "Active Projects"} ({activeProjects.length})
           </h2>
           {activeProjects.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,7 +359,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <p className="text-muted-foreground">
-              {filterSettings.planningOnly ? "No projects currently in planning phase." : "No active projects matching filters."}
+              {filterSettings.planningOnly ? "No active projects currently in planning phase." : "No active projects matching filters."}
             </p>
           )}
         </section>
@@ -334,9 +380,10 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {!filterSettings.showActive && !filterSettings.showLaunched && (
+      {!filterSettings.showUpcoming && !filterSettings.showActive && !filterSettings.showLaunched && (
          <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
       )}
     </div>
   );
 }
+
