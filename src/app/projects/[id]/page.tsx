@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import * as React from "react";
@@ -8,8 +9,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getProjectById } from "@/lib/data"; 
-import type { Task, DocumentFile, Comment, StoreProject, Department } from "@/types";
+import { getProjectById, mockProjects } from "@/lib/data"; 
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -130,7 +131,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       return;
     }
 
-    const newTask: Task = {
+    const newTaskToAdd: Task = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: newTaskName,
       department: newTaskDepartment,
@@ -141,21 +142,49 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
-      const updatedTasks = [...prevProjectData.tasks, newTask];
-      const newOverallProgress = calculateOverallProgress(updatedTasks);
-      const updatedDepartments = { ...prevProjectData.departments };
-      if (updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments]) {
-        updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments].tasks = [
-          ...updatedDepartments[newTaskDepartment.toLowerCase() as keyof typeof updatedDepartments].tasks,
-          newTask
-        ];
+
+      // 1. Update the root tasks list
+      const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
+      
+      // 2. Re-derive department tasks from the new updatedRootTasks
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments)) as StoreProject['departments']; 
+      
+      for (const deptKey of Object.keys(newDepartmentsState) as Array<keyof typeof newDepartmentsState>) {
+        const deptDefinition = newDepartmentsState[deptKey];
+        if (deptDefinition) {
+            const departmentNameFromKey = (deptKey.charAt(0).toUpperCase() + deptKey.slice(1)) as Department;
+            
+            newDepartmentsState[deptKey] = {
+                ...deptDefinition, 
+                tasks: updatedRootTasks.filter(task => task.department === departmentNameFromKey),
+            };
+        }
       }
-      return {
+      
+      // Explicitly handle IT department if new task is for IT, as IT might not be in Object.keys if it was optional and not initially present
+      if (newTaskToAdd.department === "IT") {
+        newDepartmentsState.it = {
+          ...(prevProjectData.departments.it || { tasks: [] }), // Initialize if IT didn't exist, keep old notes
+          tasks: updatedRootTasks.filter(task => task.department === "IT")
+        };
+      }
+
+      const newOverallProgress = calculateOverallProgress(updatedRootTasks);
+
+      const finalUpdatedProjectData: StoreProject = {
         ...prevProjectData,
-        tasks: updatedTasks,
+        tasks: updatedRootTasks,
         currentProgress: newOverallProgress,
-        departments: updatedDepartments,
+        departments: newDepartmentsState,
       };
+
+      // Update the global mockProjects array
+      const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = { ...finalUpdatedProjectData }; // Store a copy
+      }
+      
+      return finalUpdatedProjectData;
     });
 
     setNewTaskName("");
@@ -182,8 +211,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     const newDocument: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: newDocumentName,
-      type: newDocumentType as DocumentFile['type'], // Ensure type is valid
-      url: newDocumentType === "3D Render" && newDocumentFile.type.startsWith('image/') ? URL.createObjectURL(newDocumentFile) : `https://placehold.co/300x150.png`, // Placeholder for non-images or if not an image
+      type: newDocumentType as DocumentFile['type'], 
+      url: newDocumentType === "3D Render" && newDocumentFile.type.startsWith('image/') ? URL.createObjectURL(newDocumentFile) : `https://placehold.co/300x150.png`, 
       size: `${(newDocumentFile.size / 1024).toFixed(1)} KB`,
       uploadedAt: new Date().toISOString().split('T')[0],
       uploadedBy: "Current User",
@@ -192,10 +221,15 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
-      return {
+      const updatedProject = {
         ...prevProjectData,
         documents: [newDocument, ...prevProjectData.documents],
       };
+      const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = updatedProject;
+      }
+      return updatedProject;
     });
 
     setNewDocumentFile(null);
@@ -203,11 +237,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setNewDocumentType("");
     setNewDocumentDataAiHint("");
     setIsAddDocumentDialogOpen(false);
-    
-    // Clean up the object URL after it's no longer needed if we were to display it directly and then remove it
-    // For now, picsum is fine for renders, and # for others.
-    // If using URL.createObjectURL, and the image component is unmounted or document removed, it should be revoked:
-    // if (newDocument.url.startsWith('blob:')) { URL.revokeObjectURL(newDocument.url); }
   };
 
 
@@ -221,7 +250,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         text: newCommentText,
         replies: [],
       };
-      setProjectComments(prevComments => [newComment, ...prevComments]);
+      const updatedComments = [newComment, ...projectComments];
+      setProjectComments(updatedComments);
+      
+      setProjectData(prev => {
+        if (!prev) return null;
+        const updatedProject = {...prev, comments: updatedComments};
+        const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
+        if (projectIndex !== -1) {
+            mockProjects[projectIndex] = updatedProject;
+        }
+        return updatedProject;
+      });
       setNewCommentText("");
     }
   };
@@ -249,7 +289,17 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         return comment;
       });
     };
-    setProjectComments(prevComments => addReplyRecursively(prevComments));
+    const updatedComments = addReplyRecursively(projectComments);
+    setProjectComments(updatedComments);
+    setProjectData(prev => {
+        if (!prev) return null;
+        const updatedProject = {...prev, comments: updatedComments};
+        const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
+        if (projectIndex !== -1) {
+            mockProjects[projectIndex] = updatedProject;
+        }
+        return updatedProject;
+    });
   };
 
   const { departments } = projectData;
@@ -464,7 +514,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               )}
             </DepartmentCard>
-            {projectData.departments.it && departments.it.tasks.length > 0 && (
+            {/* Ensure IT department card is rendered only if 'it' department data exists and has tasks */}
+            {departments.it && departments.it.tasks.length > 0 && (
                 <DepartmentCard title="IT Team" icon={MilestoneIcon} /* Replace with actual IT icon */ tasks={departments.it.tasks} notes={departments.it.notes} />
             )}
           </div>
@@ -649,3 +700,4 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
