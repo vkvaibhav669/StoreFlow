@@ -222,7 +222,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
-      // Ensure the target department exists, especially if it wasn't selected during project creation
       const targetDeptKey = newTaskToAdd.department.toLowerCase() as keyof StoreProject['departments'];
       if (!newDepartmentsState[targetDeptKey]) {
         if (newTaskToAdd.department === "Marketing") {
@@ -232,12 +231,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
       }
 
-      // Rebuild all department task lists from the single source of truth (updatedRootTasks)
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        
-        // Only process if the department exists for this project
-        if (newDepartmentsState[currentDeptKeyString]) {
+        if (newDepartmentsState[currentDeptKeyString]) { 
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
@@ -429,13 +425,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
       const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
 
-      // Remove task from old department if it changed
       if (newDepartment !== selectedTask.department && newDepartmentsState[oldDeptKey]) {
         (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
           ((newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id);
       }
       
-      // Ensure new department exists and add task
       if (!newDepartmentsState[newDeptKey]) {
          if (newDepartment === "Marketing") {
            newDepartmentsState[newDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
@@ -443,15 +437,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
            newDepartmentsState[newDeptKey] = { tasks: [] };
          }
       }
-      // Add task to new department (or update in existing if department didn't change)
-      // by rebuilding the tasks list for the new/current department from the updatedRootTasks.
       (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === newDepartment);
 
 
-      // Rebuild all department task lists to ensure consistency
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[currentDeptKeyString]) { // Only if department exists on project
+        if (newDepartmentsState[currentDeptKeyString]) { 
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
@@ -818,7 +809,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       </Card>
 
       <Tabs defaultValue="departments">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -1262,3 +1253,5 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
+    
