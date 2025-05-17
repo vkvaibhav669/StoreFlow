@@ -47,7 +47,7 @@ export const siteConfig: SiteConfig = {
       icon: KanbanSquare,
     },
     {
-      title: "Take Approval",
+      title: "Request for Approval",
       href: "/approval",
       icon: ClipboardCheck,
     }
