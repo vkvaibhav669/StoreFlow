@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { mockProjects } from "@/lib/data";
-import type { Task, StoreProject, Department } from "@/types";
+import type { Task, StoreProject, Department, TaskPriority } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -13,8 +13,8 @@ import { Package2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
-import { cn } from "@/lib/utils"; // Import cn
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -25,15 +25,17 @@ type TaskStatus = Task["status"];
 const KANBAN_COLUMNS: TaskStatus[] = ["Pending", "In Progress", "Blocked", "Completed"];
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+const allPossiblePriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 
 export default function KanbanBoardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { open: sidebarOpen } = useSidebar(); // Get sidebar state
+  const { open: sidebarOpen } = useSidebar();
 
   const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
   const [selectedProject, setSelectedProject] = React.useState<string | "All">("All");
+  const [selectedPriority, setSelectedPriority] = React.useState<TaskPriority | "All">("All");
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -44,7 +46,7 @@ export default function KanbanBoardPage() {
   React.useEffect(() => {
     const allTasks: KanbanTask[] = [];
     mockProjects.forEach((project) => {
-      project.tasks.forEach((task) => {
+      (project.tasks || []).forEach((task) => {
         allTasks.push({
           ...task,
           projectName: project.name,
@@ -57,20 +59,13 @@ export default function KanbanBoardPage() {
 
   const filteredTasks = React.useMemo(() => {
     return tasksWithProjectInfo.filter((task) => {
-        const isSpecificDepartmentSelected = selectedDepartment !== "All";
-        const isSpecificProjectSelected = selectedProject !== "All";
+      const projectMatch = selectedProject === "All" || task.projectId === selectedProject;
+      const departmentMatch = selectedDepartment === "All" || task.department === selectedDepartment;
+      const priorityMatch = selectedPriority === "All" || task.priority === selectedPriority;
 
-        if (isSpecificDepartmentSelected && isSpecificProjectSelected) {
-            return task.department === selectedDepartment || task.projectId === selectedProject;
-        } else if (isSpecificDepartmentSelected) {
-            return task.department === selectedDepartment;
-        } else if (isSpecificProjectSelected) {
-            return task.projectId === selectedProject;
-        } else {
-            return true;
-        }
+      return projectMatch && departmentMatch && priorityMatch;
     });
-  }, [tasksWithProjectInfo, selectedDepartment, selectedProject]);
+  }, [tasksWithProjectInfo, selectedProject, selectedDepartment, selectedPriority]);
 
   const tasksByStatus = React.useMemo(() => {
     const grouped: Record<TaskStatus, KanbanTask[]> = {
@@ -99,7 +94,7 @@ export default function KanbanBoardPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold md:text-3xl">Kanban Board</h1>
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <div className="flex-1 min-w-[150px]">
@@ -134,17 +129,33 @@ export default function KanbanBoardPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex-1 min-w-[150px]">
+            <Label htmlFor="priority-filter" className="text-xs text-muted-foreground">Filter by Priority</Label>
+            <Select value={selectedPriority} onValueChange={(value) => setSelectedPriority(value as TaskPriority | "All")}>
+              <SelectTrigger id="priority-filter" className="h-9">
+                <SelectValue placeholder="Select Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Priorities</SelectItem>
+                {allPossiblePriorities.map((priority) => (
+                  <SelectItem key={priority} value={priority}>
+                    {priority}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       <ScrollArea className="flex-grow">
         <div className="flex gap-4 pb-4 min-w-max">
           {KANBAN_COLUMNS.map((status) => (
-            <Card 
-              key={status} 
+            <Card
+              key={status}
               className={cn(
-                "flex-shrink-0 h-full flex flex-col transition-all duration-300 ease-in-out", 
-                sidebarOpen ? "w-[220px]" : "w-[280px]" // Dynamically set width
+                "flex-shrink-0 h-full flex flex-col transition-all duration-300 ease-in-out",
+                sidebarOpen ? "w-[220px]" : "w-[280px]"
               )}
             >
               <CardHeader className="p-3 border-b">
