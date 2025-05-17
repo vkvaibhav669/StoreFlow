@@ -154,8 +154,14 @@ export default function KanbanBoardPage() {
             <Card
               key={status}
               className={cn(
-                "flex-shrink-0 h-full flex flex-col transition-all duration-300 ease-in-out",
-                sidebarOpen ? "w-[220px]" : "w-[280px]"
+                "h-full flex-shrink-0 flex flex-col", // Base styles
+                "w-[240px]", // Default for smallest screens (mobile)
+                "sm:w-[260px]", // Slightly wider for small tablets/landscape phones
+                // Desktop and larger tablets, considering sidebar state
+                sidebarOpen
+                  ? "md:w-[220px] lg:w-[240px]" // Sidebar is open
+                  : "md:w-[280px] lg:w-[300px]", // Sidebar is closed
+                "transition-all duration-300 ease-in-out" // Keep transition
               )}
             >
               <CardHeader className="p-3 border-b">
@@ -185,3 +191,4 @@ export default function KanbanBoardPage() {
     </div>
   );
 }
+
