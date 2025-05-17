@@ -19,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Home } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -151,8 +151,8 @@ function Header() {
   const notificationCount = notifications.length;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <SidebarTrigger className="md:hidden" />
+    <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6">
+      <SidebarTrigger className="md:hidden" /> {/* Mobile sidebar trigger */}
       <div className="ml-auto flex items-center gap-4">
         {user && ( // Only show notifications if logged in
           <DropdownMenu>
@@ -246,15 +246,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Redirect to signin page if not authenticated and not on auth pages
   React.useEffect(() => {
     if (!loading && !user && !pathname.startsWith('/auth')) {
       router.replace('/auth/signin');
     }
   }, [user, loading, pathname, router]);
 
-
-  // If loading, show a minimal layout or a global loader
   if (loading && !pathname.startsWith('/auth')) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40">
@@ -264,51 +261,44 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
   
-  // If not logged in and trying to access a non-auth page, this will be handled by useEffect redirect.
-  // Auth pages should render without the main sidebar layout.
   if (!user && !loading && pathname.startsWith('/auth')) {
-    return <>{children}</>; // Render only auth page content
+    return <>{children}</>; 
   }
-
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className='flex min-h-screen w-full flex-col bg-muted/40'>
-        <Sidebar collapsible='icon' className='hidden border-r md:block peer'>
-          <SidebarHeader className='h-14 flex items-center px-4 border-b sticky top-0 z-10'>
-            <Link
-              href={user ? '/dashboard' : '/auth/signin'} // Dynamic link based on auth state
-              className='flex items-center gap-2 font-semibold'
-            >
-              <Package2 className='h-6 w-6 text-primary' />
-              <span className={cn(
-                "text-lg",
-                "group-data-[collapsible=icon]/sidebar:hidden delay-300 whitespace-nowrap"
-              )}>
-                {siteConfig.name}
-              </span>
-            </Link>
-          </SidebarHeader>
-          <SidebarContent className='flex-1 overflow-y-auto'>
-            <ScrollArea className='h-full'>
-              <SidebarNav />
-            </ScrollArea>
-          </SidebarContent>
-          {user && ( // Only show toggle if user is logged in
+      <div className='flex h-screen w-full overflow-hidden bg-muted/40'>
+        
+        {user && (
+          <Sidebar collapsible='icon' className='hidden border-r bg-sidebar md:flex md:flex-col peer'>
+            <SidebarHeader className='h-14 flex items-center px-4 border-b sticky top-0 z-10 bg-sidebar'>
+              <Link
+                href={user ? '/dashboard' : '/auth/signin'}
+                className='flex items-center gap-2 font-semibold'
+              >
+                <Package2 className='h-6 w-6 text-primary' />
+                <span className={cn(
+                  "text-lg",
+                  "group-data-[collapsible=icon]/sidebar:hidden delay-300 whitespace-nowrap"
+                )}>
+                  {siteConfig.name}
+                </span>
+              </Link>
+            </SidebarHeader>
+            <SidebarContent className='flex-1 overflow-y-auto'>
+              <ScrollArea className='h-full'>
+                <SidebarNav />
+              </ScrollArea>
+            </SidebarContent>
             <SidebarFooter className='p-2 border-t'>
               <DesktopSidebarToggle />
             </SidebarFooter>
-          )}
-        </Sidebar>
-        <div className={cn(
-            "flex flex-col flex-1", 
-            user ? "md:pl-[var(--sidebar-width-icon)]" : "", // No padding if no user (sidebar effectively hidden)
-            user ? "peer-data-[state=expanded]:md:pl-[var(--sidebar-width)]" : "",
-            "transition-[padding-left] duration-300 ease-in-out" 
-          )}
-        >
+          </Sidebar>
+        )}
+
+        <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
-          <SidebarInset className="p-4 sm:px-6 sm:py-4 md:gap-8"> {/* Changed sm:py-0 to sm:py-4 */}
+          <SidebarInset className="p-4 sm:px-6 sm:py-4"> {/* SidebarInset is already flex-1 and overflow-y-auto */}
             {children}
           </SidebarInset>
         </div>
