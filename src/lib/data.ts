@@ -9,16 +9,11 @@ const addDays = (date: Date, days: number) => {
   return result;
 };
 
-const commonTasks: Omit<Task, 'id' | 'department'>[] = [
-  { name: "Property Lease Agreement.pdf", type: "Property Document", url: "#", uploadedAt: formatDate(addDays(today, -10)), size: "2.5MB", uploadedBy: "Legal Team" },
-  { name: "Store_Front_Render_V3.png", type: "3D Render", url: "https://picsum.photos/seed/render1/600/400", uploadedAt: formatDate(addDays(today, -2)), size: "5.1MB", uploadedBy: "Design Team", dataAiHint: "store render" },
-  { name: "Launch Campaign Brief.docx", type: "Marketing Collateral", url: "#", uploadedAt: formatDate(addDays(today, -1)), size: "1.2MB", uploadedBy: "Marketing Team" },
-];
-
 const sampleDocs: Omit<DocumentFile, 'id'>[] = [
-  { name: "Property Lease Agreement.pdf", type: "Property Document", url: "#", uploadedAt: formatDate(addDays(today, -10)), size: "2.5MB", uploadedBy: "Legal Team" },
-  { name: "Store_Front_Render_V3.png", type: "3D Render", url: "https://picsum.photos/seed/render1/600/400", uploadedAt: formatDate(addDays(today, -2)), size: "5.1MB", uploadedBy: "Design Team", dataAiHint: "store render" },
+  { name: "Property Lease Agreement.pdf", type: "Property Document", url: "#", uploadedAt: formatDate(addDays(today, -10)), size: "2.5MB", uploadedBy: "Legal Team", hodOnly: true },
+  { name: "Store_Front_Render_V3.png", type: "3D Render", url: "https://picsum.photos/seed/render1/600/400", uploadedAt: formatDate(addDays(today, -2)), size: "5.1MB", uploadedBy: "Design Team", dataAiHint: "store render", hodOnly: false },
   { name: "Launch Campaign Brief.docx", type: "Marketing Collateral", url: "#", uploadedAt: formatDate(addDays(today, -1)), size: "1.2MB", uploadedBy: "Marketing Team" },
+  { name: "Confidential Strategy Doc.pdf", type: "Other", url: "#", uploadedAt: formatDate(addDays(today, -5)), size: "750KB", uploadedBy: "Management", hodOnly: true },
 ];
 
 const sampleMilestones: Omit<Milestone, 'id'>[] = [
@@ -130,7 +125,7 @@ export const mockProjects: StoreProject[] = [
     },
     threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
     tasks: [
-        ...tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001', 'task-it-001'].includes(t.id)), // Added task-it-001
+        ...tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001', 'task-it-001'].includes(t.id)), 
         { id: 'task-df-001', name: 'Review safety protocols', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 3)), comments: [] }
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
@@ -169,10 +164,10 @@ export const mockProjects: StoreProject[] = [
       kickoffDate: formatDate(addDays(today, 5)),
     },
     tasks: [
-        ...tasks.filter(t => ['task-prop-002', 'task-it-002'].includes(t.id)), // Added task-it-002
+        ...tasks.filter(t => ['task-prop-002', 'task-it-002'].includes(t.id)), 
         { id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)), comments: [] }
     ],
-    documents: [sampleDocs[0]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})),
+    documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})), // Include a mix of HOD and non-HOD
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
     departments: {
         property: { notes: "Initial site visit completed.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-002'].includes(t.id)) },

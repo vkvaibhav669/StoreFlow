@@ -33,6 +33,7 @@ export interface DocumentFile {
   uploadedBy?: string;
   size: string;
   dataAiHint?: string;
+  hodOnly?: boolean; // Added for HOD-only visibility
 }
 
 export interface Milestone {

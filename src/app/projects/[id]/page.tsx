@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data"; 
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -120,6 +121,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newDocumentName, setNewDocumentName] = React.useState("");
   const [newDocumentType, setNewDocumentType] = React.useState<DocumentFile['type'] | "">("");
   const [newDocumentDataAiHint, setNewDocumentDataAiHint] = React.useState("");
+  const [newDocumentHodOnly, setNewDocumentHodOnly] = React.useState(false);
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
@@ -222,7 +224,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
-      // Ensure the target department exists
       const targetDeptKey = newTaskToAdd.department.toLowerCase() as keyof StoreProject['departments'];
       if (!newDepartmentsState[targetDeptKey]) {
         if (newTaskToAdd.department === "Marketing") {
@@ -232,12 +233,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
       }
       
-      // Rebuild all department task lists from the single source of truth (updatedRootTasks)
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[currentDeptKeyString]) { // Only update if the department is part of this project
+        if (newDepartmentsState[currentDeptKeyString]) { 
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
-        } else if (newTaskToAdd.department === deptEnumKey) { // Special case: if the task is for a department not yet in project.departments
+        } else if (newTaskToAdd.department === deptEnumKey && !newDepartmentsState[currentDeptKeyString]) { 
             if(deptEnumKey === "Marketing") {
                  newDepartmentsState[currentDeptKeyString] = { tasks: [newTaskToAdd], preLaunchCampaigns: [], postLaunchCampaigns: [] };
             } else {
@@ -296,6 +296,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       uploadedAt: new Date().toISOString().split('T')[0],
       uploadedBy: user?.name || user?.email || "System",
       dataAiHint: newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : undefined,
+      hodOnly: newDocumentHodOnly,
     };
 
     setProjectData(prevProjectData => {
@@ -316,6 +317,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setNewDocumentName("");
     setNewDocumentType("");
     setNewDocumentDataAiHint("");
+    setNewDocumentHodOnly(false);
     setIsAddDocumentDialogOpen(false);
   };
 
@@ -430,17 +432,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
-      // Logic to update department specific task lists
-      // Remove from old department if department changed
       const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
       if (newDepartment !== selectedTask.department && newDepartmentsState[oldDeptKey]) {
         (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
           ((newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id);
       }
       
-      // Add/Update in new department
       const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
-      // Ensure the new department exists in the project's departments structure
       if (!newDepartmentsState[newDeptKey]) {
          if (newDepartment === "Marketing") {
            newDepartmentsState[newDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
@@ -448,15 +446,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
            newDepartmentsState[newDeptKey] = { tasks: [] };
          }
       }
-      // Add the updated task to the new department (or update if it was already there)
-      // Better to rebuild:
-      // (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks = 
-      //    [...((newDepartmentsState[newDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id), updatedTask];
 
-      // Rebuild all department task lists from the single source of truth (updatedRootTasks)
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[currentDeptKeyString]) { // Only update if the department is part of this project
+        if (newDepartmentsState[currentDeptKeyString]) { 
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
@@ -603,6 +596,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const { departments = {} } = projectData; 
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
 
+  const visibleDocuments = React.useMemo(() => {
+    if (!projectData) return [];
+    return projectData.documents.filter(doc => {
+      if (doc.hodOnly) {
+        return isUserAdminOrHod;
+      }
+      return true;
+    });
+  }, [projectData, isUserAdminOrHod]);
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -707,7 +710,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isAddDocumentDialogOpen} onOpenChange={setIsAddDocumentDialogOpen}>
+            <Dialog open={isAddDocumentDialogOpen} onOpenChange={(isOpen) => {
+                setIsAddDocumentDialogOpen(isOpen);
+                if (!isOpen) { 
+                    setNewDocumentFile(null);
+                    setNewDocumentName("");
+                    setNewDocumentType("");
+                    setNewDocumentDataAiHint("");
+                    setNewDocumentHodOnly(false);
+                }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1">
                   <UploadCloud className="h-3.5 w-3.5" />
@@ -760,6 +772,19 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <Input id="docAiHint" value={newDocumentDataAiHint} onChange={(e) => setNewDocumentDataAiHint(e.target.value)} className="col-span-3" placeholder="e.g., modern storefront"/>
                     </div>
                   )}
+                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="docHodOnly" className="text-right">
+                      Visibility
+                    </Label>
+                    <div className="col-span-3 flex items-center space-x-2">
+                        <Checkbox
+                            id="docHodOnly"
+                            checked={newDocumentHodOnly}
+                            onCheckedChange={(checked) => setNewDocumentHodOnly(!!checked)}
+                        />
+                        <Label htmlFor="docHodOnly" className="font-normal text-sm">Share with HOD only</Label>
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
@@ -924,13 +949,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         <TabsContent value="documents" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Documents ({projectData.documents.length})</CardTitle>
+              <CardTitle>Documents ({visibleDocuments.length})</CardTitle>
               <CardDescription>All project-related documents.</CardDescription>
             </CardHeader>
             <CardContent>
-               {projectData.documents.length > 0 ? (
+               {visibleDocuments.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {projectData.documents.map((doc) => (
+                  {visibleDocuments.map((doc) => (
                     <Card key={doc.id} className="overflow-hidden">
                        {(doc.type === "3D Render" && doc.url.startsWith("blob:")) || (doc.type === "3D Render" && doc.url.startsWith("https")) ? (
                          <Image src={doc.url} alt={doc.name} width={300} height={150} className="w-full h-32 object-cover" data-ai-hint={doc.dataAiHint || "office document"} />
@@ -940,7 +965,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                          </div>
                        )}
                       <CardContent className="p-3">
-                        <p className="font-medium text-sm truncate" title={doc.name}>{doc.name}</p>
+                        <p className="font-medium text-sm truncate flex items-center" title={doc.name}>
+                          {doc.name}
+                          {doc.hodOnly && <ShieldCheck className="ml-2 h-4 w-4 text-primary" title="HOD Only" />}
+                        </p>
                         <p className="text-xs text-muted-foreground">{doc.type} - {doc.size}</p>
                         <p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt} by {doc.uploadedBy || "System"}</p>
                       </CardContent>
@@ -955,7 +983,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">No documents uploaded for this project yet.</p>
+                <p className="text-muted-foreground">No documents viewable by you for this project yet.</p>
               )}
             </CardContent>
           </Card>
@@ -1278,7 +1306,3 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
-
-    
-
-    
