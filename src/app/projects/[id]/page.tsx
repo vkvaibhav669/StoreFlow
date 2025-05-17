@@ -222,6 +222,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
+      // Ensure the target department exists
       const targetDeptKey = newTaskToAdd.department.toLowerCase() as keyof StoreProject['departments'];
       if (!newDepartmentsState[targetDeptKey]) {
         if (newTaskToAdd.department === "Marketing") {
@@ -230,11 +231,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           newDepartmentsState[targetDeptKey] = { tasks: [] };
         }
       }
-
+      
+      // Rebuild all department task lists from the single source of truth (updatedRootTasks)
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[currentDeptKeyString]) { 
+        if (newDepartmentsState[currentDeptKeyString]) { // Only update if the department is part of this project
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
+        } else if (newTaskToAdd.department === deptEnumKey) { // Special case: if the task is for a department not yet in project.departments
+            if(deptEnumKey === "Marketing") {
+                 newDepartmentsState[currentDeptKeyString] = { tasks: [newTaskToAdd], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+            } else {
+                 newDepartmentsState[currentDeptKeyString] = { tasks: [newTaskToAdd] };
+            }
         }
       });
       
@@ -422,14 +430,17 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
+      // Logic to update department specific task lists
+      // Remove from old department if department changed
       const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
-      const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
-
       if (newDepartment !== selectedTask.department && newDepartmentsState[oldDeptKey]) {
         (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
           ((newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id);
       }
       
+      // Add/Update in new department
+      const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
+      // Ensure the new department exists in the project's departments structure
       if (!newDepartmentsState[newDeptKey]) {
          if (newDepartment === "Marketing") {
            newDepartmentsState[newDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
@@ -437,12 +448,15 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
            newDepartmentsState[newDeptKey] = { tasks: [] };
          }
       }
-      (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === newDepartment);
+      // Add the updated task to the new department (or update if it was already there)
+      // Better to rebuild:
+      // (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks = 
+      //    [...((newDepartmentsState[newDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id), updatedTask];
 
-
+      // Rebuild all department task lists from the single source of truth (updatedRootTasks)
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[currentDeptKeyString]) { 
+        if (newDepartmentsState[currentDeptKeyString]) { // Only update if the department is part of this project
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
@@ -809,7 +823,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       </Card>
 
       <Tabs defaultValue="departments">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -820,31 +834,42 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         <TabsContent value="departments" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property?.tasks || [])} />}
-            {departments.project && <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project?.tasks || [])}>
+            
+            {departments.project && 
+              <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project?.tasks || [])}>
                 {projectData.threeDRenderUrl && (
                     <div className="my-2">
                         <p className="text-xs font-medium mb-1">3D Store Visual:</p>
                         <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render" />
                     </div>
                 )}
-            </DepartmentCard>}
+              </DepartmentCard>
+            }
+            
             {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising?.tasks || [])} />}
-            {departments.hr && <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [])}>
-              {departments.hr.totalNeeded && (
-                 <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
-              )}
-            </DepartmentCard>}
-            {departments.marketing && <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing?.tasks || [])}>
-              {departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
-                  <ul className="space-y-0.5 text-xs">
-                    {departments.marketing.preLaunchCampaigns.slice(0,2).map(c => <li key={c.id}>{c.name} ({c.status})</li>)}
-                    {departments.marketing.preLaunchCampaigns.length > 2 && <li>+{departments.marketing.preLaunchCampaigns.length - 2} more</li>}
-                  </ul>
-                </div>
-              )}
-            </DepartmentCard>}
+            
+            {departments.hr && 
+              <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [])}>
+                {departments.hr.totalNeeded && (
+                  <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
+                )}
+              </DepartmentCard>
+            }
+            
+            {departments.marketing && 
+              <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing?.tasks || [])}>
+                {departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
+                    <ul className="space-y-0.5 text-xs">
+                      {departments.marketing.preLaunchCampaigns.slice(0,2).map(c => <li key={c.id}>{c.name} ({c.status})</li>)}
+                      {departments.marketing.preLaunchCampaigns.length > 2 && <li>+{departments.marketing.preLaunchCampaigns.length - 2} more</li>}
+                    </ul>
+                  </div>
+                )}
+              </DepartmentCard>
+            }
+
             {departments.it && (
                 <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [])}/>
             )}
@@ -1253,5 +1278,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
+    
 
     
