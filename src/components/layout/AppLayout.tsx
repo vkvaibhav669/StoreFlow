@@ -273,22 +273,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Sidebar collapsible='icon' className='group hidden border-r bg-sidebar md:flex md:flex-col peer'>
             <SidebarHeader className={cn(
                 'h-14 flex items-center border-b sticky top-0 z-10 bg-sidebar',
-                'group-data-[state=expanded]:px-4',
-                'group-data-[state=collapsed]:px-1 group-data-[state=collapsed]:justify-center'
+                'group-data-[state=expanded]:px-4 group-data-[state=expanded]:justify-start',
+                'group-data-[state=collapsed]:px-2 group-data-[state=collapsed]:justify-center'
               )}
             >
               <Link
                 href={user ? '/dashboard' : '/auth/signin'}
                 className={cn(
                   'font-semibold flex items-center',
-                  'group-data-[state=expanded]:gap-2',
-                  'group-data-[state=collapsed]:flex-col group-data-[state=collapsed]:gap-0.5'
+                  'group-data-[state=expanded]:gap-2'
                 )}
               >
                 <Package2 className='h-6 w-6 text-primary' />
                 <span className={cn(
                   "group-data-[state=expanded]:text-lg group-data-[state=expanded]:whitespace-nowrap",
-                  "group-data-[state=collapsed]:text-xs group-data-[state=collapsed]:text-center group-data-[state=collapsed]:leading-tight"
+                  "group-data-[state=collapsed]:hidden"
                 )}>
                   {siteConfig.name}
                 </span>
@@ -315,4 +314,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
