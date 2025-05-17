@@ -98,7 +98,10 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailsPage({ params: paramsProp }: { params: { id: string } }) {
+  const resolvedParams = React.use(paramsProp);
+  const projectId = resolvedParams.id;
+
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth(); 
   const router = useRouter();
@@ -138,7 +141,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user'; 
-    return user.role;
+    // For admin user, explicitly set role to 'admin'
+    if (user.email === 'vaibhhavrajkumar@gmail.com') return 'admin';
+    return user.role; // Default to user's role from auth
   }, [user]);
 
   React.useEffect(() => {
@@ -148,16 +153,19 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
+    if (authLoading) {
+      return; // Wait for auth to complete
+    }
     if (user) { 
-      const currentProject = getProjectById(params.id);
+      const currentProject = getProjectById(projectId); 
       if (currentProject) {
         setProjectData(currentProject);
         setProjectComments(currentProject.comments || []);
       } else {
-        notFound();
+        notFound(); 
       }
     }
-  }, [params.id, user]); 
+  }, [projectId, user, authLoading, router, notFound]); 
 
 
   if (authLoading || !user) {
@@ -222,9 +230,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
       
-      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
+      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       
       const targetDeptKey = newTaskToAdd.department.toLowerCase() as keyof StoreProject['departments'];
+
       if (!newDepartmentsState[targetDeptKey]) {
         if (newTaskToAdd.department === "Marketing") {
           newDepartmentsState[targetDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
@@ -235,14 +244,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        if (newDepartmentsState[currentDeptKeyString]) { 
+         if (newDepartmentsState[currentDeptKeyString]) { 
              (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
-        } else if (newTaskToAdd.department === deptEnumKey && !newDepartmentsState[currentDeptKeyString]) { 
-            if(deptEnumKey === "Marketing") {
-                 newDepartmentsState[currentDeptKeyString] = { tasks: [newTaskToAdd], preLaunchCampaigns: [], postLaunchCampaigns: [] };
-            } else {
-                 newDepartmentsState[currentDeptKeyString] = { tasks: [newTaskToAdd] };
-            }
         }
       });
       
@@ -252,7 +255,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         ...prevProjectData,
         tasks: updatedRootTasks,
         currentProgress: newOverallProgress,
-        departments: newDepartmentsState,
+        departments: newDepartmentsState as StoreProject['departments'],
       };
 
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
@@ -430,7 +433,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         task.id === selectedTask.id ? updatedTask : task
       );
 
-      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
+      let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       
       const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
       if (newDepartment !== selectedTask.department && newDepartmentsState[oldDeptKey]) {
@@ -461,7 +464,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         ...prevProjectData,
         tasks: updatedRootTasks,
         currentProgress: newOverallProgress,
-        departments: newDepartmentsState,
+        departments: newDepartmentsState as StoreProject['departments'],
       };
 
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
@@ -498,7 +501,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === selectedTask.id ? updatedTask : t);
       
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
@@ -509,7 +512,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
       });
 
-      const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState };
+      const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState as StoreProject['departments'] };
       const projectIndex = mockProjects.findIndex(p => p.id === finalProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = finalProjectData;
@@ -555,7 +558,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === taskId ? updatedTaskWithReply : t);
 
-      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
+      const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as Partial<StoreProject['departments']>;
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
         if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
@@ -566,7 +569,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         }
       });
 
-      const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState };
+      const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState as StoreProject['departments']};
       const projectIndex = mockProjects.findIndex(p => p.id === finalProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = finalProjectData;
@@ -1306,3 +1309,4 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
