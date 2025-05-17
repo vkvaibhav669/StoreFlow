@@ -33,7 +33,7 @@ export interface DocumentFile {
   uploadedBy?: string;
   size: string;
   dataAiHint?: string;
-  hodOnly?: boolean; // Added for HOD-only visibility
+  hodOnly?: boolean;
 }
 
 export interface Milestone {
@@ -57,12 +57,12 @@ export interface MarketingCampaign {
 export interface DepartmentDetails {
     notes?: string;
     tasks: Task[];
-    virtualPlanUrl?: string; // Specific to Merchandising
-    recruitmentStatus?: string; // Specific to HR
-    staffHired?: number; // Specific to HR
-    totalNeeded?: number; // Specific to HR
-    preLaunchCampaigns?: MarketingCampaign[]; // Specific to Marketing
-    postLaunchCampaigns?: MarketingCampaign[]; // Specific to Marketing
+    virtualPlanUrl?: string; 
+    recruitmentStatus?: string; 
+    staffHired?: number; 
+    totalNeeded?: number; 
+    preLaunchCampaigns?: MarketingCampaign[]; 
+    postLaunchCampaigns?: MarketingCampaign[]; 
 }
 
 
@@ -106,4 +106,23 @@ export interface User {
   name?: string;
   email: string;
   role: "admin" | "user" | "hod";
+}
+
+export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Withdrawn";
+
+export interface ApprovalRequest {
+  id: string;
+  title: string;
+  projectId?: string;
+  projectName?: string;
+  requestingDepartment: Department;
+  requestorName: string;
+  requestorEmail: string;
+  details: string;
+  approverName: string; 
+  approverEmail: string; // For filtering approvals assigned to current user
+  status: ApprovalStatus;
+  submissionDate: string; // ISO Date string
+  lastUpdateDate?: string; // ISO Date string for when status changed
+  approvalComments?: Comment[]; // Comments related to the approval/rejection itself
 }

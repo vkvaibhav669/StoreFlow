@@ -17,8 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { mockProjects } from "@/lib/data";
-import type { Department } from "@/types";
+import { mockProjects, addApprovalRequest, mockHeadOfficeContacts } from "@/lib/data";
+import type { Department, ApprovalRequest } from "@/types";
 import { Package2 } from "lucide-react";
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
@@ -32,7 +32,8 @@ export default function ApprovalPage() {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | undefined>(undefined);
   const [requestingDepartment, setRequestingDepartment] = React.useState<Department | "">("");
   const [details, setDetails] = React.useState("");
-  const [approver, setApprover] = React.useState("");
+  const [approverName, setApproverName] = React.useState("");
+  const [approverEmail, setApproverEmail] = React.useState(""); // For system use
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -41,11 +42,36 @@ export default function ApprovalPage() {
     }
   }, [user, authLoading, router]);
 
+  React.useEffect(() => {
+    if (requestingDepartment && requestingDepartment !== "") {
+      const hod = mockHeadOfficeContacts.find(
+        contact => contact.department.toLowerCase() === requestingDepartment.toLowerCase() && contact.role.startsWith("Head of")
+      );
+      if (hod) {
+        setApproverName(hod.name);
+        setApproverEmail(hod.email);
+      } else {
+        setApproverName(`Head of ${requestingDepartment}`);
+        setApproverEmail(`${requestingDepartment.toLowerCase()}.hod@storeflow.corp`); // Placeholder
+      }
+    } else {
+      setApproverName("");
+      setApproverEmail("");
+    }
+  }, [requestingDepartment]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!requestTitle || !requestingDepartment || !details || !approver) {
+    if (!user) {
+      toast({ title: "Authentication Error", description: "You must be logged in to submit a request.", variant: "destructive" });
+      setIsSubmitting(false);
+      router.push("/auth/signin");
+      return;
+    }
+
+    if (!requestTitle || !requestingDepartment || !details || !approverName) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields (Title, Department, Details, Approver).",
@@ -54,31 +80,36 @@ export default function ApprovalPage() {
       setIsSubmitting(false);
       return;
     }
+    
+    const selectedProject = selectedProjectId ? mockProjects.find(p => p.id === selectedProjectId) : undefined;
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const newRequestData: Omit<ApprovalRequest, 'id' | 'submissionDate' | 'status'> = {
+      title: requestTitle,
+      projectId: selectedProjectId === "N/A" ? undefined : selectedProjectId,
+      projectName: selectedProject?.name,
+      requestingDepartment: requestingDepartment as Department,
+      requestorName: user.name || user.email,
+      requestorEmail: user.email,
+      details: details,
+      approverName: approverName,
+      approverEmail: approverEmail, // Use the derived/set email
+    };
+
+    addApprovalRequest(newRequestData);
 
     toast({
       title: "Approval Request Submitted",
-      description: `Your request "${requestTitle}" has been sent to ${approver}.`,
+      description: `Your request "${requestTitle}" has been sent to ${approverName}.`,
     });
 
-    // Reset form
     setRequestTitle("");
     setSelectedProjectId(undefined);
     setRequestingDepartment("");
     setDetails("");
-    setApprover("");
+    // Approver name and email will reset via useEffect on department change or if department is cleared
     setIsSubmitting(false);
   };
 
-  React.useEffect(() => {
-    if (requestingDepartment && requestingDepartment !== "") {
-      setApprover(`Head of ${requestingDepartment}`);
-    } else {
-      setApprover("");
-    }
-  }, [requestingDepartment]);
 
   if (authLoading || !user) {
     return (
@@ -156,14 +187,19 @@ export default function ApprovalPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="approver">Approver (e.g., Head of Department) *</Label>
+              <Label htmlFor="approver">Approver *</Label>
               <Input
                 id="approver"
-                value={approver}
-                onChange={(e) => setApprover(e.target.value)}
+                value={approverName}
+                onChange={(e) => {
+                  setApproverName(e.target.value);
+                  // If manually changed, we might lose the email or need to re-derive.
+                  // For simplicity, if they edit name, email might become generic.
+                  const matchedContact = mockHeadOfficeContacts.find(c => c.name === e.target.value);
+                  setApproverEmail(matchedContact ? matchedContact.email : 'manual.approver@storeflow.corp');
+                }}
                 placeholder="Specify who needs to approve this request"
                 required
-                disabled={requestingDepartment !== ""} // Auto-filled if department is selected
               />
                {requestingDepartment && (
                 <p className="text-xs text-muted-foreground">

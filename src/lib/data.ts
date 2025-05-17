@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -92,10 +92,10 @@ const sampleTaskComments: Comment[] = [
 
 export const tasks: Task[] = [
   { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 7)), assignedTo: "IT Department Lead", comments: [] },
-  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "Current User", comments: [...sampleTaskComments] },
+  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "vaibhavvrajkumar@gmail.com", comments: [...sampleTaskComments] },
   { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', priority: 'Medium', dueDate: formatDate(addDays(today, -3)), assignedTo: "IT Support", comments: [] },
   { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "HR Specialist", comments: [] },
-  { id: 'task-mkt-001', name: 'Social Media Content Calendar', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "Current User", comments: [] },
+  { id: 'task-mkt-001', name: 'Social Media Content Calendar', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "vaibhavvrajkumar@gmail.com", comments: [] },
   { id: 'task-proj-001', name: 'Finalize Interior Layout', department: 'Project', status: 'Completed', priority: 'High', dueDate: formatDate(addDays(today, -10)), assignedTo: "Project Manager", comments: [] },
   { id: 'task-proj-002', name: 'Source Local Contractors', department: 'Project', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 2)), assignedTo: "Project Coordinator", comments: [] },
   { id: 'task-merch-001', name: 'Select Product SKUs', department: 'Merchandising', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "Merchandising Lead", comments: [] },
@@ -103,7 +103,7 @@ export const tasks: Task[] = [
   { id: 'task-prop-002', name: 'Negotiate Lease Terms', department: 'Property', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "Legal Team", comments: [] },
 ];
 
-export const mockProjects: StoreProject[] = [
+export let mockProjects: StoreProject[] = [
   {
     id: 'proj-001',
     name: 'Downtown Flagship Store',
@@ -126,7 +126,7 @@ export const mockProjects: StoreProject[] = [
     threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
     tasks: [
         ...tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001', 'task-it-001'].includes(t.id)), 
-        { id: 'task-df-001', name: 'Review safety protocols', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 3)), comments: [] }
+        { id: 'task-df-001', name: 'Review safety protocols', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 3)), comments: [] }
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-1-${i}`})),
@@ -165,16 +165,13 @@ export const mockProjects: StoreProject[] = [
     },
     tasks: [
         ...tasks.filter(t => ['task-prop-002', 'task-it-002'].includes(t.id)), 
-        { id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)), comments: [] }
+        { id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 12)), comments: [] }
     ],
-    documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})), // Include a mix of HOD and non-HOD
+    documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})), 
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
     departments: {
         property: { notes: "Initial site visit completed.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-002'].includes(t.id)) },
-        project: { tasks: [{ id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'Current User', dueDate: formatDate(addDays(today, 12)), comments: [] }] },
-        merchandising: { tasks: [] },
-        hr: { recruitmentStatus: "Pending", tasks: [] },
-        marketing: { preLaunchCampaigns: [], postLaunchCampaigns: [], tasks: [] },
+        project: { tasks: [{ id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 12)), comments: [] }] },
         it: { tasks: tasks.filter(t => t.department === 'IT' && ['task-it-002'].includes(t.id))}
     },
     comments: [sampleProjectComments[1]], 
@@ -203,14 +200,9 @@ export const mockProjects: StoreProject[] = [
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-3-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-3-${i}`, completed: true })),
     departments: {
-        property: { tasks: [] },
-        project: { tasks: [] },
-        merchandising: { tasks: [] },
-        hr: { recruitmentStatus: "Staff Onboarded", staffHired: 2, totalNeeded: 2, tasks: [] },
         marketing: {
             preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-3-${i}`, status: "Completed"})),
             postLaunchCampaigns: [{ id: 'camp-post-3-1', name: "Loyalty Program Push", type: "Digital", status: "Ongoing", startDate: formatDate(addDays(today, -14)), endDate: formatDate(addDays(today, 16)), budget: 2000 }],
-            tasks: []
         },
         it: { tasks: tasks.filter(t => t.department === 'IT' && ['task-it-003'].includes(t.id))}
     },
@@ -220,6 +212,122 @@ export const mockProjects: StoreProject[] = [
 
 export const getProjectById = (id: string): StoreProject | undefined => {
   const project = mockProjects.find(p => p.id === id);
-  // Create a deep copy to avoid modifying the original mockProjects array directly
   return project ? JSON.parse(JSON.stringify(project)) : undefined;
+};
+
+export const mockHeadOfficeContacts = [
+  { id: "ho-001", name: "Eleanor Vance", role: "Chief Executive Officer", department: "Executive Office", email: "e.vance@storeflow.corp", phone: "(555) 010-0001", avatarSeed: "eleanor" },
+  { id: "ho-002", name: "Marcus Thorne", role: "Chief Operations Officer", department: "Operations", email: "m.thorne@storeflow.corp", phone: "(555) 010-0002", avatarSeed: "marcus" },
+  { id: "ho-003", name: "Sophia Chen", role: "Head of Property Development", department: "Property", email: "s.chen@storeflow.corp", phone: "(555) 010-0003", avatarSeed: "sophia" },
+  { id: "ho-004", name: "James Rodriguez", role: "Head of Project Management", department: "Projects", email: "j.rodriguez@storeflow.corp", phone: "(555) 010-0004", avatarSeed: "james" },
+  { id: "ho-005", name: "Olivia Miller", role: "Head of Merchandising", department: "Merchandising", email: "o.miller@storeflow.corp", phone: "(555) 010-0005", avatarSeed: "olivia" },
+  { id: "ho-006", name: "David Lee", role: "Head of Human Resources", department: "HR", email: "d.lee@storeflow.corp", phone: "(555) 010-0006", avatarSeed: "david" },
+  { id: "ho-007", name: "Isabelle Moreau", role: "Head of Marketing", department: "Marketing", email: "i.moreau@storeflow.corp", phone: "(555) 010-0007", avatarSeed: "isabelle" },
+  { id: "ho-008", name: "Kenji Tanaka", role: "Head of IT", department: "IT", email: "k.tanaka@storeflow.corp", phone: "(555) 010-0008", avatarSeed: "kenji" },
+];
+
+
+export let mockApprovalRequests: ApprovalRequest[] = [
+  {
+    id: 'appr-001',
+    title: "Request for Additional Budget for Q3 Marketing",
+    projectName: "Downtown Flagship Store",
+    projectId: "proj-001",
+    requestingDepartment: "Marketing",
+    requestorName: "Vaibhav (Test User)",
+    requestorEmail: "vaibhavvrajkumar@gmail.com",
+    details: "Need an additional $5000 for targeted social media ads to boost pre-launch awareness. Expected ROI is an increase in footfall by 15% during opening week.",
+    approverName: "Isabelle Moreau", // Head of Marketing
+    approverEmail: "i.moreau@storeflow.corp",
+    status: "Pending",
+    submissionDate: formatDate(addDays(today, -2)),
+  },
+  {
+    id: 'appr-002',
+    title: "Approval for New Vendor Contract (Security Services)",
+    projectName: "Suburban Mall Outlet",
+    projectId: "proj-002",
+    requestingDepartment: "Project",
+    requestorName: "Project Coordinator A",
+    requestorEmail: "coordinator.a@storeflow.corp",
+    details: "Proposing to engage 'SecurePro Ltd.' for on-site security during mall operating hours. Contract details attached.",
+    approverName: "Vaibhav (Test User)", // Assuming test user is HOD of Projects for this
+    approverEmail: "vaibhavvrajkumar@gmail.com",
+    status: "Pending",
+    submissionDate: formatDate(addDays(today, -1)),
+  },
+  {
+    id: 'appr-003',
+    title: "Request for Overtime for IT Setup",
+    projectName: "Downtown Flagship Store",
+    projectId: "proj-001",
+    requestingDepartment: "IT",
+    requestorName: "IT Department Lead",
+    requestorEmail: "it.lead@storeflow.corp",
+    details: "Requesting approval for 10 hours of overtime for two IT technicians to complete network setup by EOW.",
+    approverName: "Vaibhhav Raj Kumar", // Admin
+    approverEmail: "vaibhhavrajkumar@gmail.com", 
+    status: "Pending",
+    submissionDate: formatDate(addDays(today, 0)),
+  },
+  {
+    id: 'appr-004',
+    title: "Approval for Property Lease Extension Option",
+    projectName: "Airport Kiosk",
+    projectId: "proj-003",
+    requestingDepartment: "Property",
+    requestorName: "Vaibhav (Test User)",
+    requestorEmail: "vaibhavvrajkumar@gmail.com",
+    details: "Seeking approval to exercise the 1-year lease extension option for the Airport Kiosk location as per agreement.",
+    approverName: "Sophia Chen", // Head of Property
+    approverEmail: "s.chen@storeflow.corp",
+    status: "Approved",
+    submissionDate: formatDate(addDays(today, -10)),
+    lastUpdateDate: formatDate(addDays(today, -8)),
+  },
+  {
+    id: 'appr-005',
+    title: "Requisition for New HR Software",
+    requestingDepartment: "HR",
+    requestorName: "Vaibhav (Test User)",
+    requestorEmail: "vaibhavvrajkumar@gmail.com",
+    details: "Request to purchase 'HRFlow Pro' software to streamline onboarding and payroll. Cost $2000/year.",
+    approverName: "David Lee", // Head of HR
+    approverEmail: "d.lee@storeflow.corp",
+    status: "Rejected",
+    submissionDate: formatDate(addDays(today, -5)),
+    lastUpdateDate: formatDate(addDays(today, -3)),
+    approvalComments: [{id: 'rej-comment-1', author: 'David Lee', timestamp: formatDate(addDays(today, -3)), text: 'Budget constraints this quarter. Please re-evaluate in Q4.'}]
+  },
+];
+
+export const updateApprovalRequestStatus = (
+  requestId: string,
+  newStatus: ApprovalStatus,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  actorName: string, // Name of the person approving/rejecting
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  commentText?: string // Optional comment
+): boolean => {
+  const requestIndex = mockApprovalRequests.findIndex(req => req.id === requestId);
+  if (requestIndex !== -1) {
+    mockApprovalRequests[requestIndex].status = newStatus;
+    mockApprovalRequests[requestIndex].lastUpdateDate = formatDate(new Date());
+    // In a real app, new comments would be added to mockApprovalRequests[requestIndex].approvalComments
+    // For now, we'll just update status and date.
+    return true;
+  }
+  return false;
+};
+
+// Function to add a new approval request (used by /approval page)
+export const addApprovalRequest = (request: Omit<ApprovalRequest, 'id' | 'submissionDate' | 'status'>): ApprovalRequest => {
+  const newRequest: ApprovalRequest = {
+    ...request,
+    id: `appr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    submissionDate: formatDate(new Date()),
+    status: 'Pending',
+  };
+  mockApprovalRequests.unshift(newRequest); // Add to the beginning of the array
+  return newRequest;
 };
