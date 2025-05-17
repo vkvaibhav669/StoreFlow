@@ -270,16 +270,25 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className='flex h-screen w-full overflow-hidden bg-muted/40'>
         
         {user && (
-          <Sidebar collapsible='icon' className='hidden border-r bg-sidebar md:flex md:flex-col peer'>
-            <SidebarHeader className='h-14 flex items-center px-4 border-b sticky top-0 z-10 bg-sidebar'>
+          <Sidebar collapsible='icon' className='group hidden border-r bg-sidebar md:flex md:flex-col peer'>
+            <SidebarHeader className={cn(
+                'h-14 flex items-center border-b sticky top-0 z-10 bg-sidebar',
+                'group-data-[state=expanded]:px-4',
+                'group-data-[state=collapsed]:px-1 group-data-[state=collapsed]:justify-center'
+              )}
+            >
               <Link
                 href={user ? '/dashboard' : '/auth/signin'}
-                className='flex items-center gap-2 font-semibold'
+                className={cn(
+                  'font-semibold flex items-center',
+                  'group-data-[state=expanded]:gap-2',
+                  'group-data-[state=collapsed]:flex-col group-data-[state=collapsed]:gap-0.5'
+                )}
               >
                 <Package2 className='h-6 w-6 text-primary' />
                 <span className={cn(
-                  "text-lg",
-                  "group-data-[collapsible=icon]/sidebar:hidden delay-300 whitespace-nowrap"
+                  "group-data-[state=expanded]:text-lg group-data-[state=expanded]:whitespace-nowrap",
+                  "group-data-[state=collapsed]:text-xs group-data-[state=collapsed]:text-center group-data-[state=collapsed]:leading-tight"
                 )}>
                   {siteConfig.name}
                 </span>
@@ -298,7 +307,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
-          <SidebarInset className="p-4 sm:px-6 sm:py-4"> {/* SidebarInset is already flex-1 and overflow-y-auto */}
+          <SidebarInset className="p-4 sm:px-6 sm:py-4"> 
             {children}
           </SidebarInset>
         </div>
@@ -306,3 +315,4 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+
