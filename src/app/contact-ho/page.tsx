@@ -119,7 +119,7 @@ export default function ContactHeadOfficePage() {
       <p className="text-muted-foreground">
         Key contacts at the StoreFlow head office.
       </p>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {headOfficeContacts.map((contact) => (
           <Card key={contact.id} className="flex flex-col">
             <CardHeader className="flex flex-row items-center gap-4 pb-3">
