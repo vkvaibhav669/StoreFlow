@@ -96,7 +96,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
 }
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
-const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
+const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low"]; // "None" removed
 
 export default function ProjectDetailsPage({ params: paramsProp }: { params: { id: string } }) {
   // Hooks: React.use, useRouter, useToast, useAuth
@@ -105,7 +105,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { notFound: navigateToNotFound } = useRouter();
+  const navigateToNotFound = useRouter().notFound;
 
 
   // State Hooks
@@ -144,10 +144,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
 
   // Derived state & memoized values (must be before conditional returns)
-  const currentUserRole = React.useMemo(() => {
+   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
+    // Hardcoded admin for example purposes
     if (user.email === 'vaibhhavrajkumar@gmail.com') return 'admin';
-    return user.role || 'user'; // ensure default if user.role is undefined
+    return user.role || 'user'; // Default to 'user' if role is not set
   }, [user]);
 
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
@@ -932,7 +933,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       </SelectTrigger>
                       <SelectContent>
                           <SelectItem value="All">All Priorities</SelectItem>
-                          {allPossibleTaskPriorities.map((prio) => (
+                          {allPossibleTaskPriorities.map((prio) => ( // "None" is already removed from allPossibleTaskPriorities
                               <SelectItem key={prio} value={prio}>
                                   {prio}
                               </SelectItem>
@@ -968,7 +969,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         </TableCell>
                         <TableCell>{task.department}</TableCell>
                         <TableCell><Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge></TableCell>
-                        <TableCell><Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "secondary" : "outline"}>{task.priority || "None"}</Badge></TableCell>
+                        <TableCell><Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "secondary" : "outline"}>{task.priority || "N/A"}</Badge></TableCell>
                         <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
                         <TableCell className="text-right">{task.assignedTo || "N/A"}</TableCell>
                       </TableRow>
@@ -1175,7 +1176,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      {allPossibleTaskPriorities.map(prio => (
+                      {allPossibleTaskPriorities.map(prio => ( // "None" is already removed from allPossibleTaskPriorities
                         <SelectItem key={prio} value={prio}>{prio}</SelectItem>
                       ))}
                     </SelectContent>
