@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -96,7 +96,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
 }
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
-
+const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 
 export default function ProjectDetailsPage({ params: paramsProp }: { params: { id: string } }) {
   // Hooks: React.use, useRouter, useToast, useAuth
@@ -105,6 +105,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { notFound: navigateToNotFound } = useRouter();
+
 
   // State Hooks
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
@@ -138,6 +140,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [departmentDialogTitle, setDepartmentDialogTitle] = React.useState("");
   const [departmentDialogTasks, setDepartmentDialogTasks] = React.useState<Task[]>([]);
 
+  const [taskFilterPriority, setTaskFilterPriority] = React.useState<TaskPriority | "All">("All");
+
+
   // Derived state & memoized values (must be before conditional returns)
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
@@ -157,6 +162,14 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     });
   }, [projectData, isUserAdminOrHod]);
 
+  const filteredTasksForTable = React.useMemo(() => {
+    if (!projectData) return [];
+    if (taskFilterPriority === "All") {
+      return projectData.tasks;
+    }
+    return projectData.tasks.filter(task => task.priority === taskFilterPriority);
+  }, [projectData, taskFilterPriority]);
+
   // Effect Hooks
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -174,10 +187,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         setProjectData(currentProject);
         setProjectComments(currentProject.comments || []);
       } else {
-        notFound();
+        navigateToNotFound();
       }
     }
-  }, [projectId, user, authLoading, router, notFound]);
+  }, [projectId, user, authLoading, router, navigateToNotFound]);
 
 
   // Conditional returns (loading states)
@@ -247,20 +260,17 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       
-      // Ensure all department keys are iterated over for task assignment
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
         
-        // Initialize department if it doesn't exist and the new task belongs to it
         if (deptEnumKey === newTaskToAdd.department && !newDepartmentsState[currentDeptKeyString]) {
-          if (newTaskToAdd.department === "Marketing") {
-            newDepartmentsState[currentDeptKeyString] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
-          } else {
-            newDepartmentsState[currentDeptKeyString] = { tasks: [] };
-          }
+           if (newTaskToAdd.department === "Marketing") {
+             newDepartmentsState[currentDeptKeyString] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+           } else {
+             newDepartmentsState[currentDeptKeyString] = { tasks: [] };
+           }
         }
         
-        // Re-filter tasks for every department based on the updated root task list
         if (newDepartmentsState[currentDeptKeyString]) {
           (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
@@ -489,7 +499,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       }
 
       toast({ title: "Task Details Updated", description: `Details for "${selectedTask.name}" have been updated.` });
-      setSelectedTask(updatedTask);
+      setSelectedTask(updatedTask); // Update selectedTask in state if dialog remains open or for consistency
       return finalUpdatedProjectData;
     });
 
@@ -611,7 +621,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     "Merchandising", "Recruitment", "Pre-Launch Marketing", "Launched", "Post-Launch Marketing"
   ];
 
-  // Destructuring for JSX, safe here because projectData is checked for null before this point in rendering
   const { departments = {} } = projectData;
 
 
@@ -689,10 +698,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="None">None</SelectItem>
+                      {allPossibleTaskPriorities.map(prio => (
+                        <SelectItem key={prio} value={prio}>{prio}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -911,24 +919,43 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
         <TabsContent value="tasks" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>All Tasks ({projectData.tasks.length})</CardTitle>
-              <CardDescription>Comprehensive list of tasks for this project.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle>All Tasks ({filteredTasksForTable.length})</CardTitle>
+                <CardDescription>Comprehensive list of tasks for this project. Click task name to view/edit.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                  <Label htmlFor="taskPriorityFilter" className="text-sm text-muted-foreground whitespace-nowrap">Filter by Priority:</Label>
+                  <Select value={taskFilterPriority} onValueChange={(value) => setTaskFilterPriority(value as TaskPriority | "All")}>
+                      <SelectTrigger id="taskPriorityFilter" className="h-9 w-[150px]">
+                          <SelectValue placeholder="Select Priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="All">All Priorities</SelectItem>
+                          {allPossibleTaskPriorities.map((prio) => (
+                              <SelectItem key={prio} value={prio}>
+                                  {prio}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              </div>
             </CardHeader>
             <CardContent>
-              {projectData.tasks.length > 0 ? (
+              {filteredTasksForTable.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Task Name</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
                       <TableHead className="hidden md:table-cell">Due Date</TableHead>
                       <TableHead className="text-right">Assignee</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projectData.tasks.map((task) => (
+                    {filteredTasksForTable.map((task) => (
                       <TableRow key={task.id}>
                         <TableCell>
                           <Button
@@ -941,6 +968,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         </TableCell>
                         <TableCell>{task.department}</TableCell>
                         <TableCell><Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge></TableCell>
+                        <TableCell><Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "secondary" : "outline"}>{task.priority || "None"}</Badge></TableCell>
                         <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
                         <TableCell className="text-right">{task.assignedTo || "N/A"}</TableCell>
                       </TableRow>
@@ -948,7 +976,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-muted-foreground">No tasks assigned to this project yet.</p>
+                <p className="text-muted-foreground text-center py-4">No tasks match the current filter.</p>
               )}
             </CardContent>
           </Card>
@@ -1147,10 +1175,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="None">None</SelectItem>
+                      {allPossibleTaskPriorities.map(prio => (
+                        <SelectItem key={prio} value={prio}>{prio}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
