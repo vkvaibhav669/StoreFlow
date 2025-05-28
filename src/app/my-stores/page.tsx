@@ -2,10 +2,11 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Store, Filter } from "lucide-react";
+import { Store, Filter, ArrowUpRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Package2 } from "lucide-react";
@@ -96,8 +97,10 @@ export default function MyStoresPage() {
                 
               </CardContent>
               <CardFooter>
-                <Button variant="outline" size="sm" className="w-full" disabled>
-                  View Details (Coming Soon)
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <Link href={`/stores/${store.id}`}>
+                    View Details <ArrowUpRight className="ml-1 h-3 w-3" />
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>

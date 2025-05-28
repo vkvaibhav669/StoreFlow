@@ -90,7 +90,7 @@ export interface StoreProject {
   tasks: Task[];
   documents: DocumentFile[];
   milestones: Milestone[];
-  departments?: { // Made optional to allow projects with only selected departments
+  departments?: {
     property?: DepartmentDetails;
     project?: DepartmentDetails;
     merchandising?: DepartmentDetails;
@@ -138,4 +138,8 @@ export interface StoreItem {
   openingDate: string; // ISO Date string
   manager?: string;
   sqft?: number;
+  dailySales?: number;
+  customerSatisfaction?: number;
+  inventoryLevels?: Record<string, number>;
+  currentPromotions?: string[];
 }

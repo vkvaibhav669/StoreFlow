@@ -140,7 +140,7 @@ export let mockProjects: StoreProject[] = [
             postLaunchCampaigns: [], 
             tasks: tasks.filter(t => t.department === 'Marketing' && ['task-mkt-001'].includes(t.id)) 
         },
-        it: { tasks: tasks.filter(t => t.department === 'IT' && ['task-it-001'].includes(t.id))}
+        it: { notes: "Network setup in progress", tasks: tasks.filter(t => t.department === 'IT' && ['task-it-001'].includes(t.id))}
     },
     comments: sampleProjectComments,
   },
@@ -333,9 +333,15 @@ export const addApprovalRequest = (request: Omit<ApprovalRequest, 'id' | 'submis
 };
 
 export const mockStores: StoreItem[] = [
-  { id: 'store-001', name: 'Flagship Central', location: '1 Main Street, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -365)), manager: 'Alice Smith', sqft: 5000 },
-  { id: 'store-002', name: 'Westside Express', location: '205 Commerce Ave, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -180)), manager: 'Bob Johnson', sqft: 2500 },
-  { id: 'store-003', name: 'Suburbia Mart', location: '15 Suburbia Drive, Small Town', type: 'FOFO', status: 'Operational', openingDate: formatDate(addDays(today, -90)), manager: 'Carol Williams (Owner)', sqft: 3000 },
+  { id: 'store-001', name: 'Flagship Central', location: '1 Main Street, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -365)), manager: 'Alice Smith', sqft: 5000, dailySales: 1200, customerSatisfaction: 4.5, inventoryLevels: { "Product A": 100, "Product B": 50}, currentPromotions: ["Summer Sale 20% off"]},
+  { id: 'store-002', name: 'Westside Express', location: '205 Commerce Ave, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -180)), manager: 'Bob Johnson', sqft: 2500, dailySales: 850, customerSatisfaction: 4.2, inventoryLevels: { "Product C": 80, "Product D": 120}, currentPromotions: ["Weekend Special Buy 1 Get 1"]},
+  { id: 'store-003', name: 'Suburbia Mart', location: '15 Suburbia Drive, Small Town', type: 'FOFO', status: 'Operational', openingDate: formatDate(addDays(today, -90)), manager: 'Carol Williams (Owner)', sqft: 3000, dailySales: 950, customerSatisfaction: 4.7, inventoryLevels: { "Product A": 70, "Product E": 60}, currentPromotions: []},
   { id: 'store-004', name: 'Downtown New Site', location: '77 New Dev Ave, Big City', type: 'COCO', status: 'Under Construction', openingDate: formatDate(addDays(today, 60)), manager: 'TBD', sqft: 4000 },
   { id: 'store-005', name: 'East Village Franchise', location: '90 Village Green, Small Town', type: 'FOFO', status: 'Planned', openingDate: formatDate(addDays(today, 120)), manager: 'David Brown (Prospective Owner)', sqft: 2200 },
 ];
+
+
+export const getStoreById = (id: string): StoreItem | undefined => {
+  const store = mockStores.find(s => s.id === id);
+  return store ? JSON.parse(JSON.stringify(store)) : undefined;
+};
