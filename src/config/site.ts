@@ -1,26 +1,26 @@
 
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store } from "lucide-react";
 
 interface SiteConfig {
   name: string;
   description: string;
   mainNav: NavItem[];
   sidebarNav: NavItem[];
-  authNav?: NavItem[]; 
+  authNav?: NavItem[];
 }
 
 export const siteConfig: SiteConfig = {
   name: "StoreFlow",
   description: "Streamline, track, and manage new store launches.",
-  mainNav: [ 
+  mainNav: [
     {
       title: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
     },
   ],
-  sidebarNav: [ 
+  sidebarNav: [
     {
       title: "Dashboard",
       href: "/dashboard",
@@ -30,6 +30,11 @@ export const siteConfig: SiteConfig = {
       title: "All Projects",
       href: "/projects",
       icon: ClipboardList,
+    },
+    {
+      title: "My Stores",
+      href: "/my-stores",
+      icon: Store,
     },
     {
       title: "Assign a Task",
@@ -62,7 +67,7 @@ export const siteConfig: SiteConfig = {
       icon: Briefcase,
     }
   ],
-  authNav: [ 
+  authNav: [
      {
       title: "Sign In",
       href: "/auth/signin",
