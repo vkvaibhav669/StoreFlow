@@ -86,9 +86,9 @@ export default function MyStoresPage() {
                 <CardDescription>{store.location}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow space-y-2 text-sm">
-                <p>
-                  <strong>Status:</strong> <Badge variant={store.status === "Operational" ? "default" : "outline"} className={store.status === "Operational" ? "bg-accent text-accent-foreground" : ""}>{store.status}</Badge>
-                </p>
+                <div className="flex items-center">
+                  <strong className="mr-1">Status:</strong> <Badge variant={store.status === "Operational" ? "default" : "outline"} className={store.status === "Operational" ? "bg-accent text-accent-foreground" : ""}>{store.status}</Badge>
+                </div>
                 <p>
                   <strong>Opening Date:</strong> {format(new Date(store.openingDate), "PPP")}
                 </p>
