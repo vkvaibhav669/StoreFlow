@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -331,3 +331,11 @@ export const addApprovalRequest = (request: Omit<ApprovalRequest, 'id' | 'submis
   mockApprovalRequests.unshift(newRequest); // Add to the beginning of the array
   return newRequest;
 };
+
+export const mockStores: StoreItem[] = [
+  { id: 'store-001', name: 'Flagship Central', location: '1 Main Street, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -365)), manager: 'Alice Smith', sqft: 5000 },
+  { id: 'store-002', name: 'Westside Express', location: '205 Commerce Ave, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -180)), manager: 'Bob Johnson', sqft: 2500 },
+  { id: 'store-003', name: 'Suburbia Mart', location: '15 Suburbia Drive, Small Town', type: 'FOFO', status: 'Operational', openingDate: formatDate(addDays(today, -90)), manager: 'Carol Williams (Owner)', sqft: 3000 },
+  { id: 'store-004', name: 'Downtown New Site', location: '77 New Dev Ave, Big City', type: 'COCO', status: 'Under Construction', openingDate: formatDate(addDays(today, 60)), manager: 'TBD', sqft: 4000 },
+  { id: 'store-005', name: 'East Village Franchise', location: '90 Village Green, Small Town', type: 'FOFO', status: 'Planned', openingDate: formatDate(addDays(today, 120)), manager: 'David Brown (Prospective Owner)', sqft: 2200 },
+];

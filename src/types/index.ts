@@ -90,7 +90,7 @@ export interface StoreProject {
   tasks: Task[];
   documents: DocumentFile[];
   milestones: Milestone[];
-  departments: {
+  departments?: { // Made optional to allow projects with only selected departments
     property?: DepartmentDetails;
     project?: DepartmentDetails;
     merchandising?: DepartmentDetails;
@@ -125,4 +125,17 @@ export interface ApprovalRequest {
   submissionDate: string; // ISO Date string
   lastUpdateDate?: string; // ISO Date string for when status changed
   approvalComments?: Comment[]; // Comments related to the approval/rejection itself
+}
+
+export type StoreType = "COCO" | "FOFO";
+
+export interface StoreItem {
+  id: string;
+  name: string;
+  location: string;
+  type: StoreType;
+  status: "Operational" | "Under Construction" | "Planned";
+  openingDate: string; // ISO Date string
+  manager?: string;
+  sqft?: number;
 }
