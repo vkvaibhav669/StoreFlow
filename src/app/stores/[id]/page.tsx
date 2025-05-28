@@ -10,16 +10,9 @@ import type { StoreItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Package2, Store as StoreIcon, FileText, ShoppingCart, HelpCircle, BarChart3, MessageSquare, Settings } from "lucide-react";
+import { ArrowLeft, Package2, Store as StoreIcon, Settings, ShoppingCart, HelpCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 
 export default function StoreDetailsPage() {
@@ -73,23 +66,6 @@ export default function StoreDetailsPage() {
     );
   }
 
-  const salesData = [
-    { month: "Jan", sales: store.dailySales ? store.dailySales * 20 + Math.floor(Math.random() * 2000 - 1000) : 0 },
-    { month: "Feb", sales: store.dailySales ? store.dailySales * 22 + Math.floor(Math.random() * 2000 - 1000) : 0 },
-    { month: "Mar", sales: store.dailySales ? store.dailySales * 25 + Math.floor(Math.random() * 2000 - 1000) : 0 },
-    { month: "Apr", sales: store.dailySales ? store.dailySales * 23 + Math.floor(Math.random() * 2000 - 1000) : 0 },
-    { month: "May", sales: store.dailySales ? store.dailySales * 26 + Math.floor(Math.random() * 2000 - 1000) : 0 },
-    { month: "Jun", sales: store.dailySales ? store.dailySales * 28 + Math.floor(Math.random() * 2000 - 1000) : 0 },
-  ];
-
-  const chartConfig = {
-    sales: {
-      label: "Sales",
-      color: "hsl(var(--chart-1))",
-    },
-  } satisfies React.ComponentProps<typeof ChartContainer>["config"];
-
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
@@ -112,7 +88,7 @@ export default function StoreDetailsPage() {
             <CardDescription>{store.location}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <p><strong>Status:</strong> <Badge variant={store.status === "Operational" ? "default" : "outline"} className={store.status === "Operational" ? "bg-accent text-accent-foreground" : ""}>{store.status}</Badge></p>
+            <div><strong>Status:</strong> <Badge variant={store.status === "Operational" ? "default" : "outline"} className={store.status === "Operational" ? "bg-accent text-accent-foreground" : ""}>{store.status}</Badge></div>
             <p><strong>Opening Date:</strong> {format(new Date(store.openingDate), "PPP")}</p>
             {store.manager && <p><strong>Manager:</strong> {store.manager}</p>}
             {store.sqft && <p><strong>Size:</strong> {store.sqft.toLocaleString()} sqft</p>}
@@ -157,96 +133,7 @@ export default function StoreDetailsPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
-            <CardDescription>Overview of key store performance indicators.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-6 md:grid-cols-2">
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Daily Sales</CardTitle>
-                    <CardDescription>Target: ${(store.dailySales ? store.dailySales * 1.1 : 1000).toLocaleString()}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                    <p className="text-4xl font-bold">${(store.dailySales || 0).toLocaleString()}</p>
-                    <Progress 
-                        value={store.dailySales ? (store.dailySales / (store.dailySales * 1.1)) * 100 : 0} 
-                        className="w-3/4 mt-2 h-3" 
-                        aria-label="Daily sales progress"
-                    />
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader  className="pb-2">
-                    <CardTitle className="text-lg">Customer Satisfaction</CardTitle>
-                    <CardDescription>Based on recent surveys.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                     <p className="text-4xl font-bold">{store.customerSatisfaction || "N/A"} <span className="text-xl text-muted-foreground">/ 5</span></p>
-                     <p className="text-xs text-muted-foreground mt-2">Average of last 50 reviews</p>
-                </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg">Inventory Levels</CardTitle>
-                <CardDescription>Top 5 products (mock data)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {store.inventoryLevels && Object.keys(store.inventoryLevels).length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Stock</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(store.inventoryLevels).slice(0,5).map(([product, stock]) => (
-                        <TableRow key={product}>
-                          <TableCell>{product}</TableCell>
-                          <TableCell className="text-right">{stock}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <p className="text-muted-foreground">No inventory data available.</p>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-                <CardHeader>
-                    <CardTitle>Monthly Sales Trend (Mock)</CardTitle>
-                    <CardDescription>Last 6 months</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[250px] w-full">
-                     <ChartContainer config={chartConfig} className="w-full h-full">
-                        <BarChart data={salesData} accessibilityLayer>
-                            <CartesianGrid vertical={false} />
-                            <XAxis
-                            dataKey="month"
-                            tickLine={false}
-                            tickMargin={10}
-                            axisLine={false}
-                            />
-                            <YAxis
-                                tickLine={false}
-                                axisLine={false}
-                                tickMargin={10}
-                                tickFormatter={(value) => `$${value / 1000}k`}
-                            />
-                            <ChartTooltip
-                                cursor={false}
-                                content={<ChartTooltipContent indicator="dot" />}
-                            />
-                            <Bar dataKey="sales" fill="var(--color-sales)" radius={4} />
-                        </BarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
+        {/* Performance Metrics Section Removed */}
       </div>
     </div>
   );
