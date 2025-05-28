@@ -92,14 +92,6 @@ export default function StoreDetailsPage() {
             <p><strong>Opening Date:</strong> {format(new Date(store.openingDate), "PPP")}</p>
             {store.manager && <p><strong>Manager:</strong> {store.manager}</p>}
             {store.sqft && <p><strong>Size:</strong> {store.sqft.toLocaleString()} sqft</p>}
-             {store.currentPromotions && store.currentPromotions.length > 0 && (
-                <div>
-                    <strong>Current Promotions:</strong>
-                    <ul className="list-disc list-inside ml-4">
-                        {store.currentPromotions.map((promo, idx) => <li key={idx}>{promo}</li>)}
-                    </ul>
-                </div>
-            )}
           </CardContent>
         </Card>
 
@@ -133,8 +125,8 @@ export default function StoreDetailsPage() {
           </CardContent>
         </Card>
 
-        {/* Performance Metrics Section Removed */}
       </div>
     </div>
   );
 }
+
