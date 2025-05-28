@@ -28,10 +28,11 @@ export default function MyStoresPage() {
   }, [user, authLoading, router]);
 
   const filteredStores = React.useMemo(() => {
-    if (filterType === "All") {
-      return mockStores;
+    let storesToShow = mockStores.filter(store => store.status === "Operational");
+    if (filterType !== "All") {
+      storesToShow = storesToShow.filter(store => store.type === filterType);
     }
-    return mockStores.filter(store => store.type === filterType);
+    return storesToShow;
   }, [filterType]);
 
   if (authLoading || !user) {
@@ -46,7 +47,7 @@ export default function MyStoresPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold md:text-3xl">My Stores</h1>
+        <h1 className="text-2xl font-semibold md:text-3xl">My Operational Stores</h1>
         <div className="flex items-center gap-2">
           <Filter className="h-5 w-5 text-muted-foreground" />
           <Select value={filterType} onValueChange={(value) => setFilterType(value as StoreFilterType)}>
@@ -66,7 +67,7 @@ export default function MyStoresPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-center">
-              No stores match the current filter.
+              No operational stores match the current filter.
             </p>
           </CardContent>
         </Card>
@@ -106,4 +107,3 @@ export default function MyStoresPage() {
     </div>
   );
 }
-
