@@ -10,7 +10,7 @@ import type { StoreItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package2, Store as StoreIcon, Settings, ShoppingCart, HelpCircle } from "lucide-react";
+import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
 
@@ -109,13 +109,6 @@ export default function StoreDetailsPage() {
               </div>
             </Button>
             <Button variant="outline" className="w-full justify-start text-left">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              <div>
-                <p className="font-medium">Write an Order</p>
-                <p className="text-xs text-muted-foreground">Manage inventory and place orders.</p>
-              </div>
-            </Button>
-            <Button variant="outline" className="w-full justify-start text-left">
               <HelpCircle className="mr-2 h-4 w-4" />
                <div>
                 <p className="font-medium">Request Information</p>
@@ -129,4 +122,3 @@ export default function StoreDetailsPage() {
     </div>
   );
 }
-
