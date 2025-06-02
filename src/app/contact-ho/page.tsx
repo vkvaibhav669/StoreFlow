@@ -114,7 +114,7 @@ export default function ContactHeadOfficePage() {
   }
 
   return (
-    <section className="flex flex-col gap-6" aria-labelledby="contact-ho-page-heading">
+    <section className="flex flex-col gap-4" aria-labelledby="contact-ho-page-heading">
       <h1 id="contact-ho-page-heading" className="text-2xl font-semibold md:text-3xl mt-4">Contact Head Office</h1>
       <p className="text-muted-foreground">
         Key contacts at the StoreFlow head office.
