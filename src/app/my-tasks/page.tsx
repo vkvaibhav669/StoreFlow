@@ -44,8 +44,8 @@ export default function MyTasksPage() {
   }, [user]); // Add user as a dependency
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold md:text-3xl">My Tasks</h1>
+    <section className="my-tasks-content flex flex-col gap-6" aria-labelledby="my-tasks-heading">
+      <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl">My Tasks</h1>
       
       {userTasks.length === 0 ? (
         <Card>
@@ -104,6 +104,6 @@ export default function MyTasksPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </section>
   );
 }

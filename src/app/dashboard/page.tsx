@@ -193,9 +193,9 @@ export default function DashboardPage() {
   }, [dashboardProjects, filterSettings.showLaunched]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">Project Dashboard</h1>
+        <h1 id="dashboard-main-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">Project Dashboard</h1>
         <div className="flex items-center gap-2 flex-shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -329,7 +329,7 @@ export default function DashboardPage() {
       </div>
 
       {filterSettings.showUpcoming && (
-        <section>
+        <section className="upcoming-projects-section">
           <h2 className="text-xl font-semibold mb-4">
             Upcoming Projects ({upcomingProjects.length})
           </h2>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
       )}
 
       {filterSettings.showActive && (
-        <section>
+        <section className="active-projects-section">
           <h2 className="text-xl font-semibold mb-4">
             {filterSettings.planningOnly ? "Planning Projects (Active)" : "Active Projects"} ({activeProjects.length})
           </h2>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
       )}
 
       {filterSettings.showLaunched && (
-        <section>
+        <section className="launched-projects-section">
           <h2 className="text-xl font-semibold mb-4">Recently Launched ({launchedProjects.length})</h2>
           {launchedProjects.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -384,6 +384,6 @@ export default function DashboardPage() {
       {!filterSettings.showUpcoming && !filterSettings.showActive && !filterSettings.showLaunched && (
          <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
       )}
-    </div>
+    </section>
   );
 }

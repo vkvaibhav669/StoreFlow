@@ -67,7 +67,7 @@ export default function StoreDetailsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <section className="store-details-content flex flex-col gap-6" aria-labelledby="store-details-heading">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild className="flex-shrink-0">
           <Link href="/my-stores">
@@ -75,7 +75,7 @@ export default function StoreDetailsPage() {
             <span className="sr-only">Back to My Stores</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{store.name}</h1>
+        <h1 id="store-details-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{store.name}</h1>
         <Badge variant={store.type === "COCO" ? "default" : "secondary"} className={store.type === "COCO" ? "bg-primary/80 text-primary-foreground" : ""}>
           {store.type}
         </Badge>
@@ -119,6 +119,6 @@ export default function StoreDetailsPage() {
         </Card>
 
       </div>
-    </div>
+    </section>
   );
 }

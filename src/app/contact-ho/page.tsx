@@ -114,8 +114,8 @@ export default function ContactHeadOfficePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold md:text-3xl mt-4">Contact Head Office</h1>
+    <section className="flex flex-col gap-6" aria-labelledby="contact-ho-page-heading">
+      <h1 id="contact-ho-page-heading" className="text-2xl font-semibold md:text-3xl mt-4">Contact Head Office</h1>
       <p className="text-muted-foreground">
         Key contacts at the StoreFlow head office.
       </p>
@@ -124,7 +124,7 @@ export default function ContactHeadOfficePage() {
           <Card key={contact.id} className="flex flex-col">
             <CardHeader className="flex flex-row items-center gap-4 pb-3">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={`https://picsum.photos/seed/${contact.avatarSeed}/100/100`} alt={contact.name} data-ai-hint="person portrait" />
+                <AvatarImage src={`https://picsum.photos/seed/${contact.avatarSeed}/100/100`} alt={contact.name} data-ai-hint="person portrait"/>
                 <AvatarFallback>{contact.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
               </Avatar>
               <div>
@@ -151,6 +151,6 @@ export default function ContactHeadOfficePage() {
           </Card>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

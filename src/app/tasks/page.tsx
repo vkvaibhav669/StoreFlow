@@ -127,10 +127,10 @@ export default function AssignTaskPage() {
   };
 
   return (
-    <div className="container mx-auto py-10">
+    <section className="assign-task-container container mx-auto py-10" aria-labelledby="assign-task-heading">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Assign New Task</CardTitle>
+          <CardTitle id="assign-task-heading" className="text-2xl">Assign New Task</CardTitle>
           <CardDescription>Fill in the details below to assign a new task to an individual for a specific project.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -260,7 +260,6 @@ export default function AssignTaskPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </section>
   );
 }
-

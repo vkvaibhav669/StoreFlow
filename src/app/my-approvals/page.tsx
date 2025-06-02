@@ -107,8 +107,8 @@ export default function MyApprovalsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold md:text-3xl mt-4">My Approvals</h1>
+    <section className="my-approvals-content flex flex-col gap-6" aria-labelledby="my-approvals-heading">
+      <h1 id="my-approvals-heading" className="text-2xl font-semibold md:text-3xl mt-4">My Approvals</h1>
       <Tabs defaultValue="awaiting-my-action" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="awaiting-my-action">Awaiting My Action ({requestsAwaitingMyAction.length})</TabsTrigger>
@@ -204,6 +204,6 @@ export default function MyApprovalsPage() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </section>
   );
 }

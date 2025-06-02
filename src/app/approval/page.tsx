@@ -121,8 +121,8 @@ export default function ApprovalPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 items-center">
-      <h1 className="text-2xl font-semibold md:text-3xl mt-4">Submit Approval Request</h1>
+    <section className="flex flex-col gap-6 items-center" aria-labelledby="approval-page-heading">
+      <h1 id="approval-page-heading" className="text-2xl font-semibold md:text-3xl mt-4">Submit Approval Request</h1>
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Request Details</CardTitle>
@@ -215,6 +215,6 @@ export default function ApprovalPage() {
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </section>
   );
 }

@@ -93,9 +93,9 @@ export default function KanbanBoardPage() {
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6">
+    <section className="kanban-board-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="kanban-page-heading">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold md:text-3xl">Kanban Board</h1>
+        <h1 id="kanban-page-heading" className="text-2xl font-semibold md:text-3xl">Kanban Board</h1>
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <div className="flex-1 min-w-[150px]">
             <Label htmlFor="project-filter" className="text-xs text-muted-foreground">Filter by Project</Label>
@@ -188,7 +188,6 @@ export default function KanbanBoardPage() {
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-    </div>
+    </section>
   );
 }
-

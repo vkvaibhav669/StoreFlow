@@ -46,9 +46,9 @@ export default function MyStoresPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <section className="my-stores-content flex flex-col gap-6" aria-labelledby="my-stores-heading">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold md:text-3xl">My Operational Stores</h1>
+        <h1 id="my-stores-heading" className="text-2xl font-semibold md:text-3xl">My Operational Stores</h1>
         <div className="flex items-center gap-2">
           <Filter className="h-5 w-5 text-muted-foreground" />
           <Select value={filterType} onValueChange={(value) => setFilterType(value as StoreFilterType)}>
@@ -107,6 +107,6 @@ export default function MyStoresPage() {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -626,15 +626,15 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
+    <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
+      <div className="project-page-header flex items-center gap-4">
         <Button variant="outline" size="icon" asChild className="flex-shrink-0">
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to Dashboard</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
+        <h1 id="project-details-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Dialog open={isAddTaskDialogOpen} onOpenChange={(isOpen) => {
             setIsAddTaskDialogOpen(isOpen);
@@ -882,7 +882,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 {projectData.threeDRenderUrl && (
                   <div className="my-2">
                     <p className="text-xs font-medium mb-1">3D Store Visual:</p>
-                    <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render" />
+                    <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render"/>
                   </div>
                 )}
               </DepartmentCard>
@@ -995,7 +995,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   {visibleDocuments.map((doc) => (
                     <Card key={doc.id} className="overflow-hidden">
                       {(doc.type === "3D Render" && doc.url.startsWith("blob:")) || (doc.type === "3D Render" && doc.url.startsWith("https")) ? (
-                        <Image src={doc.url} alt={doc.name} width={300} height={150} className="w-full h-32 object-cover" data-ai-hint={doc.dataAiHint || "office document"} />
+                        <Image src={doc.url} alt={doc.name} width={300} height={150} className="w-full h-32 object-cover" data-ai-hint={doc.dataAiHint || "office document"}/>
                       ) : (
                         <div className="h-32 bg-muted flex items-center justify-center">
                           <FileText className="w-12 h-12 text-muted-foreground" />
@@ -1092,7 +1092,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             <CardContent className="space-y-6">
               <div className="flex items-start space-x-3">
                 <Avatar className="h-10 w-10 mt-1 flex-shrink-0">
-                  <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar" />
+                  <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/>
                   <AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
@@ -1227,7 +1227,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 <h3 className="text-md font-semibold mb-3">Task Comments ({selectedTask.comments?.length || 0})</h3>
                 <div className="flex items-start space-x-3 mb-4">
                   <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
-                    <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUserTaskComment'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar" />
+                    <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUserTaskComment'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/>
                     <AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
@@ -1339,6 +1339,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         </DialogContent>
       </Dialog>
 
-    </div>
+    </section>
   );
 }

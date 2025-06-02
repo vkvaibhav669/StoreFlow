@@ -16,9 +16,9 @@ export default function AllProjectsPage() {
   const projects = mockProjects;
 
   return (
-    <div className="flex flex-col gap-6">
+    <section className="all-projects-content flex flex-col gap-6" aria-labelledby="all-projects-heading">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">All Store Projects</h1>
+        <h1 id="all-projects-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">All Store Projects</h1>
         <Button size="sm" className="h-8 gap-1 flex-shrink-0">
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -71,6 +71,6 @@ export default function AllProjectsPage() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+    </section>
   );
 }
