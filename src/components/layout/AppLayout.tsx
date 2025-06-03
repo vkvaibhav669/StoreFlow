@@ -265,9 +265,9 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                  <Button 
                     onClick={() => handleThemeChange("blue-theme")} 
                     variant="outline"
-                    size="default" // Ensures h-10
+                    size="default" 
                     className={cn(
-                        "w-full", // Ensures full width in its grid cell
+                        "w-full", 
                         currentTheme === "blue-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
                     )}
                 >
@@ -321,9 +321,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 
   const initialNotifications: AppNotification[] = React.useMemo(() => user ? [
-    { id: 1, text: "Project Alpha: Task 'Finalize Design' overdue.", href: "#", seen: false },
-    { id: 2, text: "New comment on Downtown Flagship project.", href: "#", seen: false },
-    { id: 3, text: "StoreFlow version 1.1 is now available.", href: "#", seen: true },
+    { id: 1, text: "Task 'Review safety protocols (Mumbai)' overdue for Mumbai Phoenix Mall Flagship.", href: "/projects/proj-001", seen: false },
+    { id: 2, text: "New comment on Bangalore Orion Mall Outlet project.", href: "/projects/proj-002", seen: false },
+    { id: 3, text: "StoreFlow version 1.1 is now available.", href: "/release-notes", seen: true }, // Example, this page doesn't exist
   ] : [], [user]);
 
   const [notifications, setNotifications] = React.useState<AppNotification[]>(initialNotifications);
@@ -384,7 +384,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="justify-center p-0">
                   <Button variant="link" asChild className="w-full text-sm text-primary hover:underline">
-                    <Link href="#">View all notifications</Link>
+                    <Link href="/notifications">View all notifications</Link>
                   </Button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
