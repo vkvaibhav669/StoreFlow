@@ -61,11 +61,6 @@ export const siteConfig: SiteConfig = {
       href: "/approval",
       icon: ClipboardCheck,
     },
-    {
-      title: "Contact Head Office",
-      href: "/contact-ho",
-      icon: Briefcase,
-    }
   ],
   authNav: [
      {

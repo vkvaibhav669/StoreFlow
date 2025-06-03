@@ -19,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -382,6 +382,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <DropdownMenuLabel>{user.name || user.email}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/contact-ho')}>
+                      <Briefcase className="mr-2 h-4 w-4" />Contact Head Office
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setIsSettingsDialogOpen(true)}>
                       <Settings className="mr-2 h-4 w-4" />Settings
                     </DropdownMenuItem>
