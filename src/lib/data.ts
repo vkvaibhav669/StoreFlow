@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint, Blocker } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -131,6 +131,9 @@ export let mockProjects: StoreProject[] = [
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-1-${i}`})),
+    blockers: [
+        { id: 'blk-001', title: 'Permit Delay', description: 'City permit for signage is delayed by 1 week.', dateReported: formatDate(addDays(today, -3)), isResolved: false, reportedBy: 'Project Manager' }
+    ],
     departments: {
         property: { notes: "Lease signed and secured.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-001'].includes(t.id)) },
         project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project' && ['task-proj-001', 'task-proj-002', 'task-df-001'].includes(t.id)) },
@@ -171,6 +174,7 @@ export let mockProjects: StoreProject[] = [
     ],
     documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})), 
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
+    blockers: [],
     departments: {
         property: { notes: "Initial site visit completed.", tasks: tasks.filter(t => t.department === "Property" && ['task-prop-002'].includes(t.id)) },
         project: { tasks: [{ id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 12)), comments: [] }] },
@@ -202,6 +206,7 @@ export let mockProjects: StoreProject[] = [
     tasks: tasks.filter(t => t.id === 'task-it-003'),
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-3-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-3-${i}`, completed: true })),
+    blockers: [],
     departments: {
         marketing: {
             preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-3-${i}`, status: "Completed"})),
@@ -425,3 +430,4 @@ export const updateMockStore = (updatedStore: StoreItem): void => {
     mockStores[index] = updatedStore;
   }
 };
+

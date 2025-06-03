@@ -44,6 +44,16 @@ export interface Milestone {
   description?: string;
 }
 
+export interface Blocker {
+  id: string;
+  title: string;
+  description: string;
+  dateReported: string; // ISO Date string
+  isResolved: boolean;
+  dateResolved?: string; // ISO Date string
+  reportedBy?: string;
+}
+
 export interface MarketingCampaign {
   id: string;
   name: string;
@@ -76,7 +86,7 @@ export interface StoreProject {
   projectedLaunchDate: string;
   currentProgress: number;
   isUpcoming?: boolean;
-  franchiseType?: StoreType; // Added franchiseType
+  franchiseType?: StoreType;
   propertyDetails?: {
     address: string;
     sqft: number;
@@ -92,6 +102,7 @@ export interface StoreProject {
   tasks: Task[];
   documents: DocumentFile[];
   milestones: Milestone[];
+  blockers?: Blocker[];
   departments?: {
     property?: DepartmentDetails;
     project?: DepartmentDetails;
@@ -154,3 +165,4 @@ export interface StoreItem {
   improvementPoints?: ImprovementPoint[];
   ownershipChangeRequested?: boolean;
 }
+

@@ -10,8 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2 } from "lucide-react";
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
@@ -146,7 +146,17 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
   const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
   const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
+  
   const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>([]);
+  const [isAddMilestoneDialogOpen, setIsAddMilestoneDialogOpen] = React.useState(false);
+  const [newMilestoneName, setNewMilestoneName] = React.useState("");
+  const [newMilestoneDate, setNewMilestoneDate] = React.useState(utilFormatDate(new Date()));
+  const [newMilestoneDescription, setNewMilestoneDescription] = React.useState("");
+
+  const [editingBlockers, setEditingBlockers] = React.useState<Blocker[]>([]);
+  const [isAddBlockerDialogOpen, setIsAddBlockerDialogOpen] = React.useState(false);
+  const [newBlockerTitle, setNewBlockerTitle] = React.useState("");
+  const [newBlockerDescription, setNewBlockerDescription] = React.useState("");
 
 
   const currentUserRole = React.useMemo(() => {
@@ -207,7 +217,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         setEditingTimelineForm({
             totalDays: currentProject.projectTimeline?.totalDays,
         });
-        setEditingMilestones(currentProject.milestones.map(m => ({...m})));
+        setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
+        setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
       } else {
         navigateToNotFound();
       }
@@ -615,10 +626,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             ...editingTimelineForm,
             totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0,
         },
-        milestones: editingMilestones.map(m => ({ // Ensure new milestones get a persistent-like ID if they don't have one
-          ...m,
-          id: m.id.startsWith('new-milestone-') ? `ms-${Date.now()}-${Math.random().toString(36).substring(2,7)}` : m.id
-        })),
+        milestones: editingMilestones, // Already updated via its own dialog
+        blockers: editingBlockers, // Already updated via its own dialog
         startDate: editingProjectForm.startDate ? utilFormatDate(new Date(editingProjectForm.startDate)) : projectData.startDate,
         projectedLaunchDate: editingProjectForm.projectedLaunchDate ? utilFormatDate(new Date(editingProjectForm.projectedLaunchDate)) : projectData.projectedLaunchDate,
     };
@@ -637,6 +646,56 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const handleEditMilestoneFieldChange = (index: number, field: keyof Milestone, value: any) => {
     setEditingMilestones(prev =>
       prev.map((m, i) => (i === index ? { ...m, [field]: value } : m))
+    );
+  };
+
+  const handleSaveNewMilestone = () => {
+    if (!newMilestoneName.trim() || !newMilestoneDate.trim()) {
+      toast({ title: "Missing Information", description: "Milestone name and date are required.", variant: "destructive" });
+      return;
+    }
+    const newMilestone: Milestone = {
+      id: `ms-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+      name: newMilestoneName,
+      date: newMilestoneDate,
+      completed: false,
+      description: newMilestoneDescription.trim() || undefined,
+    };
+    setEditingMilestones(prev => [...prev, newMilestone].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+    setNewMilestoneName("");
+    setNewMilestoneDate(utilFormatDate(new Date()));
+    setNewMilestoneDescription("");
+    setIsAddMilestoneDialogOpen(false);
+    toast({ title: "Milestone Added", description: `"${newMilestone.name}" added to edit list. Save project to persist.` });
+  };
+
+  const handleSaveNewBlocker = () => {
+    if (!newBlockerTitle.trim()) {
+      toast({ title: "Missing Information", description: "Blocker title is required.", variant: "destructive" });
+      return;
+    }
+    const newBlocker: Blocker = {
+      id: `blk-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+      title: newBlockerTitle,
+      description: newBlockerDescription.trim(),
+      dateReported: utilFormatDate(new Date()),
+      isResolved: false,
+      reportedBy: user?.name || user?.email || "System",
+    };
+    setEditingBlockers(prev => [...prev, newBlocker].sort((a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()));
+    setNewBlockerTitle("");
+    setNewBlockerDescription("");
+    setIsAddBlockerDialogOpen(false);
+    toast({ title: "Blocker Added", description: `"${newBlocker.title}" added to edit list. Save project to persist.` });
+  };
+  
+  const handleToggleBlockerResolution = (blockerId: string) => {
+    setEditingBlockers(prev =>
+      prev.map(b =>
+        b.id === blockerId
+          ? { ...b, isResolved: !b.isResolved, dateResolved: !b.isResolved ? utilFormatDate(new Date()) : undefined }
+          : b
+      )
     );
   };
 
@@ -673,7 +732,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   setEditingTimelineForm({
                       totalDays: projectData.projectTimeline?.totalDays,
                   });
-                  setEditingMilestones(projectData.milestones.map(m => ({...m})));
+                  setEditingMilestones(projectData.milestones ? projectData.milestones.map(m => ({...m})) : []);
+                  setEditingBlockers(projectData.blockers ? projectData.blockers.map(b => ({...b})) : []);
               }
             }}>
               <DialogTrigger asChild>
@@ -769,9 +829,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   </div>
 
                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Milestones</h3>
-                  <div className="col-span-full space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  <div className="col-span-full space-y-4 max-h-[250px] overflow-y-auto pr-2">
                     {editingMilestones.map((milestone, index) => (
-                      <div key={milestone.id || `new-${index}`} className="p-3 border rounded-md space-y-3 bg-muted/30 relative">
+                      <div key={milestone.id} className="p-3 border rounded-md space-y-3 bg-muted/30 relative">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label htmlFor={`milestoneName-${index}`}>Name</Label>
@@ -804,29 +864,78 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         </Button>
                       </div>
                     ))}
+                     {editingMilestones.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No milestones defined yet.</p>}
                   </div>
                   <div className="col-span-full">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setEditingMilestones(prev => [
-                          ...prev,
-                          {
-                            id: `new-milestone-${Date.now()}`, 
-                            name: "",
-                            date: utilFormatDate(new Date()),
-                            completed: false,
-                            description: "",
-                          },
-                        ]);
-                      }}
+                      onClick={() => setIsAddMilestoneDialogOpen(true)}
                       className="mt-2"
                     >
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Milestone
                     </Button>
                   </div>
+
+                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Blockers</h3>
+                    <div className="col-span-full space-y-4 max-h-[250px] overflow-y-auto pr-2">
+                        {editingBlockers.map((blocker) => (
+                            <div key={blocker.id} className="p-3 border rounded-md space-y-2 bg-muted/30 relative">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-semibold text-sm">{blocker.title}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Reported: {format(new Date(blocker.dateReported), "PPP")} by {blocker.reportedBy}
+                                        </p>
+                                    </div>
+                                     <Badge variant={blocker.isResolved ? "default" : "destructive"} className={cn(blocker.isResolved && "bg-accent text-accent-foreground")}>
+                                        {blocker.isResolved ? "Resolved" : "Active"}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm">{blocker.description}</p>
+                                {blocker.isResolved && blocker.dateResolved && (
+                                    <p className="text-xs text-muted-foreground">Resolved On: {format(new Date(blocker.dateResolved), "PPP")}</p>
+                                )}
+                                <div className="flex items-center justify-between pt-2 border-t mt-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`blockerResolved-${blocker.id}`}
+                                            checked={blocker.isResolved}
+                                            onCheckedChange={() => handleToggleBlockerResolution(blocker.id)}
+                                        />
+                                        <Label htmlFor={`blockerResolved-${blocker.id}`} className="font-normal text-sm">
+                                            {blocker.isResolved ? "Mark as Unresolved" : "Mark as Resolved"}
+                                        </Label>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                                        onClick={() => setEditingBlockers(prev => prev.filter(b => b.id !== blocker.id))}
+                                        aria-label="Remove blocker"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                        {editingBlockers.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No blockers reported.</p>}
+                    </div>
+                    <div className="col-span-full">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsAddBlockerDialogOpen(true)}
+                          className="mt-2"
+                        >
+                          <AlertTriangle className="mr-2 h-4 w-4" /> Add Blocker
+                        </Button>
+                    </div>
+
+
                 </div>
                 </ScrollArea>
                 <DialogFooter>
@@ -1550,6 +1659,58 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             <DialogClose asChild>
               <Button variant="outline">Close</Button>
             </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* Add Milestone Dialog */}
+      <Dialog open={isAddMilestoneDialogOpen} onOpenChange={setIsAddMilestoneDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Milestone</DialogTitle>
+            <DialogDescription>Enter the details for the new milestone.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newMilestoneName">Milestone Name</Label>
+              <Input id="newMilestoneName" value={newMilestoneName} onChange={(e) => setNewMilestoneName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newMilestoneDate">Date</Label>
+              <Input id="newMilestoneDate" type="date" value={newMilestoneDate} onChange={(e) => setNewMilestoneDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newMilestoneDescription">Description (Optional)</Label>
+              <Textarea id="newMilestoneDescription" value={newMilestoneDescription} onChange={(e) => setNewMilestoneDescription(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={handleSaveNewMilestone}>Save Milestone</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Blocker Dialog */}
+      <Dialog open={isAddBlockerDialogOpen} onOpenChange={setIsAddBlockerDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Blocker</DialogTitle>
+            <DialogDescription>Describe the issue blocking project progress.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newBlockerTitle">Blocker Title</Label>
+              <Input id="newBlockerTitle" value={newBlockerTitle} onChange={(e) => setNewBlockerTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newBlockerDescription">Description</Label>
+              <Textarea id="newBlockerDescription" value={newBlockerDescription} onChange={(e) => setNewBlockerDescription(e.target.value)} rows={4} />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={handleSaveNewBlocker}>Save Blocker</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
