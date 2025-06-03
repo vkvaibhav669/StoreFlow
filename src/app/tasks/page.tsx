@@ -16,14 +16,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Users, Mail, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import { mockProjects, mockHeadOfficeContacts } from "@/lib/data";
-import type { StoreProject, Task, Department, TaskPriority, ProjectMember } from "@/types";
+import type { StoreProject, Task, Department, TaskPriority, ProjectMember as HeadOfficeContactType } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup } from "@/components/ui/command";
+
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
@@ -33,6 +34,12 @@ const calculateOverallProgress = (tasks: Task[]): number => {
   return Math.round((completedTasks / tasks.length) * 100);
 };
 
+// Basic email validation helper
+const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+
 export default function AssignTaskPage() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -40,58 +47,80 @@ export default function AssignTaskPage() {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
-  const [assignedTo, setAssignedTo] = React.useState(""); // Will store selected member's email
+  
+  const [assignToSearchTerm, setAssignToSearchTerm] = React.useState("");
+  const [assignToSuggestions, setAssignToSuggestions] = React.useState<(HeadOfficeContactType | { type: 'invite'; email: string })[]>([]);
+  const [isAssignToPopoverOpen, setIsAssignToPopoverOpen] = React.useState(false);
+  const [selectedAssigneeInfo, setSelectedAssigneeInfo] = React.useState<{ email: string; name: string } | null>(null);
+
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "">("");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
   const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
-  const [assignToSelf, setAssignToSelf] = React.useState(false);
-  const [assignableMembers, setAssignableMembers] = React.useState<ProjectMember[]>([]);
+
+  const assignToInputRef = React.useRef<HTMLInputElement>(null);
+
 
   React.useEffect(() => {
-    if (selectedProjectId) {
-      const project = mockProjects.find(p => p.id === selectedProjectId);
-      setAssignableMembers(project?.members || []);
-      // Reset assignment when project changes, unless "assign to self" is checked
-      if (!assignToSelf) {
-        setAssignedTo(""); // Clear current selection
-      }
+    if (assignToSearchTerm.trim() === "") {
+      setAssignToSuggestions([]);
+      setIsAssignToPopoverOpen(false);
+      // Do not clear selectedAssigneeInfo here, allow explicit clear or new selection
+      return;
+    }
+
+    const searchTermLower = assignToSearchTerm.toLowerCase();
+    const filteredContacts = mockHeadOfficeContacts.filter(
+      contact =>
+        contact.name.toLowerCase().includes(searchTermLower) ||
+        contact.email.toLowerCase().includes(searchTermLower)
+    );
+
+    const suggestions: (HeadOfficeContactType | { type: 'invite'; email: string })[] = [...filteredContacts];
+
+    if (filteredContacts.length === 0 && isValidEmail(assignToSearchTerm)) {
+      suggestions.push({ type: 'invite', email: assignToSearchTerm });
+    }
+    
+    setAssignToSuggestions(suggestions);
+    setIsAssignToPopoverOpen(suggestions.length > 0);
+
+  }, [assignToSearchTerm]);
+
+
+  const handleSelectAssignee = (item: HeadOfficeContactType | { type: 'invite'; email: string }) => {
+    if ('type' in item && item.type === 'invite') {
+      setSelectedAssigneeInfo({ email: item.email, name: item.email });
+      setAssignToSearchTerm(item.email); // Show email in input after invite
+      toast({
+        title: "Mock Invitation",
+        description: `A mock invitation will be sent to ${item.email} to collaborate.`,
+      });
     } else {
-      setAssignableMembers([]);
-      if (!assignToSelf) {
-        setAssignedTo(""); // Clear current selection
-      }
+      setSelectedAssigneeInfo({ email: item.email, name: item.name });
+      setAssignToSearchTerm(item.name); // Show name in input after selection
     }
-  }, [selectedProjectId, assignToSelf]);
-
-  React.useEffect(() => {
-    if (assignToSelf && user) {
-      setAssignedTo(user.email); // Assign user's email
-      // If the "Assign To" Select component has a value that's not in assignableMembers (like current user if not in project),
-      // it might not display correctly. This UI assumes assignToSelf overrides dropdown.
-    } else if (!assignToSelf && assignedTo === user?.email) {
-      // If "Assign to me" was checked and now unchecked, clear assignedTo if it was self-assigned by email
-      setAssignedTo("");
-    }
-  }, [assignToSelf, user, assignedTo]);
+    setIsAssignToPopoverOpen(false);
+    setAssignToSuggestions([]); 
+  };
 
 
   const resetForm = () => {
     setSelectedProjectId("");
     setTaskName("");
     setTaskDescription("");
-    setAssignedTo("");
+    setAssignToSearchTerm("");
+    setSelectedAssigneeInfo(null);
+    setAssignToSuggestions([]);
+    setIsAssignToPopoverOpen(false);
     setSelectedDepartment("");
     setDueDate(undefined);
     setTaskPriority("Medium");
-    setAssignToSelf(false);
-    setAssignableMembers([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalAssignedTo = assignToSelf ? (user?.email || "Current User") : assignedTo;
 
-    if (!selectedProjectId || !taskName || !selectedDepartment || !finalAssignedTo) {
+    if (!selectedProjectId || !taskName || !selectedDepartment || !selectedAssigneeInfo?.email) {
       toast({
         title: "Error",
         description: "Please fill in Project, Task Name, Department, and select an Assignee.",
@@ -111,21 +140,13 @@ export default function AssignTaskPage() {
     }
 
     const targetProject = mockProjects[projectIndex];
-    let assigneeDisplayName = finalAssignedTo;
-    if (!assignToSelf) {
-        const member = assignableMembers.find(m => m.email === finalAssignedTo);
-        assigneeDisplayName = member?.name || finalAssignedTo;
-    } else if (assignToSelf && user) {
-        assigneeDisplayName = user.name || user.email || "Current User";
-    }
-
-
+    
     const newTask: Task = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: taskName,
       department: selectedDepartment as Department,
       description: taskDescription || undefined,
-      assignedTo: finalAssignedTo, // Storing email or "Current User"
+      assignedTo: selectedAssigneeInfo.email,
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
       status: "Pending",
       priority: taskPriority,
@@ -147,12 +168,11 @@ export default function AssignTaskPage() {
         targetProject.departments[deptKey] = { tasks: [newTask] };
     }
 
-
     targetProject.currentProgress = calculateOverallProgress(targetProject.tasks);
     
     toast({
       title: "Success!",
-      description: `Task "${taskName}" assigned successfully to ${assigneeDisplayName} for project "${targetProject.name}".`,
+      description: `Task "${taskName}" assigned successfully to ${selectedAssigneeInfo.name} for project "${targetProject.name}".`,
     });
     resetForm();
   };
@@ -207,45 +227,73 @@ export default function AssignTaskPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Assign To *</Label>
-                 <Select
-                    value={assignedTo}
-                    onValueChange={setAssignedTo}
-                    disabled={assignToSelf || !selectedProjectId || assignableMembers.length === 0}
-                    required={!assignToSelf}
-                  >
-                    <SelectTrigger id="assignedTo">
-                      <SelectValue placeholder={!selectedProjectId ? "Select a project first" : (assignableMembers.length === 0 && selectedProjectId ? "No members in project" : "Select member")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedProjectId && assignableMembers.length > 0 && (
-                        assignableMembers.map(member => (
-                          <SelectItem key={member.email} value={member.email}>
-                            {member.name || member.email} ({member.department || 'N/A Dept'})
-                          </SelectItem>
-                        ))
-                      )}
-                      {/* Placeholder items are handled by SelectValue's placeholder prop */}
-                    </SelectContent>
-                  </Select>
-                 <div className="flex items-center space-x-2 pt-1">
-                    <Checkbox
-                        id="assignToSelf"
-                        checked={assignToSelf}
-                        onCheckedChange={(checked) => {
-                          const isChecked = !!checked;
-                          setAssignToSelf(isChecked);
-                          if (isChecked && user) {
-                            setAssignedTo(user.email); // Set to user's email
-                          } else if (!isChecked && assignedTo === user?.email) {
-                             setAssignedTo(""); 
-                          }
-                        }}
-                        disabled={!user}
+                <Popover open={isAssignToPopoverOpen} onOpenChange={setIsAssignToPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Input
+                      type="text"
+                      id="assignedTo"
+                      ref={assignToInputRef}
+                      placeholder="Type name or email..."
+                      value={assignToSearchTerm}
+                      onChange={(e) => {
+                        setAssignToSearchTerm(e.target.value);
+                        setSelectedAssigneeInfo(null); // Clear previous selection on new typing
+                        if (e.target.value.trim() !== "") {
+                           setIsAssignToPopoverOpen(true);
+                        } else {
+                           setIsAssignToPopoverOpen(false);
+                        }
+                      }}
+                      onFocus={() => {
+                        if (assignToSearchTerm.trim() !== "" && assignToSuggestions.length > 0) {
+                          setIsAssignToPopoverOpen(true);
+                        }
+                      }}
+                      required={!selectedAssigneeInfo?.email}
+                      className="w-full"
                     />
-                    <Label htmlFor="assignToSelf" className="text-sm font-normal text-muted-foreground">
-                        Assign to me ({user ? (user.name || user.email) : 'Not logged in'})
-                    </Label>
-                </div>
+                  </PopoverTrigger>
+                  {assignToSuggestions.length > 0 && (
+                    <PopoverContent 
+                      className="p-0 w-[--radix-popover-trigger-width]" 
+                      side="bottom" 
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()} // Prevents auto-focus stealing from input
+                    >
+                      <Command>
+                        <CommandList>
+                          <CommandEmpty>{isValidEmail(assignToSearchTerm) ? "No exact match. You can invite." : "No contacts found."}</CommandEmpty>
+                          <CommandGroup>
+                            {assignToSuggestions.map((item, index) => (
+                              <CommandItem
+                                key={('id' in item ? item.id : item.email) + index}
+                                onSelect={() => handleSelectAssignee(item)}
+                                className="cursor-pointer"
+                              >
+                                {'type' in item && item.type === 'invite' ? (
+                                  <div className="flex items-center">
+                                    <Mail className="mr-2 h-4 w-4" />
+                                    <span>Invite {item.email}</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center">
+                                       <Users className="mr-2 h-4 w-4" />
+                                       <span>{(item as HeadOfficeContactType).name}</span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground ml-6">
+                                        {(item as HeadOfficeContactType).email} - {(item as HeadOfficeContactType).department || 'N/A Dept'}
+                                    </span>
+                                  </div>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  )}
+                </Popover>
               </div>
 
               <div className="space-y-2">
@@ -307,11 +355,12 @@ export default function AssignTaskPage() {
                 </div>
             </div>
 
-            <Button type="submit" className="w-full">Assign Task</Button>
+            <Button type="submit" className="w-full" disabled={!selectedAssigneeInfo?.email && !isValidEmail(assignToSearchTerm)}>
+              Assign Task
+            </Button>
           </form>
         </CardContent>
       </Card>
     </section>
   );
 }
-

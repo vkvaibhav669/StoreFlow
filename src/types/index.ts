@@ -1,4 +1,5 @@
 
+
 export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
 
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
@@ -18,7 +19,7 @@ export interface Task {
   department: Department;
   status: "Pending" | "In Progress" | "Completed" | "Blocked";
   priority?: TaskPriority;
-  assignedTo?: string;
+  assignedTo?: string; // Can be an email or a name/ID
   dueDate?: string;
   description?: string;
   comments?: Comment[];
@@ -77,13 +78,17 @@ export interface DepartmentDetails {
 
 export type StoreType = "COCO" | "FOFO";
 
-export interface ProjectMember {
-  email: string; // Using email as a unique identifier from mockHeadOfficeContacts
+export interface ProjectMember { // This type is used for defining project team members.
+                               // For general HO contacts, we might use a similar structure or a simplified one.
+  id?: string; // Adding id from mockHeadOfficeContacts for consistency if used
+  email: string; 
   name: string;
-  roleInProject?: string; // e.g., "Lead Designer", "IT Support for Project X"
-  department?: Department;
-  avatarSeed?: string; // For consistent avatar generation
-  isProjectHod?: boolean; // Indicates HOD rights for this specific project
+  roleInProject?: string; 
+  department?: Department; // Department they belong to in general
+  avatarSeed?: string; 
+  isProjectHod?: boolean; 
+  role?: string; // General role in company from mockHeadOfficeContacts
+  phone?: string; // from mockHeadOfficeContacts
 }
 
 export interface StoreProject {
@@ -143,11 +148,11 @@ export interface ApprovalRequest {
   requestorEmail: string;
   details: string;
   approverName: string;
-  approverEmail: string; // For filtering approvals assigned to current user
+  approverEmail: string; 
   status: ApprovalStatus;
-  submissionDate: string; // ISO Date string
-  lastUpdateDate?: string; // ISO Date string for when status changed
-  approvalComments?: Comment[]; // Comments related to the approval/rejection itself
+  submissionDate: string; 
+  lastUpdateDate?: string; 
+  approvalComments?: Comment[]; 
 }
 
 
@@ -155,8 +160,8 @@ export interface ImprovementPoint {
   id: string;
   text: string;
   addedBy: string;
-  addedAt: string; // ISO Date string
-  userAvatar?: string; // Optional: URL to user's avatar
+  addedAt: string; 
+  userAvatar?: string; 
 }
 
 export interface StoreItem {
@@ -165,7 +170,7 @@ export interface StoreItem {
   location: string;
   type: StoreType;
   status: "Operational" | "Under Construction" | "Planned";
-  openingDate: string; // ISO Date string
+  openingDate: string; 
   manager?: string;
   sqft?: number;
   dailySales?: number;
@@ -175,4 +180,3 @@ export interface StoreItem {
   improvementPoints?: ImprovementPoint[];
   ownershipChangeRequested?: boolean;
 }
-
