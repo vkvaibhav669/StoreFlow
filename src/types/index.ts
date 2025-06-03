@@ -83,6 +83,7 @@ export interface ProjectMember {
   roleInProject?: string; // e.g., "Lead Designer", "IT Support for Project X"
   department?: Department;
   avatarSeed?: string; // For consistent avatar generation
+  isProjectHod?: boolean; // Indicates HOD rights for this specific project
 }
 
 export interface StoreProject {
@@ -174,3 +175,4 @@ export interface StoreItem {
   improvementPoints?: ImprovementPoint[];
   ownershipChangeRequested?: boolean;
 }
+

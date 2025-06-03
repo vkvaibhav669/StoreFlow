@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects, mockHeadOfficeContacts } from "@/lib/data";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
@@ -167,7 +167,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = React.useState(false);
   const [selectedNewMemberEmail, setSelectedNewMemberEmail] = React.useState<string>("");
   const [newMemberRoleInProject, setNewMemberRoleInProject] = React.useState("");
-
+  const [newMemberIsProjectHod, setNewMemberIsProjectHod] = React.useState(false);
 
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
@@ -175,7 +175,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     return user.role || 'user';
   }, [user]);
 
-  const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
+  const isUserAdminOrHod = React.useMemo(() => currentUserRole === 'admin' || currentUserRole === 'hod', [currentUserRole]);
 
   const visibleFiles = React.useMemo(() => {
     if (!projectData) return [];
@@ -218,7 +218,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         setEditingProjectForm({
             name: currentProject.name,
             location: currentProject.location,
-            status: currentProject.status,
+            status: currentProject.status, // Status will be edited in dialog
             startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
             projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
             franchiseType: currentProject.franchiseType,
@@ -679,7 +679,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       isResolved: false,
       reportedBy: user?.name || user?.email || "System",
     };
-    // Add to editingBlockers state, which will be saved when "Edit Project" dialog is saved
     setEditingBlockers(prev => [...prev, newBlocker].sort((a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()));
     setNewBlockerTitle("");
     setNewBlockerDescription("");
@@ -696,8 +695,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         : b
     );
     const updatedProject = { ...projectData, blockers: updatedBlockers };
-    setProjectData(updatedProject); // Update live project data
-    setEditingBlockers(updatedBlockers); // Also update editing state if dialog is open or for consistency
+    setProjectData(updatedProject); 
+    setEditingBlockers(updatedBlockers); 
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -709,8 +708,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     if (!projectData) return;
     const updatedBlockers = (projectData.blockers || []).filter(b => b.id !== blockerId);
     const updatedProject = { ...projectData, blockers: updatedBlockers };
-    setProjectData(updatedProject); // Update live project data
-    setEditingBlockers(updatedBlockers); // Also update editing state
+    setProjectData(updatedProject); 
+    setEditingBlockers(updatedBlockers); 
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -735,6 +734,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       department: personToAdd.department,
       avatarSeed: personToAdd.avatarSeed,
       roleInProject: newMemberRoleInProject.trim() || "Team Member",
+      isProjectHod: newMemberIsProjectHod,
     };
 
     setProjectData(prev => {
@@ -751,6 +751,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
     setSelectedNewMemberEmail("");
     setNewMemberRoleInProject("");
+    setNewMemberIsProjectHod(false);
     setIsAddMemberDialogOpen(false);
   };
 
@@ -905,7 +906,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Milestones</h3>
                   <div className="col-span-full space-y-4 max-h-[250px] overflow-y-auto pr-2">
-                    {editingMilestones.map((milestone, index) => (
+                    {editingMilestones.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone, index) => (
                       <div key={milestone.id} className="p-3 border rounded-md space-y-3 bg-muted/30 relative">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
@@ -953,7 +954,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </Button>
                   </div>
 
-                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Report Blocker</h3>
+                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Blockers</h3>
                     <div className="col-span-full">
                         <Button
                           type="button"
@@ -1271,6 +1272,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     if (!isOpen) {
                         setSelectedNewMemberEmail("");
                         setNewMemberRoleInProject("");
+                        setNewMemberIsProjectHod(false);
                     }
                  }}>
                   <DialogTrigger asChild>
@@ -1312,6 +1314,16 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                           placeholder="e.g., Lead Developer, Consultant"
                         />
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="member-is-hod"
+                            checked={newMemberIsProjectHod}
+                            onCheckedChange={(checked) => setNewMemberIsProjectHod(!!checked)}
+                        />
+                        <Label htmlFor="member-is-hod" className="text-sm font-normal text-muted-foreground">
+                            Assign HOD rights for this project
+                        </Label>
+                      </div>
                     </div>
                     <DialogFooter>
                       <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
@@ -1326,7 +1338,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {projectData.members.map(member => (
                     <Card key={member.email} className="flex flex-col">
-                      <CardHeader className="flex flex-row items-center gap-3 p-4">
+                      <CardHeader className="flex flex-row items-start gap-3 p-4">
                         <Avatar className="h-12 w-12">
                            <AvatarImage src={`https://picsum.photos/seed/${member.avatarSeed || member.email}/80/80`} alt={member.name} data-ai-hint="person portrait"/>
                           <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
@@ -1334,6 +1346,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         <div className="flex-1">
                           <CardTitle className="text-lg">{member.name}</CardTitle>
                           <CardDescription className="text-xs">{member.email}</CardDescription>
+                          {member.isProjectHod && (
+                            <Badge variant="secondary" className="mt-1 text-xs bg-amber-100 text-amber-700 border-amber-300">
+                              <Crown className="mr-1 h-3 w-3" /> Project HOD
+                            </Badge>
+                          )}
                         </div>
                         {isUserAdminOrHod && (
                           <Button
@@ -1478,7 +1495,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               <CardDescription>Key dates and progress over the {projectData.projectTimeline?.totalDays}-day plan.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative pl-6"> {/* Milestones timeline container */}
+              <div className="relative pl-6"> 
                 <div className="absolute left-[calc(0.75rem-1px)] top-2 bottom-2 w-0.5 bg-border"></div>
                 {projectData.milestones.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone) => (
                   <div key={milestone.id} className="relative mb-6">
@@ -1525,7 +1542,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 </div>
               </div>
 
-              {/* Blockers Section */}
               <div className="mt-8 pt-6 border-t">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Project Blockers</h3>
@@ -1846,7 +1862,14 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       </Dialog>
 
        {/* Add Milestone Dialog */}
-      <Dialog open={isAddMilestoneDialogOpen} onOpenChange={setIsAddMilestoneDialogOpen}>
+      <Dialog open={isAddMilestoneDialogOpen} onOpenChange={(isOpen) => {
+          setIsAddMilestoneDialogOpen(isOpen);
+          if (!isOpen) {
+              setNewMilestoneName("");
+              setNewMilestoneDate(utilFormatDate(new Date()));
+              setNewMilestoneDescription("");
+          }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Milestone</DialogTitle>
@@ -1874,7 +1897,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       </Dialog>
 
       {/* Add Blocker Dialog */}
-      <Dialog open={isAddBlockerDialogOpen} onOpenChange={setIsAddBlockerDialogOpen}>
+      <Dialog open={isAddBlockerDialogOpen} onOpenChange={(isOpen) => {
+          setIsAddBlockerDialogOpen(isOpen);
+          if (!isOpen) {
+              setNewBlockerTitle("");
+              setNewBlockerDescription("");
+          }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Blocker</DialogTitle>
