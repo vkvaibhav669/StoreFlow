@@ -219,7 +219,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                 Select the theme for the application.
               </p>
               <RadioGroup
-                value={currentTheme === "blue-theme" ? "" : currentTheme} // Don't select if blue theme is active by button
+                value={currentTheme === "blue-theme" ? "" : currentTheme} 
                 onValueChange={(value) => handleThemeChange(value as Theme)}
                 className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
               >
@@ -257,10 +257,14 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
               <div className="pt-4">
                  <Button 
                     onClick={() => handleThemeChange("blue-theme")} 
-                    variant={currentTheme === "blue-theme" ? "default" : "outline"}
-                    className="w-full"
+                    variant="outline"
+                    className={cn(
+                        "w-full",
+                        currentTheme === "blue-theme" && "bg-foreground text-background hover:bg-foreground/90 hover:text-background/90"
+                    )}
                 >
-                    <Palette className="mr-2 h-4 w-4" /> Switch to Blue Theme
+                    <Palette className="mr-2 h-4 w-4" /> 
+                    {currentTheme === "blue-theme" ? "Navy Blue Theme (Active)" : "Switch to Navy Blue Theme"}
                 </Button>
               </div>
             </div>
