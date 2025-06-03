@@ -171,7 +171,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
-    if (user.email === 'vaibhhavrajkumar@gmail.com') return 'admin';
+    if (user.email === 'priya.verma@storeflow.corp') return 'admin'; // Updated admin email
     return user.role || 'user';
   }, [user]);
 
@@ -218,7 +218,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         setEditingProjectForm({
             name: currentProject.name,
             location: currentProject.location,
-            status: currentProject.status, // Status will be edited in dialog
+            status: currentProject.status,
             startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
             projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
             franchiseType: currentProject.franchiseType,
@@ -623,7 +623,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0,
         },
         milestones: editingMilestones,
-        blockers: editingBlockers, // Save the blockers edited/added within the dialog
+        blockers: editingBlockers,
         startDate: editingProjectForm.startDate ? utilFormatDate(new Date(editingProjectForm.startDate)) : projectData.startDate,
         projectedLaunchDate: editingProjectForm.projectedLaunchDate ? utilFormatDate(new Date(editingProjectForm.projectedLaunchDate)) : projectData.projectedLaunchDate,
         members: projectData.members,
@@ -695,8 +695,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         : b
     );
     const updatedProject = { ...projectData, blockers: updatedBlockers };
-    setProjectData(updatedProject); 
-    setEditingBlockers(updatedBlockers); 
+    setProjectData(updatedProject);
+    setEditingBlockers(updatedBlockers);
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -708,8 +708,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     if (!projectData) return;
     const updatedBlockers = (projectData.blockers || []).filter(b => b.id !== blockerId);
     const updatedProject = { ...projectData, blockers: updatedBlockers };
-    setProjectData(updatedProject); 
-    setEditingBlockers(updatedBlockers); 
+    setProjectData(updatedProject);
+    setEditingBlockers(updatedBlockers);
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -774,7 +774,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
-      <div className="project-page-header flex items-center gap-4">
+      <div className="project-page-header flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Button variant="outline" size="icon" asChild className="flex-shrink-0">
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
@@ -782,7 +782,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </Link>
         </Button>
         <h1 id="project-details-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
           {isUserAdminOrHod && (
             <Dialog open={isEditProjectDialogOpen} onOpenChange={(isOpen) => {
               setIsEditProjectDialogOpen(isOpen);
@@ -1006,18 +1006,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="taskName" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskName" className="sm:text-right">
                     Name
                   </Label>
-                  <Input id="taskName" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} className="col-span-3" />
+                  <Input id="taskName" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} className="sm:col-span-3" />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="taskDepartment" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskDepartment" className="sm:text-right">
                     Department
                   </Label>
                   <Select value={newTaskDepartment} onValueChange={(value) => setNewTaskDepartment(value as Department | "")}>
-                    <SelectTrigger className="col-span-3">
+                    <SelectTrigger className="sm:col-span-3">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1027,18 +1027,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="taskAssignedTo" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskAssignedTo" className="sm:text-right">
                     Assign To
                   </Label>
-                  <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="col-span-3" placeholder="e.g. John Doe" />
+                  <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="sm:col-span-3" placeholder="e.g. John Doe" />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="taskPriority" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskPriority" className="sm:text-right">
                     Priority
                   </Label>
                   <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as TaskPriority)}>
-                    <SelectTrigger className="col-span-3">
+                    <SelectTrigger className="sm:col-span-3">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1048,17 +1048,17 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="taskDescription" className="text-right pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
+                  <Label htmlFor="taskDescription" className="sm:text-right pt-1">
                     Description
                   </Label>
-                  <Textarea id="taskDescription" value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} className="col-span-3" placeholder="Optional task description" />
+                  <Textarea id="taskDescription" value={newTaskDescription} onChange={(e) => setNewTaskDescription(e.target.value)} className="sm:col-span-3" placeholder="Optional task description" />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="taskDueDate" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskDueDate" className="sm:text-right">
                     Due Date
                   </Label>
-                  <Input id="taskDueDate" type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="col-span-3" />
+                  <Input id="taskDueDate" type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="sm:col-span-3" />
                 </div>
               </div>
               <DialogFooter>
@@ -1088,7 +1088,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 </span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Add New Document</DialogTitle>
                 <DialogDescription>
@@ -1096,24 +1096,24 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="docFile" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="docFile" className="sm:text-right">
                     File
                   </Label>
-                  <Input id="docFile" type="file" onChange={handleFileSelected} className="col-span-3" />
+                  <Input id="docFile" type="file" onChange={handleFileSelected} className="sm:col-span-3" />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="docName" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="docName" className="sm:text-right">
                     Name
                   </Label>
-                  <Input id="docName" value={newDocumentName} onChange={(e) => setNewDocumentName(e.target.value)} className="col-span-3" />
+                  <Input id="docName" value={newDocumentName} onChange={(e) => setNewDocumentName(e.target.value)} className="sm:col-span-3" />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="docType" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="docType" className="sm:text-right">
                     Type
                   </Label>
                   <Select value={newDocumentType} onValueChange={(value) => setNewDocumentType(value as DocumentFile['type'] | "")}>
-                    <SelectTrigger className="col-span-3">
+                    <SelectTrigger className="sm:col-span-3">
                       <SelectValue placeholder="Select document type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1125,18 +1125,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   </Select>
                 </div>
                 {newDocumentType === "3D Render" && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="docAiHint" className="text-right">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="docAiHint" className="sm:text-right">
                       AI Hint
                     </Label>
-                    <Input id="docAiHint" value={newDocumentDataAiHint} onChange={(e) => setNewDocumentDataAiHint(e.target.value)} className="col-span-3" placeholder="e.g., modern storefront" />
+                    <Input id="docAiHint" value={newDocumentDataAiHint} onChange={(e) => setNewDocumentDataAiHint(e.target.value)} className="sm:col-span-3" placeholder="e.g., modern storefront" />
                   </div>
                 )}
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="docHodOnly" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="docHodOnly" className="sm:text-right">
                     Visibility
                   </Label>
-                  <div className="col-span-3 flex items-center space-x-2">
+                  <div className="sm:col-span-3 flex items-center space-x-2">
                     <Checkbox
                       id="docHodOnly"
                       checked={newDocumentHodOnly}
@@ -1155,7 +1155,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             </DialogContent>
           </Dialog>
         </div>
-         <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
+         <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0 self-start sm:self-center", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
             {projectData.status}
           </Badge>
       </div>
@@ -1261,7 +1261,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
         <TabsContent value="members" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div>
                 <CardTitle id="project-members-heading">Project Members ({projectData.members?.length || 0})</CardTitle>
                 <CardDescription>Team members assigned to this project.</CardDescription>
@@ -1381,15 +1381,15 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
         <TabsContent value="tasks" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3">
               <div>
                 <CardTitle id="all-tasks-heading">All Tasks ({filteredTasksForTable.length})</CardTitle>
                 <CardDescription>Comprehensive list of tasks for this project. Click task name to view/edit.</CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Label htmlFor="taskPriorityFilter" className="text-sm text-muted-foreground whitespace-nowrap">Filter by Priority:</Label>
                   <Select value={taskFilterPriority} onValueChange={(value) => setTaskFilterPriority(value as TaskPriority | "All")}>
-                      <SelectTrigger id="taskPriorityFilter" className="h-9 w-[150px]">
+                      <SelectTrigger id="taskPriorityFilter" className="h-9 w-full sm:w-[150px]">
                           <SelectValue placeholder="Select Priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1452,7 +1452,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             </CardHeader>
             <CardContent>
               {visibleFiles.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {visibleFiles.map((doc) => (
                     <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:shadow-lg transition-shadow rounded-lg">
                       <Card className="overflow-hidden h-full flex flex-col">
@@ -1495,7 +1495,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               <CardDescription>Key dates and progress over the {projectData.projectTimeline?.totalDays}-day plan.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative pl-6"> 
+              <div className="relative pl-6">
                 <div className="absolute left-[calc(0.75rem-1px)] top-2 bottom-2 w-0.5 bg-border"></div>
                 {projectData.milestones.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone) => (
                   <div key={milestone.id} className="relative mb-6">
@@ -1543,7 +1543,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               </div>
 
               <div className="mt-8 pt-6 border-t">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                   <h3 className="text-lg font-semibold">Project Blockers</h3>
                   <Button variant="outline" size="sm" onClick={() => setShowBlockersInTimeline(!showBlockersInTimeline)}>
                     {showBlockersInTimeline ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
@@ -1670,14 +1670,14 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           {selectedTask && (
             <ScrollArea className="max-h-[70vh] pr-6">
               <div className="grid gap-4 py-4 text-sm">
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <Label htmlFor="taskDepartmentEdit" className="text-right text-muted-foreground">Department:</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskDepartmentEdit" className="sm:text-right text-muted-foreground">Department:</Label>
                   <Select
                     value={editingSelectedTaskDepartment}
                     onValueChange={(value) => setEditingSelectedTaskDepartment(value as Department | "")}
                     disabled={!isUserAdminOrHod}
                   >
-                    <SelectTrigger id="taskDepartmentEdit" className="col-span-2">
+                    <SelectTrigger id="taskDepartmentEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1687,14 +1687,14 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <Label htmlFor="taskPriorityEdit" className="text-right text-muted-foreground">Priority:</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskPriorityEdit" className="sm:text-right text-muted-foreground">Priority:</Label>
                   <Select
                     value={editingSelectedTaskPriority}
                     onValueChange={(value) => setEditingSelectedTaskPriority(value as TaskPriority | "")}
                     disabled={!isUserAdminOrHod}
                   >
-                    <SelectTrigger id="taskPriorityEdit" className="col-span-2">
+                    <SelectTrigger id="taskPriorityEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1704,13 +1704,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <Label htmlFor="taskStatusEdit" className="text-right text-muted-foreground">Status:</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskStatusEdit" className="sm:text-right text-muted-foreground">Status:</Label>
                   <Select
                     value={editingTaskStatus}
                     onValueChange={(value) => setEditingTaskStatus(value as Task['status'] | "")}
                   >
-                    <SelectTrigger id="taskStatusEdit" className="col-span-2">
+                    <SelectTrigger id="taskStatusEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1722,24 +1722,24 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   </Select>
                 </div>
                 {selectedTask.description && (
-                  <div className="grid grid-cols-3 items-start gap-2">
-                    <Label className="text-right text-muted-foreground pt-1">Description:</Label>
-                    <div className="col-span-2 whitespace-pre-wrap">{selectedTask.description}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-x-4 gap-y-2">
+                    <Label className="sm:text-right text-muted-foreground pt-1">Description:</Label>
+                    <div className="sm:col-span-2 whitespace-pre-wrap">{selectedTask.description}</div>
                   </div>
                 )}
                 {selectedTask.dueDate && (
-                  <div className="grid grid-cols-3 items-center gap-2">
-                    <Label className="text-right text-muted-foreground">Due Date:</Label>
-                    <div className="col-span-2">{format(new Date(selectedTask.dueDate), "PPP")}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
+                    <Label className="sm:text-right text-muted-foreground">Due Date:</Label>
+                    <div className="sm:col-span-2">{format(new Date(selectedTask.dueDate), "PPP")}</div>
                   </div>
                 )}
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <Label htmlFor="taskAssignedToEdit" className="text-right text-muted-foreground">Assigned To:</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
+                  <Label htmlFor="taskAssignedToEdit" className="sm:text-right text-muted-foreground">Assigned To:</Label>
                   <Input
                     id="taskAssignedToEdit"
                     value={editingTaskAssignedTo}
                     onChange={(e) => setEditingTaskAssignedTo(e.target.value)}
-                    className="col-span-2"
+                    className="sm:col-span-2"
                     placeholder="Assignee name"
                   />
                 </div>
@@ -1928,4 +1928,3 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     </section>
   );
 }
-

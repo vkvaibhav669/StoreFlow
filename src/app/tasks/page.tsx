@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Users, Mail, Briefcase } from "lucide-react";
+import { CalendarIcon, Users, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { mockProjects, mockHeadOfficeContacts } from "@/lib/data";
 import type { StoreProject, Task, Department, TaskPriority, ProjectMember as HeadOfficeContactType } from "@/types";
@@ -34,7 +34,6 @@ const calculateOverallProgress = (tasks: Task[]): number => {
   return Math.round((completedTasks / tasks.length) * 100);
 };
 
-// Basic email validation helper
 const isValidEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
@@ -47,7 +46,7 @@ export default function AssignTaskPage() {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
-  
+
   const [assignToSearchTerm, setAssignToSearchTerm] = React.useState("");
   const [assignToSuggestions, setAssignToSuggestions] = React.useState<(HeadOfficeContactType | { type: 'invite'; email: string })[]>([]);
   const [isAssignToPopoverOpen, setIsAssignToPopoverOpen] = React.useState(false);
@@ -64,7 +63,6 @@ export default function AssignTaskPage() {
     if (assignToSearchTerm.trim() === "") {
       setAssignToSuggestions([]);
       setIsAssignToPopoverOpen(false);
-      // Do not clear selectedAssigneeInfo here, allow explicit clear or new selection
       return;
     }
 
@@ -80,7 +78,7 @@ export default function AssignTaskPage() {
     if (filteredContacts.length === 0 && isValidEmail(assignToSearchTerm)) {
       suggestions.push({ type: 'invite', email: assignToSearchTerm });
     }
-    
+
     setAssignToSuggestions(suggestions);
     setIsAssignToPopoverOpen(suggestions.length > 0);
 
@@ -90,17 +88,17 @@ export default function AssignTaskPage() {
   const handleSelectAssignee = (item: HeadOfficeContactType | { type: 'invite'; email: string }) => {
     if ('type' in item && item.type === 'invite') {
       setSelectedAssigneeInfo({ email: item.email, name: item.email });
-      setAssignToSearchTerm(item.email); // Show email in input after invite
+      setAssignToSearchTerm(item.email);
       toast({
         title: "Mock Invitation",
         description: `A mock invitation will be sent to ${item.email} to collaborate.`,
       });
     } else {
       setSelectedAssigneeInfo({ email: item.email, name: item.name });
-      setAssignToSearchTerm(item.name); // Show name in input after selection
+      setAssignToSearchTerm(item.name);
     }
     setIsAssignToPopoverOpen(false);
-    setAssignToSuggestions([]); 
+    setAssignToSuggestions([]);
   };
 
 
@@ -140,7 +138,7 @@ export default function AssignTaskPage() {
     }
 
     const targetProject = mockProjects[projectIndex];
-    
+
     const newTask: Task = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: taskName,
@@ -156,20 +154,20 @@ export default function AssignTaskPage() {
     targetProject.tasks.push(newTask);
 
     const deptKey = selectedDepartment.toLowerCase() as keyof StoreProject['departments'];
-    
+
     if (targetProject.departments && targetProject.departments[deptKey]) {
       if (!(targetProject.departments[deptKey] as { tasks: Task[] }).tasks) {
         (targetProject.departments[deptKey] as { tasks: Task[] }).tasks = [];
       }
       (targetProject.departments[deptKey] as { tasks: Task[] }).tasks.push(newTask);
-    } else if (targetProject.departments && deptKey === 'it') { 
+    } else if (targetProject.departments && deptKey === 'it') {
        targetProject.departments.it = { ...targetProject.departments.it, tasks: [...(targetProject.departments.it?.tasks || []), newTask] };
-    } else if (targetProject.departments) { 
+    } else if (targetProject.departments) {
         targetProject.departments[deptKey] = { tasks: [newTask] };
     }
 
     targetProject.currentProgress = calculateOverallProgress(targetProject.tasks);
-    
+
     toast({
       title: "Success!",
       description: `Task "${taskName}" assigned successfully to ${selectedAssigneeInfo.name} for project "${targetProject.name}".`,
@@ -223,7 +221,7 @@ export default function AssignTaskPage() {
                 rows={3}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Assign To *</Label>
@@ -237,7 +235,7 @@ export default function AssignTaskPage() {
                       value={assignToSearchTerm}
                       onChange={(e) => {
                         setAssignToSearchTerm(e.target.value);
-                        setSelectedAssigneeInfo(null); // Clear previous selection on new typing
+                        setSelectedAssigneeInfo(null);
                         if (e.target.value.trim() !== "") {
                            setIsAssignToPopoverOpen(true);
                         } else {
@@ -254,11 +252,11 @@ export default function AssignTaskPage() {
                     />
                   </PopoverTrigger>
                   {assignToSuggestions.length > 0 && (
-                    <PopoverContent 
-                      className="p-0 w-[--radix-popover-trigger-width]" 
-                      side="bottom" 
+                    <PopoverContent
+                      className="p-0 w-[--radix-popover-trigger-width]"
+                      side="bottom"
                       align="start"
-                      onOpenAutoFocus={(e) => e.preventDefault()} // Prevents auto-focus stealing from input
+                      onOpenAutoFocus={(e) => e.preventDefault()}
                     >
                       <Command>
                         <CommandList>

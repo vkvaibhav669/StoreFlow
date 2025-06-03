@@ -86,7 +86,7 @@ export default function DashboardPage() {
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
   const [selectedDepartments, setSelectedDepartments] = React.useState<Record<Department, boolean>>(
     allDepartmentKeys.reduce((acc, curr) => {
-      acc[curr] = false; 
+      acc[curr] = false;
       return acc;
     }, {} as Record<Department, boolean>)
   );
@@ -132,7 +132,7 @@ export default function DashboardPage() {
 
     const today = new Date();
     const newProjectId = `proj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    
+
     const projectDepartments: Partial<StoreProject['departments']> = {};
 
     allDepartmentKeys.forEach(dept => {
@@ -145,7 +145,7 @@ export default function DashboardPage() {
         }
       }
     });
-    
+
     const newProject: StoreProject = {
       id: newProjectId,
       name: newProjectName,
@@ -158,12 +158,12 @@ export default function DashboardPage() {
       currentProgress: 0,
       propertyDetails: {
         address: newProjectLocation,
-        sqft: 0, 
+        sqft: 0,
         status: 'Identified',
         notes: 'Newly added project.',
       },
       projectTimeline: {
-        totalDays: 60, 
+        totalDays: 60,
         currentDay: 0,
         kickoffDate: formatDate(today),
       },
@@ -174,8 +174,8 @@ export default function DashboardPage() {
       comments: [],
     };
 
-    mockProjects.push(newProject); 
-    setDashboardProjects([...mockProjects]); 
+    mockProjects.push(newProject);
+    setDashboardProjects([...mockProjects]);
 
     setNewProjectName("");
     setNewProjectLocation("");
@@ -220,9 +220,9 @@ export default function DashboardPage() {
 
   return (
     <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 id="dashboard-main-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">Project Dashboard</h1>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 gap-1">
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                 <DropdownMenuCheckboxItem
                   checked={filterSettings.planningOnly}
                   onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, planningOnly: !!checked }))}
-                  disabled={!filterSettings.showActive} 
+                  disabled={!filterSettings.showActive}
                 >
                   Planning (within Active)
                 </DropdownMenuCheckboxItem>
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
                 setIsAddProjectDialogOpen(isOpen);
                 if (!isOpen) {
@@ -293,7 +293,7 @@ export default function DashboardPage() {
                   </span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[480px]">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Add New Project</DialogTitle>
                   <DialogDescription>
@@ -301,36 +301,36 @@ export default function DashboardPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="projectName" className="text-right">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="projectName" className="sm:text-right">
                       Name
                     </Label>
-                    <Input 
-                      id="projectName" 
-                      value={newProjectName} 
-                      onChange={(e) => setNewProjectName(e.target.value)} 
-                      className="col-span-3" 
+                    <Input
+                      id="projectName"
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      className="sm:col-span-3"
                       placeholder="e.g., City Center Flagship"
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="projectLocation" className="text-right">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="projectLocation" className="sm:text-right">
                       Location
                     </Label>
-                    <Input 
-                      id="projectLocation" 
-                      value={newProjectLocation} 
-                      onChange={(e) => setNewProjectLocation(e.target.value)} 
-                      className="col-span-3"
+                    <Input
+                      id="projectLocation"
+                      value={newProjectLocation}
+                      onChange={(e) => setNewProjectLocation(e.target.value)}
+                      className="sm:col-span-3"
                       placeholder="e.g., 789 Market St, Big City"
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="franchiseType" className="text-right">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="franchiseType" className="sm:text-right">
                       Franchise Type
                     </Label>
                     <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)}>
-                        <SelectTrigger id="franchiseType" className="col-span-3">
+                        <SelectTrigger id="franchiseType" className="sm:col-span-3">
                             <SelectValue placeholder="Select franchise type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -340,11 +340,11 @@ export default function DashboardPage() {
                         </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label className="text-right pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
+                    <Label className="sm:text-right pt-2">
                       Departments
                     </Label>
-                    <div className="col-span-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div className="sm:col-span-3 grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-2">
                       {allDepartmentKeys.map(dept => (
                         <div key={dept} className="flex items-center space-x-2">
                           <Checkbox
@@ -357,11 +357,11 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="markUpcoming" className="text-right">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="markUpcoming" className="sm:text-right">
                       Options
                     </Label>
-                    <div className="col-span-3 flex items-center space-x-2">
+                    <div className="sm:col-span-3 flex items-center space-x-2">
                       <Checkbox
                         id="markUpcoming"
                         checked={markAsUpcoming}
@@ -450,5 +450,3 @@ export default function DashboardPage() {
     </section>
   );
 }
-
-    
