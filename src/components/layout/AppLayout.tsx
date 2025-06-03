@@ -146,7 +146,7 @@ interface AppNotification {
   seen: boolean;
 }
 
-type Theme = "light" | "dark" | "system" | "blue-theme";
+type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme";
 
 function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [currentTheme, setCurrentTheme] = React.useState<Theme>("system");
@@ -172,7 +172,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
   const applyTheme = (theme: Theme) => {
     if (typeof window === "undefined") return;
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark", "theme-blue");
+    root.classList.remove("light", "dark", "theme-blue", "theme-pink");
 
     let effectiveTheme = theme;
     if (theme === "system") {
@@ -180,6 +180,8 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
       root.classList.add(effectiveTheme);
     } else if (theme === "blue-theme") {
       root.classList.add("theme-blue");
+    } else if (theme === "pink-theme") {
+      root.classList.add("theme-pink");
     } else {
       root.classList.add(theme); // 'light' or 'dark'
     }
@@ -219,7 +221,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                 Select the theme for the application.
               </p>
               <RadioGroup
-                value={currentTheme === "blue-theme" ? "" : currentTheme} 
+                value={currentTheme === "blue-theme" || currentTheme === "pink-theme" ? "" : currentTheme} 
                 onValueChange={(value) => handleThemeChange(value as Theme)}
                 className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
               >
@@ -254,17 +256,28 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   </Label>
                 </div>
               </RadioGroup>
-              <div className="pt-4">
+              <div className="pt-4 space-y-2">
                  <Button 
                     onClick={() => handleThemeChange("blue-theme")} 
                     variant="outline"
                     className={cn(
                         "w-full",
-                        currentTheme === "blue-theme" && "bg-foreground text-background hover:bg-foreground/90 hover:text-background/90"
+                        currentTheme === "blue-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
                     )}
                 >
                     <Palette className="mr-2 h-4 w-4" /> 
                     {currentTheme === "blue-theme" ? "Navy Blue Theme (Active)" : "Switch to Navy Blue Theme"}
+                </Button>
+                <Button 
+                    onClick={() => handleThemeChange("pink-theme")} 
+                    variant="outline"
+                    className={cn(
+                        "w-full",
+                        currentTheme === "pink-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
+                    )}
+                >
+                    <Palette className="mr-2 h-4 w-4" /> 
+                    {currentTheme === "pink-theme" ? "Pink Theme (Active)" : "Switch to Pink Theme"}
                 </Button>
               </div>
             </div>
@@ -382,7 +395,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <DropdownMenuLabel>{user.name || user.email}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/contact-ho')}>
+                     <DropdownMenuItem onClick={() => router.push('/contact-ho')}>
                       <Briefcase className="mr-2 h-4 w-4" />Contact Head Office
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setIsSettingsDialogOpen(true)}>

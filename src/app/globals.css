@@ -159,6 +159,56 @@ body {
     --chart-4: 230 65% 65%;
     --chart-5: 210 90% 70%;
   }
+
+  .theme-pink {
+    --background: 330 40% 97%; /* Very Light Pink */
+    --foreground: 330 30% 15%; /* Dark Magenta/Gray for text */
+
+    --muted: 330 30% 90%; /* Light Pink-Gray */
+    --muted-foreground: 330 25% 40%; /* Muted Magenta */
+
+    --popover: 330 40% 99%; /* Almost White with pink hint */
+    --popover-foreground: 330 30% 15%;
+
+    --card: 330 40% 98%; /* Very Pale Pink */
+    --card-foreground: 330 30% 15%;
+
+    --border: 330 30% 80%; /* Light Grayish Pink */
+    --input: 330 30% 85%; /* Slightly Lighter Grayish Pink for inputs */
+
+    --primary: 330 75% 55%; /* Vibrant Pink */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 330 20% 92%; /* Light, desaturated pink-gray */
+    --secondary-foreground: 330 35% 25%; /* Darker magenta for text on secondary */
+
+    --accent: 340 80% 65%; /* Slightly different Pink/Rose for accents */
+    --accent-foreground: 0 0% 100%; /* White */
+
+    --destructive: 0 84.2% 60.2%; /* Standard Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 330 75% 55%; /* Pink for focus rings */
+
+    /* Sidebar specific colors for Pink Theme */
+    --sidebar-background: 330 25% 94%; /* Pale Pink/Pink-Gray */
+    --sidebar-foreground: 330 20% 25%; /* Dark Magenta-Gray text */
+    --sidebar-border: 330 20% 85%; 
+    
+    --sidebar-primary: 330 75% 55%; /* Pink for active nav */
+    --sidebar-primary-foreground: 0 0% 98%; 
+    
+    --sidebar-accent: 330 20% 88%; /* Lighter pink for hover */
+    --sidebar-accent-foreground: 330 25% 15%; 
+    
+    --sidebar-ring: 330 75% 55%;
+
+    --chart-1: 330 80% 60%;
+    --chart-2: 310 75% 55%;
+    --chart-3: 350 70% 50%;
+    --chart-4: 320 65% 65%;
+    --chart-5: 340 90% 70%;
+  }
 }
 
 @layer base {
