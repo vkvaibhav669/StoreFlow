@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { mockProjects } from "@/lib/data";
-import type { StoreProject, Department, DepartmentDetails } from "@/types";
+import type { StoreProject, Department, DepartmentDetails, StoreType } from "@/types";
 import { ArrowUpRight, ListFilter, PlusCircle, Package2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate, addDays } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -39,7 +40,14 @@ function ProjectCard({ project }: { project: StoreProject }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl">{project.name}</CardTitle>
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-xl">{project.name}</CardTitle>
+          {project.franchiseType && (
+            <Badge variant={project.franchiseType === "COCO" ? "default" : "secondary"} className={project.franchiseType === "COCO" ? "bg-primary/80 text-primary-foreground" : ""}>
+              {project.franchiseType}
+            </Badge>
+          )}
+        </div>
         <CardDescription className="max-w-lg text-balance leading-relaxed">
           {project.location} - Projected Launch: {project.projectedLaunchDate}
         </CardDescription>
@@ -63,6 +71,7 @@ function ProjectCard({ project }: { project: StoreProject }) {
 }
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+const allStoreTypes: StoreType[] = ["COCO", "FOFO"];
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -72,9 +81,10 @@ export default function DashboardPage() {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
+  const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
   const [selectedDepartments, setSelectedDepartments] = React.useState<Record<Department, boolean>>(
     allDepartmentKeys.reduce((acc, curr) => {
-      acc[curr] = false; // Default all to false
+      acc[curr] = false; 
       return acc;
     }, {} as Record<Department, boolean>)
   );
@@ -137,6 +147,7 @@ export default function DashboardPage() {
       id: newProjectId,
       name: newProjectName,
       location: newProjectLocation,
+      franchiseType: newProjectFranchiseType,
       status: "Planning",
       isUpcoming: markAsUpcoming,
       startDate: formatDate(today),
@@ -165,6 +176,7 @@ export default function DashboardPage() {
 
     setNewProjectName("");
     setNewProjectLocation("");
+    setNewProjectFranchiseType("COCO");
     setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => {
       acc[curr] = false;
       return acc;
@@ -240,10 +252,11 @@ export default function DashboardPage() {
             <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
                 setIsAddProjectDialogOpen(isOpen);
                 if (!isOpen) {
-                    setMarkAsUpcoming(false); 
                     setNewProjectName("");
                     setNewProjectLocation("");
+                    setNewProjectFranchiseType("COCO");
                     setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
+                    setMarkAsUpcoming(false);
                 }
             }}>
               <DialogTrigger asChild>
@@ -285,6 +298,21 @@ export default function DashboardPage() {
                       className="col-span-3"
                       placeholder="e.g., 789 Market St, Big City"
                     />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="franchiseType" className="text-right">
+                      Franchise Type
+                    </Label>
+                    <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)}>
+                        <SelectTrigger id="franchiseType" className="col-span-3">
+                            <SelectValue placeholder="Select franchise type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {allStoreTypes.map(type => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-4 items-start gap-4">
                     <Label className="text-right pt-2">

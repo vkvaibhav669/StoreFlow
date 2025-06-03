@@ -65,6 +65,7 @@ export interface DepartmentDetails {
     postLaunchCampaigns?: MarketingCampaign[];
 }
 
+export type StoreType = "COCO" | "FOFO";
 
 export interface StoreProject {
   id: string;
@@ -75,6 +76,7 @@ export interface StoreProject {
   projectedLaunchDate: string;
   currentProgress: number;
   isUpcoming?: boolean;
+  franchiseType?: StoreType; // Added franchiseType
   propertyDetails?: {
     address: string;
     sqft: number;
@@ -127,7 +129,6 @@ export interface ApprovalRequest {
   approvalComments?: Comment[]; // Comments related to the approval/rejection itself
 }
 
-export type StoreType = "COCO" | "FOFO";
 
 export interface ImprovementPoint {
   id: string;
@@ -151,6 +152,5 @@ export interface StoreItem {
   inventoryLevels?: Record<string, number>;
   currentPromotions?: string[];
   improvementPoints?: ImprovementPoint[];
-  ownershipChangeRequested?: boolean; // New field
+  ownershipChangeRequested?: boolean;
 }
-

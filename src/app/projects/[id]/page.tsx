@@ -10,8 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter } from "lucide-react";
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -847,7 +847,16 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             <p className="text-sm font-medium">Start Date</p>
             <p className="text-muted-foreground">{projectData.startDate}</p>
           </div>
-          <div className="md:col-span-2">
+          {projectData.franchiseType && (
+            <div>
+              <p className="text-sm font-medium flex items-center">
+                <Building className="mr-2 h-4 w-4 text-muted-foreground" />
+                Franchise Type
+              </p>
+              <p className="text-muted-foreground">{projectData.franchiseType}</p>
+            </div>
+          )}
+          <div className={projectData.franchiseType ? "" : "md:col-span-2"}>
             <p className="text-sm font-medium">Overall Progress: {projectData.currentProgress}%</p>
             <Progress value={projectData.currentProgress} className="mt-1" />
           </div>

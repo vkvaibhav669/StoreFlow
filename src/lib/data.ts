@@ -109,6 +109,7 @@ export let mockProjects: StoreProject[] = [
     name: 'Downtown Flagship Store',
     location: '123 Main St, Anytown, USA',
     status: 'Execution',
+    franchiseType: 'COCO',
     startDate: formatDate(addDays(today, -15)),
     projectedLaunchDate: formatDate(addDays(today, 30)),
     currentProgress: 45,
@@ -149,6 +150,7 @@ export let mockProjects: StoreProject[] = [
     name: 'Suburban Mall Outlet',
     location: '456 Market Ave, Suburbia, USA',
     status: 'Planning',
+    franchiseType: 'FOFO',
     startDate: formatDate(addDays(today, 5)),
     projectedLaunchDate: formatDate(addDays(today, 50)),
     currentProgress: 10,
@@ -181,6 +183,7 @@ export let mockProjects: StoreProject[] = [
     name: 'Airport Kiosk',
     location: 'Terminal C, International Airport',
     status: 'Launched',
+    franchiseType: 'COCO',
     startDate: formatDate(addDays(today, -60)),
     projectedLaunchDate: formatDate(addDays(today, -15)),
     currentProgress: 100,
@@ -351,7 +354,8 @@ export let mockStores: StoreItem[] = [
     customerSatisfaction: 4.5, 
     inventoryLevels: { "Product A": 100, "Product B": 50}, 
     currentPromotions: ["Summer Sale 20% off"],
-    improvementPoints: [...sampleImprovementPoints]
+    improvementPoints: [...sampleImprovementPoints],
+    ownershipChangeRequested: false,
   },
   { 
     id: 'store-002', 
@@ -366,7 +370,8 @@ export let mockStores: StoreItem[] = [
     customerSatisfaction: 4.2, 
     inventoryLevels: { "Product C": 80, "Product D": 120}, 
     currentPromotions: ["Weekend Special Buy 1 Get 1"],
-    improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Vaibhhav Raj Kumar', addedAt: formatDate(addDays(today, -10)) }]
+    improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Vaibhhav Raj Kumar', addedAt: formatDate(addDays(today, -10)) }],
+    ownershipChangeRequested: true,
   },
   { 
     id: 'store-003', 
@@ -375,13 +380,14 @@ export let mockStores: StoreItem[] = [
     type: 'FOFO', 
     status: 'Operational', 
     openingDate: formatDate(addDays(today, -90)), 
-    manager: 'Carol Williams', // Made name consistent with user schema for easier matching
+    manager: 'Carol Williams', 
     sqft: 3000, 
     dailySales: 950, 
     customerSatisfaction: 4.7, 
     inventoryLevels: { "Product A": 70, "Product E": 60}, 
     currentPromotions: [],
-    improvementPoints: []
+    improvementPoints: [],
+    ownershipChangeRequested: false,
   },
   { 
     id: 'store-004', 
@@ -392,7 +398,7 @@ export let mockStores: StoreItem[] = [
     openingDate: formatDate(addDays(today, 60)), 
     manager: 'TBD', 
     sqft: 4000,
-    improvementPoints: []
+    improvementPoints: [],
   },
   { 
     id: 'store-005', 
@@ -403,22 +409,19 @@ export let mockStores: StoreItem[] = [
     openingDate: formatDate(addDays(today, 120)), 
     manager: 'David Brown', 
     sqft: 2200,
-    improvementPoints: []
+    improvementPoints: [],
   },
 ];
 
 
 export const getStoreById = (id: string): StoreItem | undefined => {
   const store = mockStores.find(s => s.id === id);
-  // Deep copy to prevent direct mutation of mock data if component modifies it
   return store ? JSON.parse(JSON.stringify(store)) : undefined;
 };
 
-// Function to update a store in the mock data (e.g., when adding an improvement point)
 export const updateMockStore = (updatedStore: StoreItem): void => {
   const index = mockStores.findIndex(s => s.id === updatedStore.id);
   if (index !== -1) {
     mockStores[index] = updatedStore;
   }
 };
-
