@@ -19,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -32,6 +32,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext"; 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import type { User } from "@/types";
 
 interface SidebarNavProps {
   // Add any specific props if needed
@@ -141,9 +146,131 @@ interface AppNotification {
   seen: boolean;
 }
 
-function Header() {
+type Theme = "light" | "dark" | "system";
+
+function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [currentTheme, setCurrentTheme] = React.useState<Theme>("system");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedTheme = localStorage.getItem("theme") as Theme | null;
+      const initialTheme = storedTheme || "system";
+      setCurrentTheme(initialTheme);
+      applyTheme(initialTheme);
+
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => {
+        if (localStorage.getItem("theme") === "system" || !localStorage.getItem("theme")) {
+          applyTheme("system");
+        }
+      };
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, []);
+
+  const applyTheme = (theme: Theme) => {
+    if (typeof window === "undefined") return;
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+
+    let effectiveTheme = theme;
+    if (theme === "system") {
+      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    
+    root.classList.add(effectiveTheme);
+  };
+
+  const handleThemeChange = (newTheme: Theme) => {
+    setCurrentTheme(newTheme);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("theme", newTheme);
+    }
+    applyTheme(newTheme);
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>
+            Manage your account and application appearance.
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs defaultValue="appearance" className="w-full pt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          </TabsList>
+          <TabsContent value="account" className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Account management features (e.g., change password, update profile details) are not implemented in this prototype.
+            </p>
+          </TabsContent>
+          <TabsContent value="appearance" className="pt-6">
+            <div className="space-y-3">
+              <Label className="text-base font-medium block">Theme</Label>
+              <p className="text-sm text-muted-foreground">
+                Select the theme for the application.
+              </p>
+              <RadioGroup
+                value={currentTheme}
+                onValueChange={(value) => handleThemeChange(value as Theme)}
+                className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
+              >
+                <div>
+                  <RadioGroupItem value="light" id="theme-light" className="peer sr-only" />
+                  <Label
+                    htmlFor="theme-light"
+                    className="flex flex-col items-center justify-center space-y-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-28 text-sm"
+                  >
+                    <Sun className="h-5 w-5 mb-1" />
+                    Light
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem value="dark" id="theme-dark" className="peer sr-only" />
+                  <Label
+                    htmlFor="theme-dark"
+                    className="flex flex-col items-center justify-center space-y-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-28 text-sm"
+                  >
+                    <Moon className="h-5 w-5 mb-1" />
+                    Dark
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem value="system" id="theme-system" className="peer sr-only" />
+                  <Label
+                    htmlFor="theme-system"
+                    className="flex flex-col items-center justify-center space-y-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-28 text-sm"
+                  >
+                    <Laptop className="h-5 w-5 mb-1" />
+                    System
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </TabsContent>
+        </Tabs>
+        <div className="flex justify-end pt-6">
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
+  const pathname = usePathname();
   const router = useRouter();
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
+
 
   const initialNotifications: AppNotification[] = React.useMemo(() => user ? [
     { id: 1, text: "Project Alpha: Task 'Finalize Design' overdue.", href: "#", seen: false },
@@ -154,122 +281,118 @@ function Header() {
   const [notifications, setNotifications] = React.useState<AppNotification[]>(initialNotifications);
 
   React.useEffect(() => {
-    // Reset notifications if user changes (e.g., logs out and logs in as another user)
     setNotifications(initialNotifications);
   }, [initialNotifications, user]);
 
-
   const handleSignOut = async () => {
     await signOut();
-    // router.push("/auth/signin"); // signOut in context already handles this
   };
   
   const unseenNotificationCount = notifications.filter(n => !n.seen).length;
 
   const handleNotificationOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      // Mark all currently unseen notifications as seen
       setNotifications(prevNotifications =>
         prevNotifications.map(n => n.seen ? n : { ...n, seen: true })
       );
     }
   };
 
-  return (
-    <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6">
-      <SidebarTrigger className="md:hidden" /> {/* Mobile sidebar trigger */}
-      <div className="ml-auto flex items-center gap-4">
-        {user && (
-          <DropdownMenu onOpenChange={handleNotificationOpenChange}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full relative">
-                <Bell className="h-5 w-5" />
-                {unseenNotificationCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
-                    {unseenNotificationCount}
-                  </Badge>
-                )}
-                <span className="sr-only">Toggle notifications</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[300px] sm:w-[350px]">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {notifications.length > 0 ? (
-                notifications.map(notification => (
-                  <DropdownMenuItem key={notification.id} asChild>
-                    <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", notification.seen && "text-muted-foreground")}>
-                      {notification.text}
-                    </Link>
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem disabled>
-                  <span className="text-sm p-2 text-muted-foreground">No new notifications</span>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="justify-center p-0">
-                <Button variant="link" asChild className="w-full text-sm text-primary hover:underline">
-                  <Link href="#">View all notifications</Link>
-                </Button>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
 
-        {loading ? (
-          <Skeleton className="h-10 w-10 rounded-full" />
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="overflow-hidden rounded-full">
-                <Avatar>
-                  {user ? (
-                    <AvatarImage src={`https://placehold.co/40x40.png?text=${user.name ? user.name.substring(0,1) : user.email.substring(0,1)}`} alt={user.name || user.email} data-ai-hint="user avatar" />
-                  ) : (
-                    <AvatarImage src="https://placehold.co/40x40.png?text=SF" alt="StoreFlow User" data-ai-hint="guest avatar" />
+  function Header() {
+    // This Header function is nested, so it has access to setIsSettingsDialogOpen
+    return (
+      <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6">
+        <SidebarTrigger className="md:hidden" />
+        <div className="ml-auto flex items-center gap-4">
+          {user && (
+            <DropdownMenu onOpenChange={handleNotificationOpenChange}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full relative">
+                  <Bell className="h-5 w-5" />
+                  {unseenNotificationCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
+                      {unseenNotificationCount}
+                    </Badge>
                   )}
-                  <AvatarFallback>{user ? (user.name || user.email).substring(0, 2).toUpperCase() : "SF"}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {user ? (
-                <>
-                  <DropdownMenuLabel>{user.name || user.email}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
-                  <DropdownMenuItem disabled>Settings</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                  <span className="sr-only">Toggle notifications</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[300px] sm:w-[350px]">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifications.length > 0 ? (
+                  notifications.map(notification => (
+                    <DropdownMenuItem key={notification.id} asChild>
+                      <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", notification.seen && "text-muted-foreground")}>
+                        {notification.text}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    <span className="text-sm p-2 text-muted-foreground">No new notifications</span>
                   </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuLabel>Guest</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/auth/signin')}>
-                     <LogIn className="mr-2 h-4 w-4" /> Sign In
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/auth/signup')}>
-                    <UserPlus className="mr-2 h-4 w-4" /> Sign Up
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </header>
-  );
-}
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="justify-center p-0">
+                  <Button variant="link" asChild className="w-full text-sm text-primary hover:underline">
+                    <Link href="#">View all notifications</Link>
+                  </Button>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
-  const pathname = usePathname();
-  const router = useRouter();
+          {loading ? (
+            <Skeleton className="h-10 w-10 rounded-full" />
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="overflow-hidden rounded-full">
+                  <Avatar>
+                    {user ? (
+                      <AvatarImage src={`https://placehold.co/40x40.png?text=${user.name ? user.name.substring(0,1) : user.email.substring(0,1)}`} alt={user.name || user.email} data-ai-hint="user avatar" />
+                    ) : (
+                      <AvatarImage src="https://placehold.co/40x40.png?text=SF" alt="StoreFlow User" data-ai-hint="guest avatar" />
+                    )}
+                    <AvatarFallback>{user ? (user.name || user.email).substring(0, 2).toUpperCase() : "SF"}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {user ? (
+                  <>
+                    <DropdownMenuLabel>{user.name || user.email}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsSettingsDialogOpen(true)}>
+                      <Settings className="mr-2 h-4 w-4" />Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <LogOut className="mr-2 h-4 w-4" /> Logout
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuLabel>Guest</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/auth/signin')}>
+                       <LogIn className="mr-2 h-4 w-4" /> Sign In
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/auth/signup')}>
+                      <UserPlus className="mr-2 h-4 w-4" /> Sign Up
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </header>
+    );
+  }
 
   React.useEffect(() => {
     if (!loading && !user && !pathname.startsWith('/auth')) {
@@ -336,6 +459,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </SidebarInset>
         </div>
       </div>
+      {user && <SettingsDialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen} />}
     </SidebarProvider>
   );
 }
