@@ -17,6 +17,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -95,6 +97,7 @@ export default function DashboardPage() {
     showActive: true,
     showLaunched: true,
     planningOnly: false,
+    storeOwnershipFilter: "All" as StoreType | "All",
   });
 
   React.useEffect(() => {
@@ -187,8 +190,12 @@ export default function DashboardPage() {
 
   const upcomingProjects = React.useMemo(() => {
     if (!filterSettings.showUpcoming) return [];
-    return dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
-  }, [dashboardProjects, filterSettings.showUpcoming]);
+    let projects = dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
+    if (filterSettings.storeOwnershipFilter !== "All") {
+      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
+    }
+    return projects;
+  }, [dashboardProjects, filterSettings.showUpcoming, filterSettings.storeOwnershipFilter]);
 
   const activeProjects = React.useMemo(() => {
     if (!filterSettings.showActive) return [];
@@ -196,13 +203,20 @@ export default function DashboardPage() {
     if (filterSettings.planningOnly) {
       projects = projects.filter(p => p.status === "Planning");
     }
+    if (filterSettings.storeOwnershipFilter !== "All") {
+      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
+    }
     return projects;
-  }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly]);
+  }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly, filterSettings.storeOwnershipFilter]);
 
   const launchedProjects = React.useMemo(() => {
     if (!filterSettings.showLaunched) return [];
-    return dashboardProjects.filter(p => p.status === "Launched");
-  }, [dashboardProjects, filterSettings.showLaunched]);
+    let projects = dashboardProjects.filter(p => p.status === "Launched");
+    if (filterSettings.storeOwnershipFilter !== "All") {
+      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
+    }
+    return projects;
+  }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
 
   return (
     <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
@@ -246,6 +260,18 @@ export default function DashboardPage() {
                 >
                   Planning (within Active)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Filter by Store Ownership</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={filterSettings.storeOwnershipFilter}
+                  onValueChange={(value) =>
+                    setFilterSettings((prev) => ({ ...prev, storeOwnershipFilter: value as StoreType | "All" }))
+                  }
+                >
+                  <DropdownMenuRadioItem value="All">All Types</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="COCO">COCO</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="FOFO">FOFO</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -369,7 +395,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <p className="text-muted-foreground">
-              No projects currently marked as upcoming.
+              No upcoming projects matching current filters.
             </p>
           )}
         </section>
@@ -404,7 +430,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No recently launched projects.</p>
+            <p className="text-muted-foreground">No recently launched projects matching current filters.</p>
           )}
         </section>
       )}
@@ -415,3 +441,5 @@ export default function DashboardPage() {
     </section>
   );
 }
+
+    
