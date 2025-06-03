@@ -111,53 +111,53 @@ body {
   }
 
   .theme-blue {
-    --background: 210 60% 97%; /* Very Light Blue-Gray */
-    --foreground: 225 30% 20%; /* Dark Navy Blue-Gray for text */
+    --background: 210 50% 96%; /* Slightly more muted Light Blue-Gray */
+    --foreground: 225 35% 18%; /* Darker Navy Blue-Gray for text */
 
-    --muted: 210 50% 90%; /* Light Steel Blue */
-    --muted-foreground: 210 30% 40%; /* Slate Gray */
+    --muted: 210 45% 88%; /* Muted Steel Blue */
+    --muted-foreground: 210 30% 38%; /* Muted Slate Gray */
 
-    --popover: 210 60% 99%; /* Almost White with blue hint */
-    --popover-foreground: 225 30% 20%;
+    --popover: 210 50% 98%; /* Pale Blue with hint of gray */
+    --popover-foreground: 225 35% 18%;
 
-    --card: 210 60% 98%; /* Very Pale Blue */
-    --card-foreground: 225 30% 20%;
+    --card: 210 50% 97%; /* Slightly more muted Pale Blue for cards */
+    --card-foreground: 225 35% 18%; /* Darker text on cards */
 
-    --border: 210 40% 80%; /* Light Grayish Blue */
-    --input: 210 40% 85%; /* Slightly Lighter Grayish Blue for inputs */
+    --border: 210 35% 78%; /* Muted Grayish Blue for borders */
+    --input: 210 40% 82%; /* Slightly darker input background */
 
-    --primary: 225 50% 35%; /* Navy Blue */
-    --primary-foreground: 0 0% 98%; /* Off-White */
+    --primary: 225 48% 28%; /* Darker, slightly less saturated Navy Blue */
+    --primary-foreground: 0 0% 98%; /* Off-White, good contrast */
 
-    --secondary: 220 25% 92%; /* Light, desaturated blue-gray for secondary elements */
-    --secondary-foreground: 225 40% 25%; /* Darker navy for text on secondary */
+    --secondary: 220 30% 90%; /* Muted, desaturated blue-gray for secondary elements */
+    --secondary-foreground: 225 38% 22%; /* Darker navy text on secondary */
 
-    --accent: 210 70% 60%; /* Lighter, somewhat vibrant blue for accents */
+    --accent: 210 65% 55%; /* Slightly darker, less vibrant accent blue */
     --accent-foreground: 0 0% 100%; /* White */
 
     --destructive: 0 84.2% 60.2%; /* Standard Red */
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 225 50% 45%; /* Navy for focus rings */
+    --ring: 225 48% 35%; /* Darker Navy for focus rings */
 
-    /* Sidebar specific colors for Navy Blue Theme */
-    --sidebar-background: 220 30% 94%; /* Pale Navy/Blue-Gray */
-    --sidebar-foreground: 225 25% 25%; /* Dark Navy-Gray text */
-    --sidebar-border: 210 35% 85%; 
+    /* Sidebar specific colors for Darker Navy Blue Theme */
+    --sidebar-background: 220 35% 92%; /* More muted Pale Navy/Blue-Gray */
+    --sidebar-foreground: 225 30% 22%; /* Darker Navy-Gray text */
+    --sidebar-border: 210 30% 82%; 
     
-    --sidebar-primary: 225 50% 35%; /* Navy for active nav */
+    --sidebar-primary: 225 48% 28%; /* Darker Navy for active nav */
     --sidebar-primary-foreground: 0 0% 98%; 
     
-    --sidebar-accent: 220 35% 88%; /* Lighter navy/blue for hover */
+    --sidebar-accent: 220 38% 86%; /* Adjusted lighter navy/blue for hover */
     --sidebar-accent-foreground: 225 30% 15%; 
     
-    --sidebar-ring: 225 50% 45%;
+    --sidebar-ring: 225 48% 35%;
 
-    --chart-1: 220 80% 60%;
-    --chart-2: 200 75% 55%;
-    --chart-3: 180 70% 50%;
-    --chart-4: 230 65% 65%;
-    --chart-5: 210 90% 70%;
+    --chart-1: 220 75% 55%;
+    --chart-2: 200 70% 50%;
+    --chart-3: 180 65% 45%;
+    --chart-4: 230 60% 60%;
+    --chart-5: 210 85% 65%;
   }
 
   .theme-pink {
