@@ -27,14 +27,14 @@ export const siteConfig: SiteConfig = {
       icon: LayoutDashboard,
     },
     {
-      title: "All Projects",
-      href: "/projects",
-      icon: ClipboardList,
-    },
-    {
       title: "My Stores",
       href: "/my-stores",
       icon: Store,
+    },
+    {
+      title: "All Projects",
+      href: "/projects",
+      icon: ClipboardList,
     },
     {
       title: "Assign a Task",
@@ -75,3 +75,4 @@ export const siteConfig: SiteConfig = {
     },
   ]
 };
+
