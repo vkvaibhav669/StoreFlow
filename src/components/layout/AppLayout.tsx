@@ -19,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase, Globe } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -36,7 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Removed Select import as it might only be used for language now
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/types";
 
@@ -152,7 +152,6 @@ type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme" | "green-
 
 function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
-  const [selectedLanguage, setSelectedLanguage] = React.useState("en");
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -161,9 +160,6 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
       const initialTheme = storedTheme || "blue-theme"; 
       setCurrentTheme(initialTheme);
       applyTheme(initialTheme);
-
-      const storedLanguage = localStorage.getItem("appLanguage") || "en";
-      setSelectedLanguage(storedLanguage);
 
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => {
@@ -207,28 +203,6 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
   
   const isCustomThemeActive = currentTheme === "blue-theme" || currentTheme === "pink-theme" || currentTheme === "green-theme";
 
-  const handleLanguageChange = (newLanguage: string) => {
-    setSelectedLanguage(newLanguage);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("appLanguage", newLanguage);
-    }
-    const languageName = languages.find(l => l.value === newLanguage)?.label || newLanguage;
-    toast({
-      title: "Language Preference Updated",
-      description: `App language preference set to ${languageName}. Full translation is a mock-up and not yet implemented.`,
-    });
-  };
-
-  const languages = [
-    { value: "en", label: "English (Default)" },
-    { value: "hi", label: "हिन्दी (Hindi)" },
-    { value: "ta", label: "தமிழ் (Tamil)" },
-    { value: "bn", label: "বাংলা (Bengali)" },
-    { value: "te", label: "తెలుగు (Telugu)" },
-    { value: "mr", label: "मराठी (Marathi)" },
-  ];
-
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -245,33 +219,9 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
           </TabsList>
           <TabsContent value="account" className="pt-6 space-y-6">
             <div>
-              <Label className="text-base font-medium flex items-center">
-                <Globe className="h-5 w-5 mr-2 text-primary" />
-                Language Settings
-              </Label>
-              <p className="text-sm text-muted-foreground mt-1 mb-3">
-                Choose your preferred language for the application.
-              </p>
-              <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-2">
-                Note: Full application translation is a mock-up for demonstration. The UI text will not change yet.
-              </p>
-            </div>
-             <div className="border-t pt-6">
                 <Label className="text-base font-medium">Profile Management</Label>
                  <p className="text-sm text-muted-foreground mt-1">
-                    Other account management features (e.g., change password, update profile details) are not implemented in this prototype.
+                    Account management features (e.g., change password, update profile details, language preferences) are not fully implemented in this prototype.
                 </p>
             </div>
           </TabsContent>
@@ -385,7 +335,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         { id: 4, text: "Maintenance check for 'Delhi Connaught Place Express' due tomorrow.", href: "/projects/proj-003", seen: false},
         { id: 5, text: "Marketing budget for Q3 approved.", href: "/dashboard", seen: true},
         { id: 6, text: "New approval request: 'Vacation request - R. Sharma'", href: "/my-approvals", seen: false },
-        { id: 7, text: "Project 'Chennai Emporium' milestone 'Site Survey' completed.", href: "/projects/proj-004", seen: true }, // Assuming proj-004 exists or is a valid link
+        { id: 7, text: "Project 'Chennai Emporium' milestone 'Site Survey' completed.", href: "/projects/proj-004", seen: true },
       ];
       setNotifications(currentNotifications);
     } else {
@@ -401,7 +351,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const handleNotificationOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      // Only update if there are unseen notifications to avoid unnecessary re-renders
       if (notifications.some(n => !n.seen)) {
         setNotifications(prevNotifications =>
           prevNotifications.map(n => (n.seen ? n : { ...n, seen: true }))
