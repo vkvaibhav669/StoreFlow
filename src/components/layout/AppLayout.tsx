@@ -200,6 +200,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
   
   const isCustomThemeActive = currentTheme === "blue-theme" || currentTheme === "pink-theme" || currentTheme === "green-theme";
 
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -318,19 +319,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
-
-
-  const initialNotifications: AppNotification[] = React.useMemo(() => user ? [
-    { id: 1, text: "Task 'Review safety protocols (Mumbai)' overdue for Mumbai Phoenix Mall Flagship.", href: "/projects/proj-001", seen: false },
-    { id: 2, text: "New comment on Bangalore Orion Mall Outlet project.", href: "/projects/proj-002", seen: false },
-    { id: 3, text: "StoreFlow version 1.1 is now available.", href: "/release-notes", seen: true }, // Example, this page doesn't exist
-  ] : [], [user]);
-
-  const [notifications, setNotifications] = React.useState<AppNotification[]>(initialNotifications);
+  const [notifications, setNotifications] = React.useState<AppNotification[]>([]);
 
   React.useEffect(() => {
-    setNotifications(initialNotifications);
-  }, [initialNotifications, user]);
+    if (user) {
+      const currentNotifications: AppNotification[] = [
+        { id: 1, text: "Task 'Review safety protocols (Mumbai)' overdue for Mumbai Phoenix Mall Flagship.", href: "/projects/proj-001", seen: false },
+        { id: 2, text: "New comment on Bangalore Orion Mall Outlet project.", href: "/projects/proj-002", seen: false },
+        { id: 3, text: "StoreFlow version 1.1 is now available.", href: "/release-notes", seen: true },
+        { id: 4, text: "Maintenance check for 'Delhi Connaught Place Express' due tomorrow.", href: "/projects/proj-003", seen: false},
+        { id: 5, text: "Marketing budget for Q3 approved.", href: "/dashboard", seen: true}
+      ];
+      setNotifications(currentNotifications);
+    } else {
+      setNotifications([]); 
+    }
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -340,9 +344,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const handleNotificationOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      setNotifications(prevNotifications =>
-        prevNotifications.map(n => n.seen ? n : { ...n, seen: true })
-      );
+      // Only update if there are unseen notifications to avoid unnecessary re-renders
+      if (notifications.some(n => !n.seen)) {
+        setNotifications(prevNotifications =>
+          prevNotifications.map(n => (n.seen ? n : { ...n, seen: true }))
+        );
+      }
     }
   };
 
@@ -513,4 +520,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
