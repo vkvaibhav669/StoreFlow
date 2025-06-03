@@ -4,7 +4,7 @@
 import * as React from "react";
 import { notFound, useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button"; // Ensured buttonVariants is imported
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,7 +37,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1370,20 +1369,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                           )}
                         </div>
                         {isUserAdminOrHod && (
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                setMemberToRemoveInfo({ email: member.email, name: member.name });
-                                setIsConfirmRemoveMemberDialogOpen(true); // Open dialog
-                              }}
-                              aria-label={`Remove ${member.name}`}
-                            >
-                              <UserX className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              setMemberToRemoveInfo({ email: member.email, name: member.name });
+                              setIsConfirmRemoveMemberDialogOpen(true);
+                            }}
+                            aria-label={`Remove ${member.name}`}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
                         )}
                       </CardHeader>
                       <CardContent className="p-4 pt-0 flex-grow">
