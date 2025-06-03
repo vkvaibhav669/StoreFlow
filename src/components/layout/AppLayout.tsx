@@ -19,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -146,7 +146,7 @@ interface AppNotification {
   seen: boolean;
 }
 
-type Theme = "light" | "dark" | "system";
+type Theme = "light" | "dark" | "system" | "blue-theme";
 
 function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [currentTheme, setCurrentTheme] = React.useState<Theme>("system");
@@ -172,14 +172,17 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
   const applyTheme = (theme: Theme) => {
     if (typeof window === "undefined") return;
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
+    root.classList.remove("light", "dark", "theme-blue");
 
     let effectiveTheme = theme;
     if (theme === "system") {
       effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      root.classList.add(effectiveTheme);
+    } else if (theme === "blue-theme") {
+      root.classList.add("theme-blue");
+    } else {
+      root.classList.add(theme); // 'light' or 'dark'
     }
-    
-    root.classList.add(effectiveTheme);
   };
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -216,7 +219,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                 Select the theme for the application.
               </p>
               <RadioGroup
-                value={currentTheme}
+                value={currentTheme === "blue-theme" ? "" : currentTheme} // Don't select if blue theme is active by button
                 onValueChange={(value) => handleThemeChange(value as Theme)}
                 className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
               >
@@ -251,6 +254,15 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   </Label>
                 </div>
               </RadioGroup>
+              <div className="pt-4">
+                 <Button 
+                    onClick={() => handleThemeChange("blue-theme")} 
+                    variant={currentTheme === "blue-theme" ? "default" : "outline"}
+                    className="w-full"
+                >
+                    <Palette className="mr-2 h-4 w-4" /> Switch to Blue Theme
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -463,3 +475,4 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+
