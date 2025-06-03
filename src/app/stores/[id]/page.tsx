@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -390,6 +389,20 @@ export default function StoreDetailsPage() {
             <p><strong>Date Active Since:</strong> {format(new Date(store.openingDate), "PPP")}</p>
             {store.manager && <p><strong>Manager:</strong> {store.manager}</p>}
             {store.sqft && <p><strong>Size:</strong> {store.sqft.toLocaleString()} sqft</p>}
+            
+            {store.ownershipChangeRequested && (
+              <div className="mt-4 p-3 rounded-md border border-yellow-400 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/20">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                  <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+                    Ownership Change Pending
+                  </p>
+                </div>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                  A request to change ownership to {targetOwnershipType} is awaiting approval.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -421,6 +434,8 @@ export default function StoreDetailsPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
+            </div>
+            <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-dashed">
                  {canManageImprovements && (
                     <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
                         <DialogTrigger asChild>
