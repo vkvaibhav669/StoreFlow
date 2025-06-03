@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
@@ -161,6 +161,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [isAddBlockerDialogOpen, setIsAddBlockerDialogOpen] = React.useState(false);
   const [newBlockerTitle, setNewBlockerTitle] = React.useState("");
   const [newBlockerDescription, setNewBlockerDescription] = React.useState("");
+
+  const [showBlockersInTimeline, setShowBlockersInTimeline] = React.useState(false);
 
 
   const currentUserRole = React.useMemo(() => {
@@ -598,7 +600,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     const updatedProjectData: StoreProject = {
         ...projectData,
         ...editingProjectForm,
-        status: editingProjectForm.status, // Ensure status from form is saved
+        status: editingProjectForm.status,
         propertyDetails: {
             ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
             ...editingPropertyDetailsForm,
@@ -649,7 +651,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setNewMilestoneDate(utilFormatDate(new Date()));
     setNewMilestoneDescription("");
     setIsAddMilestoneDialogOpen(false);
-    toast({ title: "Milestone Added", description: `"${newMilestone.name}" added to edit list. Save project to persist.` });
+    toast({ title: "Milestone Added", description: `"${newMilestone.name}" added. Save project to persist changes.` });
   };
 
   const handleSaveNewBlocker = () => {
@@ -669,18 +671,37 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setNewBlockerTitle("");
     setNewBlockerDescription("");
     setIsAddBlockerDialogOpen(false);
-    toast({ title: "Blocker Added", description: `"${newBlocker.title}" added to edit list. Save project to persist.` });
+    toast({ title: "Blocker Added", description: `"${newBlocker.title}" added. Save project to persist changes.` });
   };
   
-  const handleToggleBlockerResolution = (blockerId: string) => {
-    setEditingBlockers(prev =>
-      prev.map(b =>
-        b.id === blockerId
-          ? { ...b, isResolved: !b.isResolved, dateResolved: !b.isResolved ? utilFormatDate(new Date()) : undefined }
-          : b
-      )
+  const handleToggleTimelineBlockerResolution = (blockerId: string) => {
+    if (!projectData) return;
+    const updatedBlockers = (projectData.blockers || []).map(b =>
+      b.id === blockerId
+        ? { ...b, isResolved: !b.isResolved, dateResolved: !b.isResolved ? utilFormatDate(new Date()) : undefined }
+        : b
     );
+    const updatedProject = { ...projectData, blockers: updatedBlockers };
+    setProjectData(updatedProject);
+    const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
+    if (projectIndex !== -1) {
+        mockProjects[projectIndex] = updatedProject;
+    }
+    toast({ title: "Blocker Status Updated", description: `Blocker resolution status has been changed.` });
   };
+
+  const handleRemoveTimelineBlocker = (blockerId: string) => {
+    if (!projectData) return;
+    const updatedBlockers = (projectData.blockers || []).filter(b => b.id !== blockerId);
+    const updatedProject = { ...projectData, blockers: updatedBlockers };
+    setProjectData(updatedProject);
+    const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
+    if (projectIndex !== -1) {
+        mockProjects[projectIndex] = updatedProject;
+    }
+    toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
+  };
+
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
@@ -864,61 +885,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </Button>
                   </div>
 
-                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Blockers</h3>
-                    <div className="col-span-full space-y-4 max-h-[250px] overflow-y-auto pr-2">
-                        {editingBlockers.map((blocker) => (
-                            <div key={blocker.id} className="p-3 border rounded-md space-y-2 bg-muted/30 relative">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-semibold text-sm">{blocker.title}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Reported: {format(new Date(blocker.dateReported), "PPP")} by {blocker.reportedBy}
-                                        </p>
-                                    </div>
-                                     <Badge variant={blocker.isResolved ? "default" : "destructive"} className={cn(blocker.isResolved && "bg-accent text-accent-foreground")}>
-                                        {blocker.isResolved ? "Resolved" : "Active"}
-                                    </Badge>
-                                </div>
-                                <p className="text-sm">{blocker.description}</p>
-                                {blocker.isResolved && blocker.dateResolved && (
-                                    <p className="text-xs text-muted-foreground">Resolved On: {format(new Date(blocker.dateResolved), "PPP")}</p>
-                                )}
-                                <div className="flex items-center justify-between pt-2 border-t mt-2">
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={`blockerResolved-${blocker.id}`}
-                                            checked={blocker.isResolved}
-                                            onCheckedChange={() => handleToggleBlockerResolution(blocker.id)}
-                                        />
-                                        <Label htmlFor={`blockerResolved-${blocker.id}`} className="font-normal text-sm">
-                                            {blocker.isResolved ? "Mark as Unresolved" : "Mark as Resolved"}
-                                        </Label>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                                        onClick={() => setEditingBlockers(prev => prev.filter(b => b.id !== blocker.id))}
-                                        aria-label="Remove blocker"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                        {editingBlockers.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No blockers reported.</p>}
-                    </div>
+                   <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Report Blocker</h3>
                     <div className="col-span-full">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddBlockerDialogOpen(true)}
-                          className="mt-2"
+                          className="mt-1"
                         >
                           <AlertTriangle className="mr-2 h-4 w-4" /> Add Blocker
                         </Button>
+                        <p className="text-xs text-muted-foreground mt-1">Newly added blockers will be saved with the project. View and manage existing blockers in the Timeline tab.</p>
                     </div>
                 </div>
                 </ScrollArea>
@@ -1327,7 +1305,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               <CardDescription>Key dates and progress over the {projectData.projectTimeline?.totalDays}-day plan.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative pl-6">
+              <div className="relative pl-6"> {/* Milestones timeline container */}
                 <div className="absolute left-[calc(0.75rem-1px)] top-2 bottom-2 w-0.5 bg-border"></div>
                 {projectData.milestones.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone, index) => (
                   <div key={milestone.id} className="relative mb-6">
@@ -1372,6 +1350,67 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1" />{projectData.projectedLaunchDate ? format(new Date(projectData.projectedLaunchDate), "PPP") : "N/A"}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Blockers Section */}
+              <div className="mt-8 pt-6 border-t">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Project Blockers</h3>
+                  <Button variant="outline" size="sm" onClick={() => setShowBlockersInTimeline(!showBlockersInTimeline)}>
+                    {showBlockersInTimeline ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                    {showBlockersInTimeline ? "Hide Blockers" : "Show Blockers"} ({projectData.blockers?.length || 0})
+                  </Button>
+                </div>
+
+                {showBlockersInTimeline && (
+                  (projectData.blockers && projectData.blockers.length > 0) ? (
+                    <div className="space-y-4">
+                      {projectData.blockers.sort((a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()).map((blocker) => (
+                        <Card key={blocker.id} className="bg-muted/50">
+                          <CardHeader className="p-4 pb-2">
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-md">{blocker.title}</CardTitle>
+                              <Badge variant={blocker.isResolved ? "default" : "destructive"} className={cn(blocker.isResolved && "bg-accent text-accent-foreground")}>
+                                {blocker.isResolved ? "Resolved" : "Active"}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-xs">
+                              Reported by {blocker.reportedBy || "N/A"} on {format(new Date(blocker.dateReported), "PPP")}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 text-sm">
+                            <p className="whitespace-pre-wrap">{blocker.description}</p>
+                            {blocker.isResolved && blocker.dateResolved && (
+                              <p className="text-xs text-muted-foreground mt-2">Resolved On: {format(new Date(blocker.dateResolved), "PPP")}</p>
+                            )}
+                          </CardContent>
+                          {isUserAdminOrHod && (
+                            <CardFooter className="p-4 pt-0 flex justify-end gap-2">
+                               <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveTimelineBlocker(blocker.id)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                aria-label="Remove blocker"
+                              >
+                                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleTimelineBlockerResolution(blocker.id)}
+                              >
+                                {blocker.isResolved ? "Mark as Unresolved" : "Mark as Resolved"}
+                              </Button>
+                            </CardFooter>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No blockers reported for this project.</p>
+                  )
+                )}
               </div>
             </CardContent>
           </Card>
