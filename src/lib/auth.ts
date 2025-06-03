@@ -8,15 +8,15 @@ import type { User } from '@/types';
 const USERS_STORAGE_KEY = 'storeflow_mock_users';
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
 
-// Admin user details
-const ADMIN_EMAIL = 'vaibhhavrajkumar@gmail.com'; // two 'h's
+// Admin user details - Updated to Indian names
+const ADMIN_EMAIL = 'priya.verma@storeflow.corp';
 const ADMIN_PASSWORD = '70669$RRSVk'; // In a real app, NEVER store plaintext passwords
-const ADMIN_NAME = 'Vaibhhav Raj Kumar';
+const ADMIN_NAME = 'Priya Verma';
 
-// Pre-seeded test user details
-const PRESEEDED_TEST_USER_EMAIL = "vaibhavvrajkumar@gmail.com"; // two 'v's
+// Pre-seeded test user details - Updated to Indian names
+const PRESEEDED_TEST_USER_EMAIL = "karan.malhotra@storeflow.corp";
 const PRESEEDED_TEST_USER_PASSWORD = "70669$RRSVk";
-const PRESEEDED_TEST_USER_NAME = "Vaibhav (Test User)";
+const PRESEEDED_TEST_USER_NAME = "Karan Malhotra (Test User)";
 
 
 interface StoredUser extends User {
@@ -172,3 +172,4 @@ export async function signOut(): Promise<void> {
     }, 300);
   });
 }
+
