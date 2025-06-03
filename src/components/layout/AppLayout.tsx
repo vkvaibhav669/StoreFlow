@@ -149,18 +149,19 @@ interface AppNotification {
 type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme";
 
 function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [currentTheme, setCurrentTheme] = React.useState<Theme>("system");
+  const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
       const storedTheme = localStorage.getItem("theme") as Theme | null;
-      const initialTheme = storedTheme || "system";
+      const initialTheme = storedTheme || "blue-theme"; // Default to blue-theme
       setCurrentTheme(initialTheme);
       applyTheme(initialTheme);
 
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => {
-        if (localStorage.getItem("theme") === "system" || !localStorage.getItem("theme")) {
+        // Only apply system preference if "system" is the explicitly chosen theme
+        if (localStorage.getItem("theme") === "system") { 
           applyTheme("system");
         }
       };
