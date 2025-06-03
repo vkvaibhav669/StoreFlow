@@ -27,7 +27,7 @@ export const siteConfig: SiteConfig = {
       icon: LayoutDashboard,
     },
     {
-      title: "My Stores",
+      title: "Our Stores",
       href: "/my-stores",
       icon: Store,
     },
