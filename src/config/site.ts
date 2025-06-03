@@ -52,14 +52,9 @@ export const siteConfig: SiteConfig = {
       icon: KanbanSquare,
     },
     {
-      title: "My Approvals",
+      title: "Approvals", // Updated title slightly for clarity
       href: "/my-approvals",
       icon: CheckSquare,
-    },
-    {
-      title: "Request for Approval",
-      href: "/approval",
-      icon: ClipboardCheck,
     },
   ],
   authNav: [
