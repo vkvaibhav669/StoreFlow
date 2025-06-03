@@ -57,12 +57,12 @@ export interface MarketingCampaign {
 export interface DepartmentDetails {
     notes?: string;
     tasks: Task[];
-    virtualPlanUrl?: string; 
-    recruitmentStatus?: string; 
-    staffHired?: number; 
-    totalNeeded?: number; 
-    preLaunchCampaigns?: MarketingCampaign[]; 
-    postLaunchCampaigns?: MarketingCampaign[]; 
+    virtualPlanUrl?: string;
+    recruitmentStatus?: string;
+    staffHired?: number;
+    totalNeeded?: number;
+    preLaunchCampaigns?: MarketingCampaign[];
+    postLaunchCampaigns?: MarketingCampaign[];
 }
 
 
@@ -119,7 +119,7 @@ export interface ApprovalRequest {
   requestorName: string;
   requestorEmail: string;
   details: string;
-  approverName: string; 
+  approverName: string;
   approverEmail: string; // For filtering approvals assigned to current user
   status: ApprovalStatus;
   submissionDate: string; // ISO Date string
@@ -151,5 +151,6 @@ export interface StoreItem {
   inventoryLevels?: Record<string, number>;
   currentPromotions?: string[];
   improvementPoints?: ImprovementPoint[];
+  ownershipChangeRequested?: boolean; // New field
 }
 
