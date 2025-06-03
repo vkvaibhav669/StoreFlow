@@ -109,8 +109,8 @@ export default function StoreDetailsPage() {
     return store.type === 'FOFO' && store.manager === user.name;
   }, [user, store]);
 
-  const canManageImprovements = isUserAdminOrHod || isStoreManager; // Simplified for now
-  const canManageStoreTasks = isUserAdminOrHod || isStoreManager; // Simplified for now
+  const canManageImprovements = isUserAdminOrHod || isStoreManager; 
+  const canManageStoreTasks = isUserAdminOrHod || isStoreManager; 
 
   const canRequestOwnershipChange = React.useMemo(() => {
     if (!store) return false;
@@ -352,10 +352,10 @@ export default function StoreDetailsPage() {
   };
   const statusBadgeVariant = (status: StoreTask['status']) => {
     switch (status) {
-        case "Completed": return "default"; // Will use accent color
+        case "Completed": return "default"; 
         case "Blocked": return "destructive";
         case "In Progress": return "secondary";
-        default: return "outline"; // Pending
+        default: return "outline"; 
     }
   };
    const statusBadgeClass = (status: StoreTask['status']) => {
@@ -399,17 +399,12 @@ export default function StoreDetailsPage() {
             <CardDescription>Manage store operations and requests.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
-                <HelpCircle className="mr-2 h-4 w-4" />
-                <div>
-                    <p className="font-medium">Request Information</p>
-                    <p className="text-xs text-muted-foreground">Submit info requests to the store.</p>
-                </div>
+             <div className="flex flex-wrap gap-2 items-center">
+                <Button variant="outline" size="sm">
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  Request Info
                 </Button>
-            </div>
-            {canRequestOwnershipChange && (
-                <div className="pt-2 self-start">
+                {canRequestOwnershipChange && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm">
@@ -425,8 +420,8 @@ export default function StoreDetailsPage() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                 </div>
-            )}
+                )}
+            </div>
           </CardContent>
         </Card>
 
@@ -672,7 +667,7 @@ export default function StoreDetailsPage() {
 
       </div>
 
-      {/* Add/Edit Store Task Dialog */}
+      
       <Dialog open={isAddTaskDialogOpen || isEditTaskDialogOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
             setIsAddTaskDialogOpen(false);
@@ -751,3 +746,4 @@ export default function StoreDetailsPage() {
     </section>
   );
 }
+
