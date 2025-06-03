@@ -16,14 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { mockProjects } from "@/lib/data";
-import type { StoreProject, Task, Department, TaskPriority } from "@/types";
+import { mockProjects, mockHeadOfficeContacts } from "@/lib/data";
+import type { StoreProject, Task, Department, TaskPriority, ProjectMember } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useAuth } from "@/contexts/AuthContext";
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
@@ -35,28 +35,42 @@ const calculateOverallProgress = (tasks: Task[]): number => {
 
 export default function AssignTaskPage() {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get current user
+  const { user } = useAuth();
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
-  const [assignedTo, setAssignedTo] = React.useState("");
+  const [assignedTo, setAssignedTo] = React.useState(""); // Will store selected member's name or email
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "">("");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
   const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
   const [assignToSelf, setAssignToSelf] = React.useState(false);
+  const [assignableMembers, setAssignableMembers] = React.useState<ProjectMember[]>([]);
 
   React.useEffect(() => {
     if (assignToSelf && user) {
       setAssignedTo(user.name || user.email || "Current User");
-    } else if (!assignToSelf) {
-      // If assignToSelf was true and now false, clear the field
-      // or allow user to edit. For now, let's clear it if it was auto-filled.
-      if (assignedTo === (user?.name || user?.email || "Current User")) {
-         setAssignedTo("");
-      }
+    } else if (!assignToSelf && assignedTo === (user?.name || user?.email || "Current User")) {
+      // If "Assign to me" was checked and now unchecked, clear assignedTo if it was self-assigned
+      setAssignedTo("");
     }
   }, [assignToSelf, user, assignedTo]);
+
+  React.useEffect(() => {
+    if (selectedProjectId) {
+      const project = mockProjects.find(p => p.id === selectedProjectId);
+      setAssignableMembers(project?.members || []);
+      // Reset assignment when project changes, unless "assign to self" is checked
+      if (!assignToSelf) {
+        setAssignedTo("");
+      }
+    } else {
+      setAssignableMembers([]);
+      if (!assignToSelf) {
+        setAssignedTo("");
+      }
+    }
+  }, [selectedProjectId, assignToSelf]);
 
 
   const resetForm = () => {
@@ -68,6 +82,7 @@ export default function AssignTaskPage() {
     setDueDate(undefined);
     setTaskPriority("Medium");
     setAssignToSelf(false);
+    setAssignableMembers([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,7 +92,7 @@ export default function AssignTaskPage() {
     if (!selectedProjectId || !taskName || !selectedDepartment || !finalAssignedTo) {
       toast({
         title: "Error",
-        description: "Please fill in Project, Task Name, Department, and Assign To fields.",
+        description: "Please fill in Project, Task Name, Department, and select an Assignee.",
         variant: "destructive",
       });
       return;
@@ -111,11 +126,18 @@ export default function AssignTaskPage() {
 
     const deptKey = selectedDepartment.toLowerCase() as keyof StoreProject['departments'];
     
-    if (targetProject.departments[deptKey]) {
+    if (targetProject.departments && targetProject.departments[deptKey]) {
+      // Ensure tasks array exists
+      if (!(targetProject.departments[deptKey] as { tasks: Task[] }).tasks) {
+        (targetProject.departments[deptKey] as { tasks: Task[] }).tasks = [];
+      }
       (targetProject.departments[deptKey] as { tasks: Task[] }).tasks.push(newTask);
-    } else if (deptKey === 'it') { 
-       targetProject.departments.it = { tasks: [newTask] };
+    } else if (targetProject.departments && deptKey === 'it') { 
+       targetProject.departments.it = { ...targetProject.departments.it, tasks: [...(targetProject.departments.it?.tasks || []), newTask] };
+    } else if (targetProject.departments) { // Handle if department key doesn't exist but departments object does
+        targetProject.departments[deptKey] = { tasks: [newTask] };
     }
+
 
     targetProject.currentProgress = calculateOverallProgress(targetProject.tasks);
     
@@ -136,8 +158,8 @@ export default function AssignTaskPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="project">Project</Label>
-              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <Label htmlFor="project">Project *</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId} required>
                 <SelectTrigger id="project">
                   <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
@@ -152,7 +174,7 @@ export default function AssignTaskPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="taskName">Task Name</Label>
+              <Label htmlFor="taskName">Task Name *</Label>
               <Input
                 id="taskName"
                 value={taskName}
@@ -175,21 +197,44 @@ export default function AssignTaskPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="assignedTo">Assign To</Label>
-                <Input
-                  id="assignedTo"
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
-                  placeholder="e.g., Jane Doe or check below"
-                  required
-                  disabled={assignToSelf}
-                />
+                <Label htmlFor="assignedTo">Assign To *</Label>
+                 <Select
+                    value={assignedTo}
+                    onValueChange={setAssignedTo}
+                    disabled={assignToSelf || !selectedProjectId || assignableMembers.length === 0}
+                    required={!assignToSelf}
+                  >
+                    <SelectTrigger id="assignedTo">
+                      <SelectValue placeholder={!selectedProjectId ? "Select a project first" : (assignableMembers.length === 0 ? "No members in project" : "Select member")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!selectedProjectId ? (
+                        <SelectItem value="" disabled>Select a project first</SelectItem>
+                      ) : assignableMembers.length > 0 ? (
+                        assignableMembers.map(member => (
+                          <SelectItem key={member.email} value={member.name || member.email}>
+                            {member.name} ({member.department || 'N/A Dept'})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No members assigned to this project</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                  <div className="flex items-center space-x-2 pt-1">
                     <Checkbox
                         id="assignToSelf"
                         checked={assignToSelf}
-                        onCheckedChange={(checked) => setAssignToSelf(!!checked)}
-                        disabled={!user} // Disable if no user is logged in
+                        onCheckedChange={(checked) => {
+                          const isChecked = !!checked;
+                          setAssignToSelf(isChecked);
+                          if (isChecked && user) {
+                            setAssignedTo(user.name || user.email || "Current User");
+                          } else if (!isChecked && assignedTo === (user?.name || user?.email || "Current User")) {
+                             setAssignedTo(""); // Clear if previously self-assigned
+                          }
+                        }}
+                        disabled={!user}
                     />
                     <Label htmlFor="assignToSelf" className="text-sm font-normal text-muted-foreground">
                         Assign to me ({user ? (user.name || user.email) : 'Not logged in'})
@@ -198,8 +243,8 @@ export default function AssignTaskPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select value={selectedDepartment} onValueChange={(val) => setSelectedDepartment(val as Department | "")}>
+                <Label htmlFor="department">Department *</Label>
+                <Select value={selectedDepartment} onValueChange={(val) => setSelectedDepartment(val as Department | "")} required>
                   <SelectTrigger id="department">
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
@@ -263,3 +308,4 @@ export default function AssignTaskPage() {
     </section>
   );
 }
+
