@@ -1307,7 +1307,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             <CardContent>
               <div className="relative pl-6"> {/* Milestones timeline container */}
                 <div className="absolute left-[calc(0.75rem-1px)] top-2 bottom-2 w-0.5 bg-border"></div>
-                {projectData.milestones.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone, index) => (
+                {projectData.milestones.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((milestone) => (
                   <div key={milestone.id} className="relative mb-6">
                     <div className={cn(
                       "absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full",
