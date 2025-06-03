@@ -160,7 +160,6 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
 
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => {
-        // Only apply system preference if "system" is the explicitly chosen theme
         if (localStorage.getItem("theme") === "system") { 
           applyTheme("system");
         }
@@ -184,7 +183,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
     } else if (theme === "pink-theme") {
       root.classList.add("theme-pink");
     } else {
-      root.classList.add(theme); // 'light' or 'dark'
+      root.classList.add(theme); 
     }
   };
 
@@ -230,9 +229,9 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   <RadioGroupItem value="light" id="theme-light" className="peer sr-only" />
                   <Label
                     htmlFor="theme-light"
-                    className="flex flex-col items-center justify-center space-y-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-28 text-sm"
+                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
                   >
-                    <Sun className="h-5 w-5 mb-1" />
+                    <Sun className="h-4 w-4" />
                     Light
                   </Label>
                 </div>
@@ -240,9 +239,9 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   <RadioGroupItem value="dark" id="theme-dark" className="peer sr-only" />
                   <Label
                     htmlFor="theme-dark"
-                    className="flex flex-col items-center justify-center space-y-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-28 text-sm"
+                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
                   >
-                    <Moon className="h-5 w-5 mb-1" />
+                    <Moon className="h-4 w-4" />
                     Dark
                   </Label>
                 </div>
@@ -250,35 +249,37 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   <RadioGroupItem value="system" id="theme-system" className="peer sr-only" />
                   <Label
                     htmlFor="theme-system"
-                    className="flex flex-col items-center justify-center space-y-2 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-28 text-sm"
+                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
                   >
-                    <Laptop className="h-5 w-5 mb-1" />
+                    <Laptop className="h-4 w-4" />
                     System
                   </Label>
                 </div>
               </RadioGroup>
-              <div className="pt-4 space-y-2">
+              <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <Button 
                     onClick={() => handleThemeChange("blue-theme")} 
                     variant="outline"
+                    size="default"
                     className={cn(
                         "w-full",
                         currentTheme === "blue-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
                     )}
                 >
                     <Palette className="mr-2 h-4 w-4" /> 
-                    {currentTheme === "blue-theme" ? "Navy Blue Theme (Active)" : "Switch to Navy Blue Theme"}
+                    {currentTheme === "blue-theme" ? "Navy (Active)" : "Navy Blue"}
                 </Button>
                 <Button 
                     onClick={() => handleThemeChange("pink-theme")} 
                     variant="outline"
+                    size="default"
                     className={cn(
                         "w-full",
                         currentTheme === "pink-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
                     )}
                 >
                     <Palette className="mr-2 h-4 w-4" /> 
-                    {currentTheme === "pink-theme" ? "Pink Theme (Active)" : "Switch to Pink Theme"}
+                    {currentTheme === "pink-theme" ? "Pink (Active)" : "Pink"}
                 </Button>
               </div>
             </div>
@@ -330,7 +331,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 
   function Header() {
-    // This Header function is nested, so it has access to setIsSettingsDialogOpen
     return (
       <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6">
         <SidebarTrigger className="md:hidden" />
