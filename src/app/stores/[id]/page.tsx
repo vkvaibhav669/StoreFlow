@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp, MoreHorizontal, ExternalLink, CheckCircle, MessageCircle, Send, CornerDownRight } from "lucide-react";
+import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp, MoreHorizontal, ExternalLink, CheckCircle, MessageCircle, Send, CornerDownRight, Eye, EyeOff } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -49,6 +49,7 @@ export default function StoreDetailsPage() {
   const [isAddImprovementDialogOpen, setIsAddImprovementDialogOpen] = React.useState(false);
   const [newImprovementPointText, setNewImprovementPointText] = React.useState("");
   const [improvementCommentInputs, setImprovementCommentInputs] = React.useState<Record<string, string>>({});
+  const [resolvedPointDiscussionVisibility, setResolvedPointDiscussionVisibility] = React.useState<Record<string, boolean>>({});
 
 
   const storeId = typeof params.id === 'string' ? params.id : undefined;
@@ -149,11 +150,20 @@ export default function StoreDetailsPage() {
     }
   };
 
+  const toggleResolvedPointDiscussion = (pointId: string) => {
+    setResolvedPointDiscussionVisibility(prev => ({
+      ...prev,
+      [pointId]: !prev[pointId]
+    }));
+  };
+
   const handleToggleImprovementResolved = (pointId: string) => {
     if (!store || !user) return;
+    let pointIsNowResolved = false;
     const updatedPoints = (store.improvementPoints || []).map(p => {
       if (p.id === pointId) {
         const newResolvedState = !p.isResolved;
+        pointIsNowResolved = newResolvedState;
         return {
           ...p,
           isResolved: newResolvedState,
@@ -166,6 +176,19 @@ export default function StoreDetailsPage() {
     const updatedStore = { ...store, improvementPoints: updatedPoints };
     setStore(updatedStore);
     updateMockStore(updatedStore);
+    
+    if (pointIsNowResolved) {
+      // Hide discussion by default when resolved
+      setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: false }));
+    } else {
+      // Show discussion if marked unresolved (or let default conditional logic handle it)
+       setResolvedPointDiscussionVisibility(prev => {
+        const newState = {...prev};
+        delete newState[pointId]; // Or set to true: newState[pointId] = true;
+        return newState;
+       });
+    }
+
     toast({ title: "Improvement Point Updated", description: `Status changed for point: ${updatedPoints.find(p => p.id === pointId)?.text.substring(0,30)}...` });
   };
 
@@ -188,7 +211,7 @@ export default function StoreDetailsPage() {
     const updatedStore = { ...store, improvementPoints: updatedPoints };
     setStore(updatedStore);
     updateMockStore(updatedStore);
-    setImprovementCommentInputs(prev => ({...prev, [pointId]: ""})); // Clear input for this point
+    setImprovementCommentInputs(prev => ({...prev, [pointId]: ""})); 
     toast({ title: "Comment Added", description: "Your comment has been posted." });
   };
 
@@ -407,44 +430,59 @@ export default function StoreDetailsPage() {
                                            </div>
                                         )}
                                     </div>
-                                    <div className="mt-4 pt-3 border-t">
-                                        <h4 className="text-sm font-semibold mb-2 text-card-foreground flex items-center">
-                                            <MessageCircle className="mr-2 h-4 w-4" /> Discussion ({point.comments?.length || 0})
-                                        </h4>
-                                        {(point.comments || []).length > 0 && (
-                                            <div className="space-y-3 mb-3 max-h-60 overflow-y-auto pr-2">
-                                                {(point.comments || []).map(comment => (
-                                                    <CommentCard
-                                                        key={comment.id}
-                                                        comment={comment}
-                                                        onReply={(commentId, replyText) => handleReplyToImprovementComment(point.id, commentId, replyText)}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                        <div className="flex items-start space-x-2 mt-2">
-                                            <Avatar className="h-8 w-8 mt-1">
-                                                <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "User"} data-ai-hint="user avatar"/>
-                                                <AvatarFallback>{(user?.name || user?.email || "U").substring(0,2).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                            <Textarea
-                                                placeholder="Add a comment..."
-                                                value={improvementCommentInputs[point.id] || ""}
-                                                onChange={(e) => setImprovementCommentInputs(prev => ({...prev, [point.id]: e.target.value}))}
-                                                rows={2}
-                                                className="mb-2 text-sm"
-                                            />
-                                            <Button 
-                                                size="sm" 
-                                                onClick={() => handleAddCommentToImprovement(point.id, improvementCommentInputs[point.id] || "")}
-                                                disabled={!(improvementCommentInputs[point.id] || "").trim()}
-                                            >
-                                                <Send className="mr-2 h-3.5 w-3.5" /> Post Comment
-                                            </Button>
-                                            </div>
-                                        </div>
-                                    </div>
+
+                                    {point.isResolved && (
+                                      <Button
+                                        variant="link"
+                                        size="sm"
+                                        onClick={() => toggleResolvedPointDiscussion(point.id)}
+                                        className="mt-3 text-xs pl-0"
+                                      >
+                                        {resolvedPointDiscussionVisibility[point.id] ? <EyeOff className="mr-1.5 h-3.5 w-3.5" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
+                                        {resolvedPointDiscussionVisibility[point.id] ? "Hide" : "Show"} Discussion & KPI Details
+                                      </Button>
+                                    )}
+
+                                    {(!point.isResolved || (point.isResolved && resolvedPointDiscussionVisibility[point.id])) && (
+                                      <div className="mt-4 pt-3 border-t">
+                                          <h4 className="text-sm font-semibold mb-2 text-card-foreground flex items-center">
+                                              <MessageCircle className="mr-2 h-4 w-4" /> Discussion ({point.comments?.length || 0})
+                                          </h4>
+                                          {(point.comments || []).length > 0 && (
+                                              <div className="space-y-3 mb-3 max-h-60 overflow-y-auto pr-2">
+                                                  {(point.comments || []).map(comment => (
+                                                      <CommentCard
+                                                          key={comment.id}
+                                                          comment={comment}
+                                                          onReply={(commentId, replyText) => handleReplyToImprovementComment(point.id, commentId, replyText)}
+                                                      />
+                                                  ))}
+                                              </div>
+                                          )}
+                                          <div className="flex items-start space-x-2 mt-2">
+                                              <Avatar className="h-8 w-8 mt-1">
+                                                  <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "User"} data-ai-hint="user avatar"/>
+                                                  <AvatarFallback>{(user?.name || user?.email || "U").substring(0,2).toUpperCase()}</AvatarFallback>
+                                              </Avatar>
+                                              <div className="flex-1">
+                                              <Textarea
+                                                  placeholder="Add a comment..."
+                                                  value={improvementCommentInputs[point.id] || ""}
+                                                  onChange={(e) => setImprovementCommentInputs(prev => ({...prev, [point.id]: e.target.value}))}
+                                                  rows={2}
+                                                  className="mb-2 text-sm"
+                                              />
+                                              <Button 
+                                                  size="sm" 
+                                                  onClick={() => handleAddCommentToImprovement(point.id, improvementCommentInputs[point.id] || "")}
+                                                  disabled={!(improvementCommentInputs[point.id] || "").trim()}
+                                              >
+                                                  <Send className="mr-2 h-3.5 w-3.5" /> Post Comment
+                                              </Button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -458,3 +496,4 @@ export default function StoreDetailsPage() {
     </section>
   );
 }
+
