@@ -81,12 +81,12 @@ export type StoreType = "COCO" | "FOFO";
 export interface ProjectMember { // This type is used for defining project team members.
                                // For general HO contacts, we might use a similar structure or a simplified one.
   id?: string; // Adding id from mockHeadOfficeContacts for consistency if used
-  email: string; 
+  email: string;
   name: string;
-  roleInProject?: string; 
+  roleInProject?: string;
   department?: Department; // Department they belong to in general
-  avatarSeed?: string; 
-  isProjectHod?: boolean; 
+  avatarSeed?: string;
+  isProjectHod?: boolean;
   role?: string; // General role in company from mockHeadOfficeContacts
   phone?: string; // from mockHeadOfficeContacts
 }
@@ -148,11 +148,11 @@ export interface ApprovalRequest {
   requestorEmail: string;
   details: string;
   approverName: string;
-  approverEmail: string; 
+  approverEmail: string;
   status: ApprovalStatus;
-  submissionDate: string; 
-  lastUpdateDate?: string; 
-  approvalComments?: Comment[]; 
+  submissionDate: string;
+  lastUpdateDate?: string;
+  approvalComments?: Comment[];
 }
 
 
@@ -160,12 +160,25 @@ export interface ImprovementPoint {
   id: string;
   text: string;
   addedBy: string;
-  addedAt: string; 
-  userAvatar?: string; 
+  addedAt: string;
+  userAvatar?: string;
   comments?: Comment[];
   isResolved?: boolean;
   resolvedBy?: string; // Name/email of user who resolved it
   resolvedAt?: string; // ISO timestamp
+}
+
+export interface StoreTask {
+  id: string;
+  storeId: string; // To link back to the store
+  title: string;
+  description?: string;
+  assignedTo?: string; // e.g., "Store Manager", "Morning Staff"
+  status: "Pending" | "In Progress" | "Completed" | "Blocked";
+  priority?: TaskPriority; // Reusing existing TaskPriority type
+  createdAt: string; // ISO string
+  createdBy: string; // User's name or email
+  dueDate?: string; // ISO string
 }
 
 export interface StoreItem {
@@ -174,7 +187,7 @@ export interface StoreItem {
   location: string;
   type: StoreType;
   status: "Operational" | "Under Construction" | "Planned";
-  openingDate: string; 
+  openingDate: string;
   manager?: string;
   sqft?: number;
   dailySales?: number;
@@ -182,6 +195,6 @@ export interface StoreItem {
   inventoryLevels?: Record<string, number>;
   currentPromotions?: string[];
   improvementPoints?: ImprovementPoint[];
+  tasks?: StoreTask[]; // Added store-specific tasks
   ownershipChangeRequested?: boolean;
 }
-

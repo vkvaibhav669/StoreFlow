@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint, Blocker, Department } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint, Blocker, Department, StoreTask, TaskPriority } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -329,7 +329,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [
 export const updateApprovalRequestStatus = (
   requestId: string,
   newStatus: ApprovalStatus,
-  actorName: string, 
+  actorName: string,
   commentText?: string
 ): boolean => {
   const requestIndex = mockApprovalRequests.findIndex(req => req.id === requestId);
@@ -369,6 +369,17 @@ const sampleImprovementPoints: ImprovementPoint[] = [
   { id: 'imp-2', text: 'Staff training on new product line (Indian festive wear) scheduled for next week.', addedBy: 'Lakshmi Menon', addedAt: formatDate(addDays(today, -2)), userAvatar: `https://picsum.photos/seed/lakshmi_manager/40/40`, comments: [], isResolved: true, resolvedBy: 'Lakshmi Menon', resolvedAt: formatDate(addDays(today, -1))},
 ];
 
+const sampleStoreTasksForChennai: StoreTask[] = [
+    { id: 'stask-store-001-1', storeId: 'store-001', title: 'Weekly Visual Merchandising Update', assignedTo: 'Store Manager', status: 'Pending', priority: 'Medium', createdAt: formatDate(addDays(today, -2)), createdBy: 'Anjali Nair', dueDate: formatDate(addDays(today, 5))},
+    { id: 'stask-store-001-2', storeId: 'store-001', title: 'Process End-of-Day Sales Report', assignedTo: 'Cashier Team', status: 'In Progress', priority: 'High', createdAt: formatDate(addDays(today, -1)), createdBy: 'Lakshmi Menon' },
+    { id: 'stask-store-001-3', storeId: 'store-001', title: 'Clean storefront windows', assignedTo: 'Store Staff', status: 'Completed', priority: 'Low', createdAt: formatDate(addDays(today, -3)), createdBy: 'Lakshmi Menon', dueDate: formatDate(addDays(today, -2))},
+];
+
+const sampleStoreTasksForHyderabad: StoreTask[] = [
+    { id: 'stask-store-002-1', storeId: 'store-002', title: 'Prepare for Weekend Gadget Promotion', assignedTo: 'Sanjay Joshi', status: 'Pending', priority: 'High', createdAt: formatDate(addDays(today, -1)), createdBy: 'Vikram Singh', dueDate: formatDate(addDays(today, 1))},
+];
+
+
 export let mockStores: StoreItem[] = [
   {
     id: 'store-001',
@@ -384,6 +395,7 @@ export let mockStores: StoreItem[] = [
     inventoryLevels: { "Saree": 100, "Kurta": 50},
     currentPromotions: ["Diwali Sale 20% off"],
     improvementPoints: [...sampleImprovementPoints.map(p => ({...p, comments:[], isResolved: p.id === 'imp-2'}))],
+    tasks: sampleStoreTasksForChennai,
     ownershipChangeRequested: false,
   },
   {
@@ -400,6 +412,7 @@ export let mockStores: StoreItem[] = [
     inventoryLevels: { "Electronics": 80, "Gadgets": 120},
     currentPromotions: ["Weekend Special Buy 1 Get 1 Gadget Accessory"],
     improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Priya Verma', addedAt: formatDate(addDays(today, -10)), comments: [], isResolved: false }],
+    tasks: sampleStoreTasksForHyderabad,
     ownershipChangeRequested: true,
   },
   {
@@ -416,6 +429,7 @@ export let mockStores: StoreItem[] = [
     inventoryLevels: { "Books": 70, "Stationery": 60},
     currentPromotions: [],
     improvementPoints: [{id: 'imp-4', text: 'Stock up on local author books.', addedBy: 'Neha Agarwal', addedAt: formatDate(addDays(today, -3)), comments: [], isResolved: false }],
+    tasks: [],
     ownershipChangeRequested: false,
   },
   {
@@ -428,6 +442,7 @@ export let mockStores: StoreItem[] = [
     manager: 'Awaiting Assignment',
     sqft: 4000,
     improvementPoints: [],
+    tasks: [],
   },
   {
     id: 'store-005',
@@ -439,6 +454,7 @@ export let mockStores: StoreItem[] = [
     manager: 'Ravi Meena',
     sqft: 2200,
     improvementPoints: [],
+    tasks: [],
   },
 ];
 
@@ -454,3 +470,4 @@ export const updateMockStore = (updatedStore: StoreItem): void => {
     mockStores[index] = JSON.parse(JSON.stringify(updatedStore)); // Deep copy to avoid mutation issues
   }
 };
+
