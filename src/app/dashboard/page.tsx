@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { mockProjects } from "@/lib/data";
 import type { StoreProject, Department, DepartmentDetails, StoreType } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle, Package2 } from "lucide-react";
+import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -438,6 +438,15 @@ export default function DashboardPage() {
       {!filterSettings.showUpcoming && !filterSettings.showActive && !filterSettings.showLaunched && (
          <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
       )}
+
+      <div className="mt-8 pt-6 border-t flex justify-center">
+        <Button asChild variant="outline" size="lg">
+          <Link href="/my-stores">
+            <Store className="mr-2 h-5 w-5" />
+            My Stores
+          </Link>
+        </Button>
+      </div>
     </section>
   );
 }
