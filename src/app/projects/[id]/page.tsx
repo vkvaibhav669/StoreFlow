@@ -28,6 +28,17 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -168,6 +179,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [selectedNewMemberEmail, setSelectedNewMemberEmail] = React.useState<string>("");
   const [newMemberRoleInProject, setNewMemberRoleInProject] = React.useState("");
   const [newMemberIsProjectHod, setNewMemberIsProjectHod] = React.useState(false);
+
+  const [isConfirmRemoveMemberDialogOpen, setIsConfirmRemoveMemberDialogOpen] = React.useState(false);
+  const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string } | null>(null);
+
 
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
@@ -769,6 +784,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       toast({ title: "Member Removed", description: `${removedMember?.name || 'Member'} has been removed from the project.` });
       return updatedProject;
     });
+    setMemberToRemoveInfo(null); // Clear after removal
+    setIsConfirmRemoveMemberDialogOpen(false); // Close dialog
   };
 
 
@@ -1353,15 +1370,19 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                           )}
                         </div>
                         {isUserAdminOrHod && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveProjectMember(member.email)}
-                            aria-label={`Remove ${member.name}`}
-                          >
-                            <UserX className="h-4 w-4" />
-                          </Button>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                setMemberToRemoveInfo({ email: member.email, name: member.name });
+                              }}
+                              aria-label={`Remove ${member.name}`}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
                         )}
                       </CardHeader>
                       <CardContent className="p-4 pt-0 flex-grow">
@@ -1925,6 +1946,35 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Remove Member Dialog */}
+      <AlertDialog open={isConfirmRemoveMemberDialogOpen} onOpenChange={setIsConfirmRemoveMemberDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Member Removal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {memberToRemoveInfo?.name || 'this member'} from the project? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMemberToRemoveInfo(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (memberToRemoveInfo) {
+                  handleRemoveProjectMember(memberToRemoveInfo.email);
+                }
+              }}
+              className={buttonVariants({ variant: "destructive" })}
+            >
+              Confirm Removal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </section>
   );
 }
+
+
+    
