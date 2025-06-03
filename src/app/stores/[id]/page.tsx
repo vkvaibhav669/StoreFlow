@@ -10,7 +10,7 @@ import type { StoreItem, ImprovementPoint } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp, ExternalLink } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -54,11 +54,13 @@ export default function StoreDetailsPage() {
       if (fetchedStore) {
         setStore(fetchedStore);
       } else {
-        router.push("/stores/not-found");
+        // router.push("/stores/not-found"); // This would be better if not-found worked directly
+        router.replace("/my-stores"); // Fallback redirect if not found during client-side fetch
+        toast({title: "Store Not Found", description: "The requested store could not be found.", variant: "destructive"});
       }
       setLoadingStore(false);
     }
-  }, [storeId, router]);
+  }, [storeId, router, toast]);
 
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
@@ -91,7 +93,7 @@ export default function StoreDetailsPage() {
       text: newImprovementPointText,
       addedBy: user.name || user.email,
       addedAt: new Date().toISOString(),
-      userAvatar: `https://picsum.photos/seed/${user.id}/40/40` // Placeholder avatar
+      userAvatar: `https://picsum.photos/seed/${user.id}/40/40`
     };
 
     const updatedStore = {
@@ -100,7 +102,7 @@ export default function StoreDetailsPage() {
     };
 
     setStore(updatedStore);
-    updateMockStore(updatedStore); // Update the mock data source
+    updateMockStore(updatedStore); 
 
     toast({ title: "Improvement Point Added", description: "The new improvement point has been saved." });
     setNewImprovementPointText("");
@@ -110,11 +112,9 @@ export default function StoreDetailsPage() {
   const handleRequestOwnershipChange = () => {
     if (!store) return;
     const targetType = store.type === 'COCO' ? 'FOFO' : 'COCO';
-    // In a real app, this would trigger a backend process.
-    // For now, just show a toast.
     toast({
       title: "Ownership Change Requested",
-      description: `A request to change ownership of "${store.name}" to ${targetType} has been notionally sent to HOD.`,
+      description: `A request to change ownership of "${store.name}" to ${targetType} has been notionally sent.`,
     });
   };
 
@@ -131,12 +131,14 @@ export default function StoreDetailsPage() {
   }
 
   if (!store) {
-    // This case should be handled by the redirect in useEffect, but as a fallback:
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-        <StoreIcon className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-muted-foreground">Store not found.</p>
-        <Button asChild variant="outline" className="mt-4">
+    return ( // Should be caught by useEffect, but good fallback.
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center p-4">
+        <StoreIcon className="w-16 h-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-semibold mb-2">Store Not Found</h2>
+        <p className="text-muted-foreground mb-6">
+          The store you are looking for does not exist or could not be loaded.
+        </p>
+        <Button asChild>
           <Link href="/my-stores">Back to My Stores</Link>
         </Button>
       </div>
@@ -169,16 +171,6 @@ export default function StoreDetailsPage() {
             <p><strong>Date Active Since:</strong> {format(new Date(store.openingDate), "PPP")}</p>
             {store.manager && <p><strong>Manager:</strong> {store.manager}</p>}
             {store.sqft && <p><strong>Size:</strong> {store.sqft.toLocaleString()} sqft</p>}
-             {canRequestOwnershipChange && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full mt-3"
-                onClick={handleRequestOwnershipChange}
-              >
-                Request Change to {store.type === 'COCO' ? 'FOFO' : 'COCO'}
-              </Button>
-            )}
           </CardContent>
         </Card>
 
@@ -187,21 +179,34 @@ export default function StoreDetailsPage() {
             <CardTitle>Store Actions</CardTitle>
             <CardDescription>Manage store operations and requests.</CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
-              <Settings className="mr-2 h-4 w-4" />
-              <div>
-                <p className="font-medium">Create Task / Instruction</p>
-                <p className="text-xs text-muted-foreground">Assign operational tasks to store.</p>
-              </div>
-            </Button>
-            <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
-              <HelpCircle className="mr-2 h-4 w-4" />
-               <div>
-                <p className="font-medium">Request Information</p>
-                <p className="text-xs text-muted-foreground">Submit info requests to the store.</p>
-              </div>
-            </Button>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
+                <Settings className="mr-2 h-4 w-4" />
+                <div>
+                    <p className="font-medium">Create Task / Instruction</p>
+                    <p className="text-xs text-muted-foreground">Assign operational tasks to store.</p>
+                </div>
+                </Button>
+                <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
+                <HelpCircle className="mr-2 h-4 w-4" />
+                <div>
+                    <p className="font-medium">Request Information</p>
+                    <p className="text-xs text-muted-foreground">Submit info requests to the store.</p>
+                </div>
+                </Button>
+            </div>
+            {canRequestOwnershipChange && (
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="w-full mt-4 text-primary hover:underline justify-start pl-0"
+                onClick={handleRequestOwnershipChange}
+              >
+                <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                Request Change to {store.type === 'COCO' ? 'FOFO' : 'COCO'} Ownership
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -249,7 +254,7 @@ export default function StoreDetailsPage() {
                 {store.improvementPoints && store.improvementPoints.length > 0 ? (
                     <ScrollArea className="h-[250px] pr-3">
                         <ul className="space-y-4">
-                            {store.improvementPoints.slice().reverse().map(point => ( // Display newest first
+                            {store.improvementPoints.slice().reverse().map(point => ( 
                                 <li key={point.id} className="p-3 border rounded-md shadow-sm bg-muted/50">
                                     <div className="flex items-start space-x-3">
                                         <Avatar className="h-8 w-8 mt-0.5">
@@ -277,4 +282,3 @@ export default function StoreDetailsPage() {
     </section>
   );
 }
-
