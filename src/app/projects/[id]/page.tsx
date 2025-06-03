@@ -100,6 +100,10 @@ const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandis
 const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low"]; 
 const propertyStatuses: StoreProject['propertyDetails']['status'][] = ["Identified", "Negotiating", "Finalized"];
 const storeTypes: StoreType[] = ["COCO", "FOFO"];
+const projectStatuses: StoreProject['status'][] = [
+  "Planning", "Property Finalized", "Project Kickoff", "Execution",
+  "Merchandising", "Recruitment", "Pre-Launch Marketing", "Launched", "Post-Launch Marketing"
+];
 
 export default function ProjectDetailsPage({ params: paramsProp }: { params: { id: string } }) {
   const resolvedParams = React.use(paramsProp);
@@ -143,7 +147,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [taskFilterPriority, setTaskFilterPriority] = React.useState<TaskPriority | "All">("All");
 
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = React.useState(false);
-  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<Omit<StoreProject, 'status'>>>({}); // Omit status
+  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
   const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
   const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
   
@@ -198,11 +202,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       if (currentProject) {
         setProjectData(currentProject);
         setProjectComments(currentProject.comments || []);
-        // Initialize edit form when project data loads or dialog opens
         setEditingProjectForm({
             name: currentProject.name,
             location: currentProject.location,
-            // status: currentProject.status, // Status is handled by the header dropdown
+            status: currentProject.status,
             startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
             projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
             franchiseType: currentProject.franchiseType,
@@ -248,22 +251,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     if (tasks.length === 0) return 0;
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     return Math.round((completedTasks / tasks.length) * 100);
-  };
-
-  const handleProjectStatusChange = (newStatus: StoreProject['status']) => {
-    if (!projectData) return;
-
-    setProjectData(prev => {
-      if (!prev) return null;
-      const updatedProject = { ...prev, status: newStatus };
-
-      const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
-      if (projectIndex !== -1) {
-        mockProjects[projectIndex] = { ...updatedProject };
-      }
-      toast({ title: "Project Status Updated", description: `Project status changed to "${newStatus}".` });
-      return updatedProject;
-    });
   };
 
   const handleAddNewTask = () => {
@@ -591,14 +578,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setIsDepartmentTasksDialogOpen(true);
   };
 
-  const projectStatuses: StoreProject['status'][] = [
-    "Planning", "Property Finalized", "Project Kickoff", "Execution",
-    "Merchandising", "Recruitment", "Pre-Launch Marketing", "Launched", "Post-Launch Marketing"
-  ];
-
   const { departments = {} } = projectData;
 
-  const handleEditProjectFieldChange = (field: keyof Partial<Omit<StoreProject, 'status'>>, value: any) => {
+  const handleEditProjectFieldChange = (field: keyof Partial<StoreProject>, value: any) => {
     setEditingProjectForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -611,11 +593,12 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   };
 
   const handleSaveProjectChanges = () => {
-    if (!projectData) return;
+    if (!projectData || !editingProjectForm.status) return;
 
     const updatedProjectData: StoreProject = {
-        ...projectData, // This includes the status set by the header dropdown
-        ...editingProjectForm, // This will not overwrite status
+        ...projectData,
+        ...editingProjectForm,
+        status: editingProjectForm.status, // Ensure status from form is saved
         propertyDetails: {
             ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
             ...editingPropertyDetailsForm,
@@ -717,7 +700,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   setEditingProjectForm({
                       name: projectData.name,
                       location: projectData.location,
-                      // status: projectData.status, // Status is now handled by the header dropdown
+                      status: projectData.status,
                       startDate: projectData.startDate ? utilFormatDate(new Date(projectData.startDate)) : "",
                       projectedLaunchDate: projectData.projectedLaunchDate ? utilFormatDate(new Date(projectData.projectedLaunchDate)) : "",
                       franchiseType: projectData.franchiseType,
@@ -746,7 +729,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Edit Project: {projectData.name}</DialogTitle>
+                  <DialogTitle>Edit Project: {editingProjectForm.name || projectData.name}</DialogTitle>
                   <DialogDescription>
                     Modify the details of this project. Click save when you&apos;re done.
                   </DialogDescription>
@@ -763,7 +746,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       <Label htmlFor="editProjectLocation">Location</Label>
                       <Input id="editProjectLocation" value={editingProjectForm.location || ""} onChange={(e) => handleEditProjectFieldChange('location', e.target.value)} />
                     </div>
-                    {/* Status Select removed from here */}
+                     <div className="space-y-2">
+                        <Label htmlFor="editProjectStatus">Project Status</Label>
+                        <Select 
+                            value={editingProjectForm.status || ""} 
+                            onValueChange={(value) => handleEditProjectFieldChange('status', value as StoreProject['status'])}
+                        >
+                            <SelectTrigger id="editProjectStatus"><SelectValue placeholder="Select project status" /></SelectTrigger>
+                            <SelectContent>
+                                {projectStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
                      <div className="space-y-2">
                         <Label htmlFor="editFranchiseType">Franchise Type</Label>
                         <Select value={editingProjectForm.franchiseType || ""} onValueChange={(value) => handleEditProjectFieldChange('franchiseType', value as StoreType)}>
@@ -926,8 +920,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                           <AlertTriangle className="mr-2 h-4 w-4" /> Add Blocker
                         </Button>
                     </div>
-
-
                 </div>
                 </ScrollArea>
                 <DialogFooter>
@@ -1116,25 +1108,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             </DialogContent>
           </Dialog>
         </div>
-        {isUserAdminOrHod ? (
-          <Select
-            value={projectData.status}
-            onValueChange={(value) => handleProjectStatusChange(value as StoreProject['status'])}
-          >
-            <SelectTrigger className="w-[200px] flex-shrink-0 text-sm h-8">
-              <SelectValue placeholder="Set project status" />
-            </SelectTrigger>
-            <SelectContent>
-              {projectStatuses.map(status => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
+         <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
             {projectData.status}
           </Badge>
-        )}
       </div>
 
       <Card>
@@ -1197,7 +1173,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 {projectData.threeDRenderUrl && (
                   <div className="my-2">
                     <p className="text-xs font-medium mb-1">3D Store Visual:</p>
-                    <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render"/>
+                    <a href={projectData.threeDRenderUrl} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
+                        <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render"/>
+                    </a>
                   </div>
                 )}
               </DepartmentCard>
