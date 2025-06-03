@@ -13,7 +13,7 @@ const sampleDocs: Omit<DocumentFile, 'id'>[] = [
   { name: "Property Lease Agreement_Mumbai.pdf", type: "Property Document", url: "#", uploadedAt: formatDate(addDays(today, -10)), size: "2.5MB", uploadedBy: "Legal Team (India)", hodOnly: true },
   { name: "Mumbai_Store_Render_V3.png", type: "3D Render", url: "https://picsum.photos/seed/mumbaiRender/600/400", uploadedAt: formatDate(addDays(today, -2)), size: "5.1MB", uploadedBy: "Design Studio India", dataAiHint: "store render", hodOnly: false },
   { name: "Launch Campaign Brief_Bangalore.docx", type: "Marketing Collateral", url: "#", uploadedAt: formatDate(addDays(today, -1)), size: "1.2MB", uploadedBy: "Marketing Team India" },
-  { name: "Confidential Strategy Doc_India.pdf", type: "Other", url: "#", uploadedAt: formatDate(addDays(today, -5)), size: "750KB", uploadedBy: "Management India", hodOnly: true },
+  { name: "Confidential Strategy Doc_India.pdf", type: "Other", url: "#", uploadedAt: formatDate(addDays(today, -5)), size: "750KB", uploadedBy: "Priya Verma", hodOnly: true },
 ];
 
 const sampleMilestones: Omit<Milestone, 'id'>[] = [
@@ -81,7 +81,7 @@ const sampleTaskComments: Comment[] = [
     },
     {
         id: 'task-comment-2',
-        author: 'Karan Malhotra', // Updated test user
+        author: 'Karan Malhotra',
         avatarUrl: 'https://picsum.photos/seed/karanTask/40/40',
         timestamp: new Date().toISOString(),
         text: 'I am on it, should be done by EOD today.',
@@ -91,30 +91,30 @@ const sampleTaskComments: Comment[] = [
 
 
 export const tasks: Task[] = [
-  { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 7)), assignedTo: "a.reddy@storeflow.corp", comments: [] }, // Arjun Reddy
-  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "karan.malhotra@storeflow.corp", comments: [...sampleTaskComments] }, // Karan Malhotra (Test User)
-  { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', priority: 'Medium', dueDate: formatDate(addDays(today, -3)), assignedTo: "IT Support India", comments: [] },
-  { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "r.sharma@storeflow.corp", comments: [] }, // Rohan Sharma
-  { id: 'task-mkt-001', name: 'Social Media Content Calendar (India)', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "karan.malhotra@storeflow.corp", comments: [] }, // Karan Malhotra (Test User)
-  { id: 'task-proj-001', name: 'Finalize Interior Layout (Mumbai)', department: 'Project', status: 'Completed', priority: 'High', dueDate: formatDate(addDays(today, -10)), assignedTo: "a.patel@storeflow.corp", comments: [] }, // Aditya Patel
-  { id: 'task-proj-002', name: 'Source Local Contractors (Bangalore)', department: 'Project', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 2)), assignedTo: "Project Coordinator India", comments: [] },
-  { id: 'task-merch-001', name: 'Select Product SKUs (India Focus)', department: 'Merchandising', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "a.nair@storeflow.corp", comments: [] }, // Anjali Nair
-  { id: 'task-prop-001', name: 'Verify Zoning (Mumbai)', department: 'Property', status: 'Completed', priority: 'High', assignedTo: "Property Analyst India", comments: [] },
-  { id: 'task-prop-002', name: 'Negotiate Lease Terms (Bangalore)', department: 'Property', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "Legal Team India", comments: [] },
+  { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 7)), assignedTo: "arjun.reddy@storeflow.corp", comments: [] },
+  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "karan.malhotra@storeflow.corp", comments: [...sampleTaskComments] },
+  { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', priority: 'Medium', dueDate: formatDate(addDays(today, -3)), assignedTo: "arjun.reddy@storeflow.corp", comments: [] },
+  { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "rohan.sharma@storeflow.corp", comments: [] },
+  { id: 'task-mkt-001', name: 'Social Media Content Calendar (India)', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "karan.malhotra@storeflow.corp", comments: [] },
+  { id: 'task-proj-001', name: 'Finalize Interior Layout (Mumbai)', department: 'Project', status: 'Completed', priority: 'High', dueDate: formatDate(addDays(today, -10)), assignedTo: "aditya.patel@storeflow.corp", comments: [] },
+  { id: 'task-proj-002', name: 'Source Local Contractors (Bangalore)', department: 'Project', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 2)), assignedTo: "aditya.patel@storeflow.corp", comments: [] },
+  { id: 'task-merch-001', name: 'Select Product SKUs (India Focus)', department: 'Merchandising', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "anjali.nair@storeflow.corp", comments: [] },
+  { id: 'task-prop-001', name: 'Verify Zoning (Mumbai)', department: 'Property', status: 'Completed', priority: 'High', assignedTo: "meera.desai@storeflow.corp", comments: [] },
+  { id: 'task-prop-002', name: 'Negotiate Lease Terms (Bangalore)', department: 'Property', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "meera.desai@storeflow.corp", comments: [] },
 ];
 
 export let mockProjects: StoreProject[] = [
   {
     id: 'proj-001',
-    name: 'Mumbai Central Flagship',
-    location: '123 Nariman Point, Mumbai, India',
+    name: 'Mumbai Phoenix Mall Flagship',
+    location: '123 Lower Parel, Mumbai, Maharashtra',
     status: 'Execution',
     franchiseType: 'COCO',
     startDate: formatDate(addDays(today, -15)),
     projectedLaunchDate: formatDate(addDays(today, 30)),
     currentProgress: 45,
     propertyDetails: {
-      address: '123 Nariman Point, Mumbai, India',
+      address: '123 Lower Parel, Mumbai, Maharashtra',
       sqft: 2500,
       status: 'Finalized',
       notes: 'High foot traffic area, premium location in Mumbai.'
@@ -148,21 +148,21 @@ export let mockProjects: StoreProject[] = [
     },
     comments: sampleProjectComments,
     members: [
-      { email: "a.patel@storeflow.corp", name: "Aditya Patel", roleInProject: "Project Lead", department: "Projects", avatarSeed: "aditya" },
-      { email: "m.desai@storeflow.corp", name: "Meera Desai", roleInProject: "Property Consultant", department: "Property", avatarSeed: "meera" },
+      { email: "aditya.patel@storeflow.corp", name: "Aditya Patel", roleInProject: "Project Lead", department: "Projects", avatarSeed: "aditya" },
+      { email: "meera.desai@storeflow.corp", name: "Meera Desai", roleInProject: "Property Consultant", department: "Property", avatarSeed: "meera" },
     ],
   },
   {
     id: 'proj-002',
-    name: 'Bangalore Forum Mall Outlet',
-    location: '456 Koramangala, Bangalore, India',
+    name: 'Bangalore Orion Mall Outlet',
+    location: '456 Brigade Gateway, Bangalore, Karnataka',
     status: 'Planning',
     franchiseType: 'FOFO',
     startDate: formatDate(addDays(today, 5)),
     projectedLaunchDate: formatDate(addDays(today, 50)),
     currentProgress: 10,
      propertyDetails: {
-      address: '456 Koramangala, Bangalore, India',
+      address: '456 Brigade Gateway, Bangalore, Karnataka',
       sqft: 1800,
       status: 'Identified',
       notes: 'Good visibility in a high-traffic mall in Bangalore.'
@@ -185,22 +185,24 @@ export let mockProjects: StoreProject[] = [
         it: { tasks: tasks.filter(t => t.department === 'IT' && ['task-it-002'].includes(t.id))}
     },
     comments: [sampleProjectComments[1]],
-    members: [],
+    members: [
+       { email: "karan.malhotra@storeflow.corp", name: "Karan Malhotra", roleInProject: "Franchise POC", department: "Projects", avatarSeed: "karan" }
+    ],
   },
    {
     id: 'proj-003',
-    name: 'Delhi T3 Airport Kiosk',
-    location: 'Terminal 3, IGI Airport, Delhi, India',
+    name: 'Delhi Connaught Place Express',
+    location: 'Block A, Connaught Place, New Delhi',
     status: 'Launched',
     franchiseType: 'COCO',
     startDate: formatDate(addDays(today, -60)),
     projectedLaunchDate: formatDate(addDays(today, -15)),
     currentProgress: 100,
     propertyDetails: {
-      address: 'Terminal 3, IGI Airport, Delhi, India',
-      sqft: 300,
+      address: 'Block A, Connaught Place, New Delhi',
+      sqft: 1200,
       status: 'Finalized',
-      notes: 'Small footprint, high passenger flow in Delhi airport.'
+      notes: 'Prime location in Delhi city center.'
     },
     projectTimeline: {
       totalDays: 45,
@@ -246,6 +248,7 @@ export const mockHeadOfficeContacts: {
   { id: "ho-006", name: "Rohan Sharma", role: "Head of Human Resources", department: "HR", email: "rohan.sharma@storeflow.corp", phone: "(+91) 98010-00006", avatarSeed: "rohan" },
   { id: "ho-007", name: "Deepika Iyer", role: "Head of Marketing", department: "Marketing", email: "deepika.iyer@storeflow.corp", phone: "(+91) 98010-00007", avatarSeed: "deepika" },
   { id: "ho-008", name: "Arjun Reddy", role: "Head of IT", department: "IT", email: "arjun.reddy@storeflow.corp", phone: "(+91) 98010-00008", avatarSeed: "arjun" },
+  { id: "ho-009", name: "Karan Malhotra", role: "Test User / Analyst", department: "IT", email: "karan.malhotra@storeflow.corp", phone: "(+91) 98010-00009", avatarSeed: "karan_test" },
 ];
 
 
@@ -253,10 +256,10 @@ export let mockApprovalRequests: ApprovalRequest[] = [
   {
     id: 'appr-001',
     title: "Request for Additional Budget for Q3 Marketing (Mumbai)",
-    projectName: "Mumbai Central Flagship",
+    projectName: "Mumbai Phoenix Mall Flagship",
     projectId: "proj-001",
     requestingDepartment: "Marketing",
-    requestorName: "Karan Malhotra (Test User)",
+    requestorName: "Karan Malhotra",
     requestorEmail: "karan.malhotra@storeflow.corp",
     details: "Need an additional ₹3,00,000 for targeted social media ads to boost pre-launch awareness for Mumbai. Expected ROI is an increase in footfall by 15% during opening week.",
     approverName: "Deepika Iyer", // Head of Marketing
@@ -267,13 +270,13 @@ export let mockApprovalRequests: ApprovalRequest[] = [
   {
     id: 'appr-002',
     title: "Approval for New Vendor Contract (Security Services, Bangalore)",
-    projectName: "Bangalore Forum Mall Outlet",
+    projectName: "Bangalore Orion Mall Outlet",
     projectId: "proj-002",
     requestingDepartment: "Project",
-    requestorName: "Rajesh Kumar", // Example project coordinator
-    requestorEmail: "rajesh.kumar@storeflow.corp",
-    details: "Proposing to engage 'SecureIndia Ltd.' for on-site security during mall operating hours in Bangalore. Contract details attached.",
-    approverName: "Karan Malhotra (Test User)", // Assuming test user is HOD of Projects for this
+    requestorName: "Rajesh Kumar",
+    requestorEmail: "rajesh.kumar@franchise.example.com", // Example non-HO email
+    details: "Proposing to engage 'SecureBharat Ltd.' for on-site security during mall operating hours in Bangalore. Contract details attached.",
+    approverName: "Karan Malhotra",
     approverEmail: "karan.malhotra@storeflow.corp",
     status: "Pending",
     submissionDate: formatDate(addDays(today, -1)),
@@ -281,13 +284,13 @@ export let mockApprovalRequests: ApprovalRequest[] = [
   {
     id: 'appr-003',
     title: "Request for Overtime for IT Setup (Mumbai)",
-    projectName: "Mumbai Central Flagship",
+    projectName: "Mumbai Phoenix Mall Flagship",
     projectId: "proj-001",
     requestingDepartment: "IT",
     requestorName: "Arjun Reddy",
     requestorEmail: "arjun.reddy@storeflow.corp",
     details: "Requesting approval for 10 hours of overtime for two IT technicians to complete network setup by EOW in Mumbai.",
-    approverName: "Priya Verma", // Admin
+    approverName: "Priya Verma",
     approverEmail: "priya.verma@storeflow.corp",
     status: "Pending",
     submissionDate: formatDate(addDays(today, 0)),
@@ -295,13 +298,13 @@ export let mockApprovalRequests: ApprovalRequest[] = [
   {
     id: 'appr-004',
     title: "Approval for Property Lease Extension Option (Delhi)",
-    projectName: "Delhi T3 Airport Kiosk",
+    projectName: "Delhi Connaught Place Express",
     projectId: "proj-003",
     requestingDepartment: "Property",
-    requestorName: "Karan Malhotra (Test User)",
+    requestorName: "Karan Malhotra",
     requestorEmail: "karan.malhotra@storeflow.corp",
-    details: "Seeking approval to exercise the 1-year lease extension option for the Delhi Airport Kiosk location as per agreement.",
-    approverName: "Meera Desai", // Head of Property
+    details: "Seeking approval to exercise the 1-year lease extension option for the Delhi Connaught Place location as per agreement.",
+    approverName: "Meera Desai",
     approverEmail: "meera.desai@storeflow.corp",
     status: "Approved",
     submissionDate: formatDate(addDays(today, -10)),
@@ -311,10 +314,10 @@ export let mockApprovalRequests: ApprovalRequest[] = [
     id: 'appr-005',
     title: "Requisition for New HR Software (India)",
     requestingDepartment: "HR",
-    requestorName: "Karan Malhotra (Test User)",
+    requestorName: "Karan Malhotra",
     requestorEmail: "karan.malhotra@storeflow.corp",
-    details: "Request to purchase 'HRFlow India Pro' software to streamline onboarding and payroll. Cost ₹1,50,000/year.",
-    approverName: "Rohan Sharma", // Head of HR
+    details: "Request to purchase 'HRConnect India Pro' software to streamline onboarding and payroll. Cost ₹1,50,000/year.",
+    approverName: "Rohan Sharma",
     approverEmail: "rohan.sharma@storeflow.corp",
     status: "Rejected",
     submissionDate: formatDate(addDays(today, -5)),
@@ -326,17 +329,24 @@ export let mockApprovalRequests: ApprovalRequest[] = [
 export const updateApprovalRequestStatus = (
   requestId: string,
   newStatus: ApprovalStatus,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  actorName: string, // Name of the person approving/rejecting
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  commentText?: string // Optional comment
+  actorName: string, 
+  commentText?: string
 ): boolean => {
   const requestIndex = mockApprovalRequests.findIndex(req => req.id === requestId);
   if (requestIndex !== -1) {
     mockApprovalRequests[requestIndex].status = newStatus;
     mockApprovalRequests[requestIndex].lastUpdateDate = formatDate(new Date());
-    // In a real app, new comments would be added to mockApprovalRequests[requestIndex].approvalComments
-    // For now, we'll just update status and date.
+    if (commentText) {
+        if (!mockApprovalRequests[requestIndex].approvalComments) {
+            mockApprovalRequests[requestIndex].approvalComments = [];
+        }
+        mockApprovalRequests[requestIndex].approvalComments!.push({
+            id: `appr-comment-${Date.now()}`,
+            author: actorName,
+            timestamp: new Date().toISOString(),
+            text: commentText,
+        });
+    }
     return true;
   }
   return false;
@@ -355,15 +365,15 @@ export const addApprovalRequest = (request: Omit<ApprovalRequest, 'id' | 'submis
 };
 
 const sampleImprovementPoints: ImprovementPoint[] = [
-  { id: 'imp-1', text: 'Improve window display appeal to attract more foot traffic in Chennai.', addedBy: 'Priya Verma', addedAt: formatDate(addDays(today, -5)), userAvatar: `https://picsum.photos/seed/priya_admin/40/40`},
-  { id: 'imp-2', text: 'Staff training on new product line (Indian festive wear) scheduled for next week.', addedBy: 'Lakshmi Menon', addedAt: formatDate(addDays(today, -2)), userAvatar: `https://picsum.photos/seed/lakshmi_manager/40/40`},
+  { id: 'imp-1', text: 'Improve window display appeal to attract more foot traffic in Chennai.', addedBy: 'Priya Verma', addedAt: formatDate(addDays(today, -5)), userAvatar: `https://picsum.photos/seed/priya_admin/40/40`, comments: [], isResolved: false},
+  { id: 'imp-2', text: 'Staff training on new product line (Indian festive wear) scheduled for next week.', addedBy: 'Lakshmi Menon', addedAt: formatDate(addDays(today, -2)), userAvatar: `https://picsum.photos/seed/lakshmi_manager/40/40`, comments: [], isResolved: true, resolvedBy: 'Lakshmi Menon', resolvedAt: formatDate(addDays(today, -1))},
 ];
 
 export let mockStores: StoreItem[] = [
   {
     id: 'store-001',
-    name: 'Chennai Emporium',
-    location: '1 T. Nagar, Chennai, India',
+    name: 'Chennai Silk Sadan',
+    location: '1 Thyagaraya Nagar, Chennai, Tamil Nadu',
     type: 'COCO',
     status: 'Operational',
     openingDate: formatDate(addDays(today, -365)),
@@ -373,13 +383,13 @@ export let mockStores: StoreItem[] = [
     customerSatisfaction: 4.5,
     inventoryLevels: { "Saree": 100, "Kurta": 50},
     currentPromotions: ["Diwali Sale 20% off"],
-    improvementPoints: [...sampleImprovementPoints],
+    improvementPoints: [...sampleImprovementPoints.map(p => ({...p, comments:[], isResolved: p.id === 'imp-2'}))],
     ownershipChangeRequested: false,
   },
   {
     id: 'store-002',
-    name: 'Hyderabad Hi-Tech Hub',
-    location: '205 Gachibowli, Hyderabad, India',
+    name: 'Hyderabad Tech Park Outlet',
+    location: '205 HITEC City, Hyderabad, Telangana',
     type: 'COCO',
     status: 'Operational',
     openingDate: formatDate(addDays(today, -180)),
@@ -389,13 +399,13 @@ export let mockStores: StoreItem[] = [
     customerSatisfaction: 4.2,
     inventoryLevels: { "Electronics": 80, "Gadgets": 120},
     currentPromotions: ["Weekend Special Buy 1 Get 1 Gadget Accessory"],
-    improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Priya Verma', addedAt: formatDate(addDays(today, -10)) }],
+    improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Priya Verma', addedAt: formatDate(addDays(today, -10)), comments: [], isResolved: false }],
     ownershipChangeRequested: true,
   },
   {
     id: 'store-003',
-    name: 'Pune Garden Plaza',
-    location: '15 Kalyani Nagar, Pune, India',
+    name: 'Pune Deccan Gymkhana Store',
+    location: '15 FC Road, Pune, Maharashtra',
     type: 'FOFO',
     status: 'Operational',
     openingDate: formatDate(addDays(today, -90)),
@@ -405,28 +415,28 @@ export let mockStores: StoreItem[] = [
     customerSatisfaction: 4.7,
     inventoryLevels: { "Books": 70, "Stationery": 60},
     currentPromotions: [],
-    improvementPoints: [],
+    improvementPoints: [{id: 'imp-4', text: 'Stock up on local author books.', addedBy: 'Neha Agarwal', addedAt: formatDate(addDays(today, -3)), comments: [], isResolved: false }],
     ownershipChangeRequested: false,
   },
   {
     id: 'store-004',
-    name: 'Kolkata New Town Site',
-    location: '77 Rajarhat, Kolkata, India',
+    name: 'Kolkata Park Street Site',
+    location: '77 Park Street, Kolkata, West Bengal',
     type: 'COCO',
     status: 'Under Construction',
-    openingDate: formatDate(addDays(today, 60)),
-    manager: 'TBD',
+    openingDate: formatDate(addDays(today, 60)), // Future date
+    manager: 'Awaiting Assignment',
     sqft: 4000,
     improvementPoints: [],
   },
   {
     id: 'store-005',
-    name: 'Jaipur Pink City Franchise',
-    location: '90 Bapu Bazaar, Jaipur, India',
+    name: 'Jaipur Johari Bazaar Franchise',
+    location: '90 Johari Bazaar, Jaipur, Rajasthan',
     type: 'FOFO',
     status: 'Planned',
-    openingDate: formatDate(addDays(today, 120)),
-    manager: 'Rajesh Kumar',
+    openingDate: formatDate(addDays(today, 120)), // Future date
+    manager: 'Ravi Meena',
     sqft: 2200,
     improvementPoints: [],
   },
@@ -441,7 +451,6 @@ export const getStoreById = (id: string): StoreItem | undefined => {
 export const updateMockStore = (updatedStore: StoreItem): void => {
   const index = mockStores.findIndex(s => s.id === updatedStore.id);
   if (index !== -1) {
-    mockStores[index] = updatedStore;
+    mockStores[index] = JSON.parse(JSON.stringify(updatedStore)); // Deep copy to avoid mutation issues
   }
 };
-

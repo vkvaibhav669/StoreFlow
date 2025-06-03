@@ -162,6 +162,10 @@ export interface ImprovementPoint {
   addedBy: string;
   addedAt: string; 
   userAvatar?: string; 
+  comments?: Comment[];
+  isResolved?: boolean;
+  resolvedBy?: string; // Name/email of user who resolved it
+  resolvedAt?: string; // ISO timestamp
 }
 
 export interface StoreItem {
@@ -180,3 +184,4 @@ export interface StoreItem {
   improvementPoints?: ImprovementPoint[];
   ownershipChangeRequested?: boolean;
 }
+

@@ -6,11 +6,12 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStoreById, updateMockStore } from "@/lib/data";
-import type { StoreItem, ImprovementPoint } from "@/types";
+import type { StoreItem, ImprovementPoint, Comment as CommentType, User as AuthUserType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp, MoreHorizontal, ExternalLink } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp, MoreHorizontal, ExternalLink, CheckCircle, MessageCircle, Send, CornerDownRight } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -33,6 +34,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CommentCard } from "@/components/comments/CommentCard";
+import { cn } from "@/lib/utils";
 
 
 export default function StoreDetailsPage() {
@@ -45,6 +48,8 @@ export default function StoreDetailsPage() {
   const [loadingStore, setLoadingStore] = React.useState(true);
   const [isAddImprovementDialogOpen, setIsAddImprovementDialogOpen] = React.useState(false);
   const [newImprovementPointText, setNewImprovementPointText] = React.useState("");
+  const [improvementCommentInputs, setImprovementCommentInputs] = React.useState<Record<string, string>>({});
+
 
   const storeId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -75,15 +80,14 @@ export default function StoreDetailsPage() {
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
   const isStoreManager = React.useMemo(() => {
     if (!user || !store) return false;
-    // For FOFO stores, manager name should match current user's name
     return store.type === 'FOFO' && store.manager === user.name;
   }, [user, store]);
 
-  const canManageImprovements = isUserAdminOrHod || isStoreManager;
+  const canManageImprovements = isUserAdminOrHod || isStoreManager || (user && store?.members?.some(m => m.email === user.email));
   const canRequestOwnershipChange = React.useMemo(() => {
     if (!store) return false;
-    if (store.type === 'COCO') return isUserAdminOrHod; // Only Admin/HOD can request change for COCO
-    if (store.type === 'FOFO') return isUserAdminOrHod || isStoreManager; // Admin/HOD or Store Manager for FOFO
+    if (store.type === 'COCO') return isUserAdminOrHod;
+    if (store.type === 'FOFO') return isUserAdminOrHod || isStoreManager;
     return false;
   }, [store, isUserAdminOrHod, isStoreManager]);
 
@@ -99,7 +103,9 @@ export default function StoreDetailsPage() {
       text: newImprovementPointText,
       addedBy: user.name || user.email || "System",
       addedAt: new Date().toISOString(),
-      userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`
+      userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`,
+      comments: [],
+      isResolved: false,
     };
 
     const updatedStore = {
@@ -141,6 +147,84 @@ export default function StoreDetailsPage() {
         description: `The request to change ownership for "${store.name}" has been cancelled.`,
       });
     }
+  };
+
+  const handleToggleImprovementResolved = (pointId: string) => {
+    if (!store || !user) return;
+    const updatedPoints = (store.improvementPoints || []).map(p => {
+      if (p.id === pointId) {
+        const newResolvedState = !p.isResolved;
+        return {
+          ...p,
+          isResolved: newResolvedState,
+          resolvedBy: newResolvedState ? (user.name || user.email) : undefined,
+          resolvedAt: newResolvedState ? new Date().toISOString() : undefined,
+        };
+      }
+      return p;
+    });
+    const updatedStore = { ...store, improvementPoints: updatedPoints };
+    setStore(updatedStore);
+    updateMockStore(updatedStore);
+    toast({ title: "Improvement Point Updated", description: `Status changed for point: ${updatedPoints.find(p => p.id === pointId)?.text.substring(0,30)}...` });
+  };
+
+  const handleAddCommentToImprovement = (pointId: string, text: string) => {
+    if (!text.trim() || !store || !user) return;
+    const newComment: CommentType = {
+      id: `imp-comment-${Date.now()}`,
+      author: user.name || user.email || "System",
+      avatarUrl: `https://picsum.photos/seed/${user.id || 'commenter'}/40/40`,
+      timestamp: new Date().toISOString(),
+      text: text,
+      replies: [],
+    };
+    const updatedPoints = (store.improvementPoints || []).map(p => {
+      if (p.id === pointId) {
+        return { ...p, comments: [newComment, ...(p.comments || [])] };
+      }
+      return p;
+    });
+    const updatedStore = { ...store, improvementPoints: updatedPoints };
+    setStore(updatedStore);
+    updateMockStore(updatedStore);
+    setImprovementCommentInputs(prev => ({...prev, [pointId]: ""})); // Clear input for this point
+    toast({ title: "Comment Added", description: "Your comment has been posted." });
+  };
+
+  const handleReplyToImprovementComment = (pointId: string, commentId: string, replyText: string) => {
+    if (!replyText.trim() || !store || !user) return;
+
+    const addReplyRecursively = (currentComments: CommentType[]): CommentType[] => {
+      return currentComments.map(comment => {
+        if (comment.id === commentId) {
+          const newReply: CommentType = {
+            id: `imp-reply-${Date.now()}`,
+            author: user.name || user.email || "System",
+            avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`,
+            timestamp: new Date().toISOString(),
+            text: replyText,
+            replies: [],
+          };
+          return { ...comment, replies: [newReply, ...(comment.replies || [])] };
+        }
+        if (comment.replies && comment.replies.length > 0) {
+          return { ...comment, replies: addReplyRecursively(comment.replies) };
+        }
+        return comment;
+      });
+    };
+
+    const updatedPoints = (store.improvementPoints || []).map(p => {
+      if (p.id === pointId) {
+        return { ...p, comments: addReplyRecursively(p.comments || []) };
+      }
+      return p;
+    });
+    const updatedStore = { ...store, improvementPoints: updatedPoints };
+    setStore(updatedStore);
+    updateMockStore(updatedStore);
+    toast({ title: "Reply Posted", description: "Your reply has been added." });
   };
 
 
@@ -286,20 +370,79 @@ export default function StoreDetailsPage() {
             </CardHeader>
             <CardContent>
                 {store.improvementPoints && store.improvementPoints.length > 0 ? (
-                    <ScrollArea className="h-[250px] pr-3">
-                        <ul className="space-y-4">
+                    <ScrollArea className="max-h-[500px] pr-3">
+                        <ul className="space-y-6">
                             {store.improvementPoints.slice().reverse().map(point => (
-                                <li key={point.id} className="p-3 border rounded-md shadow-sm bg-muted/50">
+                                <li key={point.id} className="p-4 border rounded-lg shadow-sm bg-card">
                                     <div className="flex items-start space-x-3">
-                                        <Avatar className="h-8 w-8 mt-0.5">
+                                        <Avatar className="h-10 w-10 mt-1">
                                             <AvatarImage src={point.userAvatar || `https://placehold.co/40x40.png?text=${point.addedBy.substring(0,1)}`} alt={point.addedBy} data-ai-hint="user avatar" />
                                             <AvatarFallback>{point.addedBy.substring(0, 2).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1">
-                                            <p className="text-sm whitespace-pre-wrap">{point.text}</p>
+                                            <p className={cn(
+                                                "text-md font-medium whitespace-pre-wrap",
+                                                point.isResolved && "line-through text-muted-foreground"
+                                            )}>{point.text}</p>
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Added by {point.addedBy} - {formatDistanceToNow(new Date(point.addedAt), { addSuffix: true })}
                                             </p>
+                                            {point.isResolved && point.resolvedBy && point.resolvedAt && (
+                                                <p className="text-xs text-accent-foreground/80 bg-accent/80 px-1.5 py-0.5 rounded-sm inline-block mt-1">
+                                                    Resolved by {point.resolvedBy} on {format(new Date(point.resolvedAt), "PPP")}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {canManageImprovements && (
+                                           <div className="flex flex-col items-end space-y-1">
+                                                <Switch
+                                                    id={`resolve-switch-${point.id}`}
+                                                    checked={!!point.isResolved}
+                                                    onCheckedChange={() => handleToggleImprovementResolved(point.id)}
+                                                    aria-label={point.isResolved ? "Mark as unresolved" : "Mark as resolved"}
+                                                />
+                                                 <Label htmlFor={`resolve-switch-${point.id}`} className="text-xs text-muted-foreground">
+                                                    {point.isResolved ? "Resolved" : "Resolve"}
+                                                 </Label>
+                                           </div>
+                                        )}
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t">
+                                        <h4 className="text-sm font-semibold mb-2 text-card-foreground flex items-center">
+                                            <MessageCircle className="mr-2 h-4 w-4" /> Discussion ({point.comments?.length || 0})
+                                        </h4>
+                                        {(point.comments || []).length > 0 && (
+                                            <div className="space-y-3 mb-3 max-h-60 overflow-y-auto pr-2">
+                                                {(point.comments || []).map(comment => (
+                                                    <CommentCard
+                                                        key={comment.id}
+                                                        comment={comment}
+                                                        onReply={(commentId, replyText) => handleReplyToImprovementComment(point.id, commentId, replyText)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex items-start space-x-2 mt-2">
+                                            <Avatar className="h-8 w-8 mt-1">
+                                                <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "User"} data-ai-hint="user avatar"/>
+                                                <AvatarFallback>{(user?.name || user?.email || "U").substring(0,2).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1">
+                                            <Textarea
+                                                placeholder="Add a comment..."
+                                                value={improvementCommentInputs[point.id] || ""}
+                                                onChange={(e) => setImprovementCommentInputs(prev => ({...prev, [point.id]: e.target.value}))}
+                                                rows={2}
+                                                className="mb-2 text-sm"
+                                            />
+                                            <Button 
+                                                size="sm" 
+                                                onClick={() => handleAddCommentToImprovement(point.id, improvementCommentInputs[point.id] || "")}
+                                                disabled={!(improvementCommentInputs[point.id] || "").trim()}
+                                            >
+                                                <Send className="mr-2 h-3.5 w-3.5" /> Post Comment
+                                            </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </li>
