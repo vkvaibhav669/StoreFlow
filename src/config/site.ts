@@ -37,12 +37,7 @@ export const siteConfig: SiteConfig = {
       icon: ClipboardList,
     },
     {
-      title: "Assign a Task",
-      href: "/tasks",
-      icon: UserPlus,
-    },
-    {
-      title: "My Tasks",
+      title: "My Tasks", // This will now be the combined page
       href: "/my-tasks",
       icon: ListChecks,
     },
@@ -52,7 +47,7 @@ export const siteConfig: SiteConfig = {
       icon: KanbanSquare,
     },
     {
-      title: "Approvals", // Updated title slightly for clarity
+      title: "Approvals",
       href: "/my-approvals",
       icon: CheckSquare,
     },
@@ -65,3 +60,4 @@ export const siteConfig: SiteConfig = {
     },
   ]
 };
+
