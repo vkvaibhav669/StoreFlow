@@ -4,7 +4,7 @@
 import * as React from "react";
 import { notFound, useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -1377,6 +1377,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                               className="h-7 w-7 text-muted-foreground hover:text-destructive"
                               onClick={() => {
                                 setMemberToRemoveInfo({ email: member.email, name: member.name });
+                                setIsConfirmRemoveMemberDialogOpen(true); // Open dialog
                               }}
                               aria-label={`Remove ${member.name}`}
                             >
