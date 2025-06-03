@@ -27,7 +27,7 @@ const KANBAN_COLUMNS: TaskStatus[] = ["Pending", "In Progress", "Blocked", "Comp
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 const allPossiblePriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 
-export default function KanbanBoardPage() {
+export default function TaskTrackerPage() { // Renamed component
   const { user, loading } = useAuth();
   const router = useRouter();
   const { open: sidebarOpen } = useSidebar();
@@ -86,16 +86,16 @@ export default function KanbanBoardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{loading ? "Loading Kanban board..." : "Please sign in."}</p>
+        <p className="text-muted-foreground">{loading ? "Loading task tracker..." : "Please sign in."}</p>
       </div>
     );
   }
 
 
   return (
-    <section className="kanban-board-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="kanban-page-heading">
+    <section className="task-tracker-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="task-tracker-page-heading">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 id="kanban-page-heading" className="text-2xl font-semibold md:text-3xl">Kanban Board</h1>
+        <h1 id="task-tracker-page-heading" className="text-2xl font-semibold md:text-3xl">Task Tracker</h1> {/* Renamed title */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <div className="flex-1 min-w-[150px]">
             <Label htmlFor="project-filter" className="text-xs text-muted-foreground">Filter by Project</Label>

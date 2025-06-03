@@ -47,7 +47,7 @@ export const siteConfig: SiteConfig = {
       icon: ListChecks,
     },
     {
-      title: "Kanban Board",
+      title: "Task Tracker",
       href: "/kanban",
       icon: KanbanSquare,
     },
@@ -65,4 +65,3 @@ export const siteConfig: SiteConfig = {
     },
   ]
 };
-
