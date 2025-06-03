@@ -40,7 +40,7 @@ export default function AssignTaskPage() {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
-  const [assignedTo, setAssignedTo] = React.useState(""); // Will store selected member's name or email
+  const [assignedTo, setAssignedTo] = React.useState(""); // Will store selected member's email
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "">("");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
   const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
@@ -48,29 +48,31 @@ export default function AssignTaskPage() {
   const [assignableMembers, setAssignableMembers] = React.useState<ProjectMember[]>([]);
 
   React.useEffect(() => {
-    if (assignToSelf && user) {
-      setAssignedTo(user.name || user.email || "Current User");
-    } else if (!assignToSelf && assignedTo === (user?.name || user?.email || "Current User")) {
-      // If "Assign to me" was checked and now unchecked, clear assignedTo if it was self-assigned
-      setAssignedTo("");
-    }
-  }, [assignToSelf, user, assignedTo]);
-
-  React.useEffect(() => {
     if (selectedProjectId) {
       const project = mockProjects.find(p => p.id === selectedProjectId);
       setAssignableMembers(project?.members || []);
       // Reset assignment when project changes, unless "assign to self" is checked
       if (!assignToSelf) {
-        setAssignedTo("");
+        setAssignedTo(""); // Clear current selection
       }
     } else {
       setAssignableMembers([]);
       if (!assignToSelf) {
-        setAssignedTo("");
+        setAssignedTo(""); // Clear current selection
       }
     }
   }, [selectedProjectId, assignToSelf]);
+
+  React.useEffect(() => {
+    if (assignToSelf && user) {
+      setAssignedTo(user.email); // Assign user's email
+      // If the "Assign To" Select component has a value that's not in assignableMembers (like current user if not in project),
+      // it might not display correctly. This UI assumes assignToSelf overrides dropdown.
+    } else if (!assignToSelf && assignedTo === user?.email) {
+      // If "Assign to me" was checked and now unchecked, clear assignedTo if it was self-assigned by email
+      setAssignedTo("");
+    }
+  }, [assignToSelf, user, assignedTo]);
 
 
   const resetForm = () => {
@@ -87,7 +89,7 @@ export default function AssignTaskPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalAssignedTo = assignToSelf ? (user?.name || user?.email || "Current User") : assignedTo;
+    const finalAssignedTo = assignToSelf ? (user?.email || "Current User") : assignedTo;
 
     if (!selectedProjectId || !taskName || !selectedDepartment || !finalAssignedTo) {
       toast({
@@ -109,13 +111,21 @@ export default function AssignTaskPage() {
     }
 
     const targetProject = mockProjects[projectIndex];
+    let assigneeDisplayName = finalAssignedTo;
+    if (!assignToSelf) {
+        const member = assignableMembers.find(m => m.email === finalAssignedTo);
+        assigneeDisplayName = member?.name || finalAssignedTo;
+    } else if (assignToSelf && user) {
+        assigneeDisplayName = user.name || user.email || "Current User";
+    }
+
 
     const newTask: Task = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: taskName,
       department: selectedDepartment as Department,
       description: taskDescription || undefined,
-      assignedTo: finalAssignedTo,
+      assignedTo: finalAssignedTo, // Storing email or "Current User"
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
       status: "Pending",
       priority: taskPriority,
@@ -127,14 +137,13 @@ export default function AssignTaskPage() {
     const deptKey = selectedDepartment.toLowerCase() as keyof StoreProject['departments'];
     
     if (targetProject.departments && targetProject.departments[deptKey]) {
-      // Ensure tasks array exists
       if (!(targetProject.departments[deptKey] as { tasks: Task[] }).tasks) {
         (targetProject.departments[deptKey] as { tasks: Task[] }).tasks = [];
       }
       (targetProject.departments[deptKey] as { tasks: Task[] }).tasks.push(newTask);
     } else if (targetProject.departments && deptKey === 'it') { 
        targetProject.departments.it = { ...targetProject.departments.it, tasks: [...(targetProject.departments.it?.tasks || []), newTask] };
-    } else if (targetProject.departments) { // Handle if department key doesn't exist but departments object does
+    } else if (targetProject.departments) { 
         targetProject.departments[deptKey] = { tasks: [newTask] };
     }
 
@@ -143,7 +152,7 @@ export default function AssignTaskPage() {
     
     toast({
       title: "Success!",
-      description: `Task "${taskName}" assigned successfully to ${finalAssignedTo} for project "${targetProject.name}".`,
+      description: `Task "${taskName}" assigned successfully to ${assigneeDisplayName} for project "${targetProject.name}".`,
     });
     resetForm();
   };
@@ -205,20 +214,17 @@ export default function AssignTaskPage() {
                     required={!assignToSelf}
                   >
                     <SelectTrigger id="assignedTo">
-                      <SelectValue placeholder={!selectedProjectId ? "Select a project first" : (assignableMembers.length === 0 ? "No members in project" : "Select member")} />
+                      <SelectValue placeholder={!selectedProjectId ? "Select a project first" : (assignableMembers.length === 0 && selectedProjectId ? "No members in project" : "Select member")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {!selectedProjectId ? (
-                        <SelectItem value="" disabled>Select a project first</SelectItem>
-                      ) : assignableMembers.length > 0 ? (
+                      {selectedProjectId && assignableMembers.length > 0 && (
                         assignableMembers.map(member => (
-                          <SelectItem key={member.email} value={member.name || member.email}>
-                            {member.name} ({member.department || 'N/A Dept'})
+                          <SelectItem key={member.email} value={member.email}>
+                            {member.name || member.email} ({member.department || 'N/A Dept'})
                           </SelectItem>
                         ))
-                      ) : (
-                        <SelectItem value="" disabled>No members assigned to this project</SelectItem>
                       )}
+                      {/* Placeholder items are handled by SelectValue's placeholder prop */}
                     </SelectContent>
                   </Select>
                  <div className="flex items-center space-x-2 pt-1">
@@ -229,9 +235,9 @@ export default function AssignTaskPage() {
                           const isChecked = !!checked;
                           setAssignToSelf(isChecked);
                           if (isChecked && user) {
-                            setAssignedTo(user.name || user.email || "Current User");
-                          } else if (!isChecked && assignedTo === (user?.name || user?.email || "Current User")) {
-                             setAssignedTo(""); // Clear if previously self-assigned
+                            setAssignedTo(user.email); // Set to user's email
+                          } else if (!isChecked && assignedTo === user?.email) {
+                             setAssignedTo(""); 
                           }
                         }}
                         disabled={!user}
