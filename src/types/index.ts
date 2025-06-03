@@ -1,5 +1,5 @@
 
-export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT";
+export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
 
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
 
@@ -77,6 +77,14 @@ export interface DepartmentDetails {
 
 export type StoreType = "COCO" | "FOFO";
 
+export interface ProjectMember {
+  email: string; // Using email as a unique identifier from mockHeadOfficeContacts
+  name: string;
+  roleInProject?: string; // e.g., "Lead Designer", "IT Support for Project X"
+  department?: Department;
+  avatarSeed?: string; // For consistent avatar generation
+}
+
 export interface StoreProject {
   id: string;
   name: string;
@@ -112,6 +120,7 @@ export interface StoreProject {
     it?: DepartmentDetails;
   };
   comments?: Comment[];
+  members?: ProjectMember[];
 }
 
 export interface User {
@@ -165,4 +174,3 @@ export interface StoreItem {
   improvementPoints?: ImprovementPoint[];
   ownershipChangeRequested?: boolean;
 }
-

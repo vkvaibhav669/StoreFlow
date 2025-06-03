@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getProjectById, mockProjects } from "@/lib/data";
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff } from "lucide-react";
+import { getProjectById, mockProjects, mockHeadOfficeContacts } from "@/lib/data";
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
@@ -96,8 +96,8 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
   );
 }
 
-const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
-const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low"]; 
+const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Executive Office", "Operations"];
+const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low"];
 const propertyStatuses: StoreProject['propertyDetails']['status'][] = ["Identified", "Negotiating", "Finalized"];
 const storeTypes: StoreType[] = ["COCO", "FOFO"];
 const projectStatuses: StoreProject['status'][] = [
@@ -150,7 +150,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
   const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
   const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
-  
+
   const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>([]);
   const [isAddMilestoneDialogOpen, setIsAddMilestoneDialogOpen] = React.useState(false);
   const [newMilestoneName, setNewMilestoneName] = React.useState("");
@@ -163,6 +163,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [newBlockerDescription, setNewBlockerDescription] = React.useState("");
 
   const [showBlockersInTimeline, setShowBlockersInTimeline] = React.useState(false);
+
+  const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = React.useState(false);
+  const [selectedNewMemberEmail, setSelectedNewMemberEmail] = React.useState<string>("");
+  const [newMemberRoleInProject, setNewMemberRoleInProject] = React.useState("");
 
 
   const currentUserRole = React.useMemo(() => {
@@ -481,7 +485,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         mockProjects[projectIndex] = { ...finalUpdatedProjectData };
       }
       toast({ title: "Task Details Updated", description: `Details for "${selectedTask.name}" have been updated.` });
-      setSelectedTask(updatedTask); 
+      setSelectedTask(updatedTask);
       return finalUpdatedProjectData;
     });
     setIsViewTaskDialogOpen(false);
@@ -589,7 +593,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const handleEditPropertyDetailChange = (field: keyof StoreProject['propertyDetails'], value: any) => {
     setEditingPropertyDetailsForm(prev => ({ ...prev, [field]: value }));
   };
-  
+
   const handleEditTimelineChange = (field: keyof StoreProject['projectTimeline'], value: any) => {
     setEditingTimelineForm(prev => ({...prev, [field]: value}));
   };
@@ -600,7 +604,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     const updatedProjectData: StoreProject = {
         ...projectData,
         ...editingProjectForm,
-        status: editingProjectForm.status,
+        status: editingProjectForm.status, // Ensure status is part of editingProjectForm
         propertyDetails: {
             ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
             ...editingPropertyDetailsForm,
@@ -611,12 +615,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             ...editingTimelineForm,
             totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0,
         },
-        milestones: editingMilestones, 
-        blockers: editingBlockers, 
+        milestones: editingMilestones,
+        blockers: editingBlockers,
         startDate: editingProjectForm.startDate ? utilFormatDate(new Date(editingProjectForm.startDate)) : projectData.startDate,
         projectedLaunchDate: editingProjectForm.projectedLaunchDate ? utilFormatDate(new Date(editingProjectForm.projectedLaunchDate)) : projectData.projectedLaunchDate,
+        members: projectData.members, // Ensure members are carried over if not edited directly here
     };
-    
+
     setProjectData(updatedProjectData);
 
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
@@ -671,9 +676,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setNewBlockerTitle("");
     setNewBlockerDescription("");
     setIsAddBlockerDialogOpen(false);
-    toast({ title: "Blocker Added", description: `"${newBlocker.title}" added. Save project to persist changes.` });
+    toast({ title: "Blocker Added", description: `"${newBlocker.title}" added to edit list. Save project to persist changes.` });
   };
-  
+
   const handleToggleTimelineBlockerResolution = (blockerId: string) => {
     if (!projectData) return;
     const updatedBlockers = (projectData.blockers || []).map(b =>
@@ -702,6 +707,64 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
   };
 
+  const handleAddProjectMember = () => {
+    if (!selectedNewMemberEmail || !projectData) {
+      toast({ title: "Error", description: "Please select a person to add.", variant: "destructive" });
+      return;
+    }
+    const personToAdd = mockHeadOfficeContacts.find(p => p.email === selectedNewMemberEmail);
+    if (!personToAdd) {
+      toast({ title: "Error", description: "Selected person not found.", variant: "destructive" });
+      return;
+    }
+
+    const newMember: ProjectMember = {
+      email: personToAdd.email,
+      name: personToAdd.name,
+      department: personToAdd.department,
+      avatarSeed: personToAdd.avatarSeed,
+      roleInProject: newMemberRoleInProject.trim() || "Team Member",
+    };
+
+    setProjectData(prev => {
+      if (!prev) return null;
+      const updatedMembers = [...(prev.members || []), newMember];
+      const updatedProject = { ...prev, members: updatedMembers };
+      const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = updatedProject;
+      }
+      toast({ title: "Member Added", description: `${newMember.name} has been added to the project.` });
+      return updatedProject;
+    });
+
+    setSelectedNewMemberEmail("");
+    setNewMemberRoleInProject("");
+    setIsAddMemberDialogOpen(false);
+  };
+
+  const handleRemoveProjectMember = (memberEmail: string) => {
+    if (!projectData) return;
+    setProjectData(prev => {
+      if (!prev) return null;
+      const updatedMembers = (prev.members || []).filter(m => m.email !== memberEmail);
+      const updatedProject = { ...prev, members: updatedMembers };
+      const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
+      if (projectIndex !== -1) {
+        mockProjects[projectIndex] = updatedProject;
+      }
+      const removedMember = (prev.members || []).find(m => m.email === memberEmail);
+      toast({ title: "Member Removed", description: `${removedMember?.name || 'Member'} has been removed from the project.` });
+      return updatedProject;
+    });
+  };
+
+  const availableMembersToAdd = React.useMemo(() => {
+    if (!projectData) return [];
+    const currentMemberEmails = (projectData.members || []).map(m => m.email);
+    return mockHeadOfficeContacts.filter(contact => !currentMemberEmails.includes(contact.email));
+  }, [projectData]);
+
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
@@ -717,7 +780,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           {isUserAdminOrHod && (
             <Dialog open={isEditProjectDialogOpen} onOpenChange={(isOpen) => {
               setIsEditProjectDialogOpen(isOpen);
-              if (isOpen && projectData) { 
+              if (isOpen && projectData) {
                   setEditingProjectForm({
                       name: projectData.name,
                       location: projectData.location,
@@ -769,8 +832,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="editProjectStatus">Project Status</Label>
-                        <Select 
-                            value={editingProjectForm.status || ""} 
+                        <Select
+                            value={editingProjectForm.status || ""}
                             onValueChange={(value) => handleEditProjectFieldChange('status', value as StoreProject['status'])}
                         >
                             <SelectTrigger id="editProjectStatus"><SelectValue placeholder="Select project status" /></SelectTrigger>
@@ -797,7 +860,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         <Input id="editProjectedLaunchDate" type="date" value={editingProjectForm.projectedLaunchDate || ""} onChange={(e) => handleEditProjectFieldChange('projectedLaunchDate', e.target.value)} />
                     </div>
                   </div>
-                  
+
                   <h3 className="text-md font-semibold mt-4 mb-1 col-span-full">Property Details</h3>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -896,7 +959,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         >
                           <AlertTriangle className="mr-2 h-4 w-4" /> Add Blocker
                         </Button>
-                        <p className="text-xs text-muted-foreground mt-1">Newly added blockers will be saved with the project. View and manage existing blockers in the Timeline tab.</p>
+                         <p className="text-xs text-muted-foreground mt-1">Newly added blockers will be saved with the project. View and manage existing blockers in the Timeline tab.</p>
                     </div>
                 </div>
                 </ScrollArea>
@@ -1134,8 +1197,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       </Card>
 
       <Tabs defaultValue="departments">
-        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3 md:grid-cols-6">
           <TabsTrigger value="departments">Departments</TabsTrigger>
+          <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
           <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -1162,7 +1226,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising?.tasks || [])} />}
 
             {departments.hr &&
-              <DepartmentCard title="HR Team" icon={Users} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [])}>
+              <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [])}>
                 {departments.hr.totalNeeded && (
                   <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
                 )}
@@ -1189,6 +1253,110 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </div>
         </TabsContent>
 
+        <TabsContent value="members" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle id="project-members-heading">Project Members ({projectData.members?.length || 0})</CardTitle>
+                <CardDescription>Team members assigned to this project.</CardDescription>
+              </div>
+              {isUserAdminOrHod && (
+                 <Dialog open={isAddMemberDialogOpen} onOpenChange={(isOpen) => {
+                    setIsAddMemberDialogOpen(isOpen);
+                    if (!isOpen) {
+                        setSelectedNewMemberEmail("");
+                        setNewMemberRoleInProject("");
+                    }
+                 }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <UserPlus className="mr-2 h-4 w-4" /> Add Member
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add Project Member</DialogTitle>
+                      <DialogDescription>Select a person and assign their role in this project.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="select-member">Select Person</Label>
+                        <Select value={selectedNewMemberEmail} onValueChange={setSelectedNewMemberEmail}>
+                          <SelectTrigger id="select-member">
+                            <SelectValue placeholder="Choose a person" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableMembersToAdd.length > 0 ? (
+                              availableMembersToAdd.map(person => (
+                                <SelectItem key={person.email} value={person.email}>
+                                  {person.name} ({person.department})
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <div className="p-2 text-sm text-muted-foreground text-center">No more available contacts to add.</div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="member-role">Role in Project</Label>
+                        <Input
+                          id="member-role"
+                          value={newMemberRoleInProject}
+                          onChange={(e) => setNewMemberRoleInProject(e.target.value)}
+                          placeholder="e.g., Lead Developer, Consultant"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                      <Button onClick={handleAddProjectMember} disabled={!selectedNewMemberEmail}>Add Member</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
+            <CardContent>
+              {(projectData.members && projectData.members.length > 0) ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {projectData.members.map(member => (
+                    <Card key={member.email} className="flex flex-col">
+                      <CardHeader className="flex flex-row items-center gap-3 p-4">
+                        <Avatar className="h-12 w-12">
+                           <AvatarImage src={`https://picsum.photos/seed/${member.avatarSeed || member.email}/80/80`} alt={member.name} data-ai-hint="person portrait"/>
+                          <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{member.name}</CardTitle>
+                          <CardDescription className="text-xs">{member.email}</CardDescription>
+                        </div>
+                        {isUserAdminOrHod && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveProjectMember(member.email)}
+                            aria-label={`Remove ${member.name}`}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0 flex-grow">
+                         {member.roleInProject && <p className="text-sm font-medium text-primary">{member.roleInProject}</p>}
+                         {member.department && <p className="text-xs text-muted-foreground">{member.department}</p>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No members assigned to this project yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="tasks" className="mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -1204,7 +1372,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       </SelectTrigger>
                       <SelectContent>
                           <SelectItem value="All">All Priorities</SelectItem>
-                          {allPossibleTaskPriorities.map((prio) => ( 
+                          {allPossibleTaskPriorities.map((prio) => (
                               <SelectItem key={prio} value={prio}>
                                   {prio}
                               </SelectItem>
@@ -1509,7 +1677,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      {allPossibleTaskPriorities.map(prio => ( 
+                      {allPossibleTaskPriorities.map(prio => (
                         <SelectItem key={prio} value={prio}>{prio}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1723,7 +1891,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </section>
   );
 }

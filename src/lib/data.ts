@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint, Blocker } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint, Blocker, Department } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -126,7 +126,7 @@ export let mockProjects: StoreProject[] = [
     },
     threeDRenderUrl: 'https://picsum.photos/seed/store1render/800/600',
     tasks: [
-        ...tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001', 'task-it-001'].includes(t.id)), 
+        ...tasks.filter(t => ['task-proj-001', 'task-proj-002', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001', 'task-it-001'].includes(t.id)),
         { id: 'task-df-001', name: 'Review safety protocols', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 3)), comments: [] }
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
@@ -139,14 +139,18 @@ export let mockProjects: StoreProject[] = [
         project: { notes: "Construction underway, on schedule.", tasks: tasks.filter(t => t.department === 'Project' && ['task-proj-001', 'task-proj-002', 'task-df-001'].includes(t.id)) },
         merchandising: { virtualPlanUrl: "#", tasks: tasks.filter(t => t.department === 'Merchandising' && ['task-merch-001'].includes(t.id)) },
         hr: { recruitmentStatus: "Interviews Scheduled", staffHired: 1, totalNeeded: 5, tasks: tasks.filter(t => t.department === 'HR' && ['task-hr-001'].includes(t.id)) },
-        marketing: { 
-            preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-1-${i}`})), 
-            postLaunchCampaigns: [], 
-            tasks: tasks.filter(t => t.department === 'Marketing' && ['task-mkt-001'].includes(t.id)) 
+        marketing: {
+            preLaunchCampaigns: sampleCampaigns.map((c,i) => ({...c, id: `camp-pre-1-${i}`})),
+            postLaunchCampaigns: [],
+            tasks: tasks.filter(t => t.department === 'Marketing' && ['task-mkt-001'].includes(t.id))
         },
         it: { notes: "Network setup in progress", tasks: tasks.filter(t => t.department === 'IT' && ['task-it-001'].includes(t.id))}
     },
     comments: sampleProjectComments,
+    members: [
+      { email: "j.rodriguez@storeflow.corp", name: "James Rodriguez", roleInProject: "Project Lead", department: "Projects", avatarSeed: "james" },
+      { email: "s.chen@storeflow.corp", name: "Sophia Chen", roleInProject: "Property Consultant", department: "Property", avatarSeed: "sophia" },
+    ],
   },
   {
     id: 'proj-002',
@@ -169,10 +173,10 @@ export let mockProjects: StoreProject[] = [
       kickoffDate: formatDate(addDays(today, 5)),
     },
     tasks: [
-        ...tasks.filter(t => ['task-prop-002', 'task-it-002'].includes(t.id)), 
+        ...tasks.filter(t => ['task-prop-002', 'task-it-002'].includes(t.id)),
         { id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 12)), comments: [] }
     ],
-    documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})), 
+    documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})),
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
     blockers: [],
     departments: {
@@ -180,7 +184,8 @@ export let mockProjects: StoreProject[] = [
         project: { tasks: [{ id: 'task-sm-001', name: 'Plan store layout mockups', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'vaibhavvrajkumar@gmail.com', dueDate: formatDate(addDays(today, 12)), comments: [] }] },
         it: { tasks: tasks.filter(t => t.department === 'IT' && ['task-it-002'].includes(t.id))}
     },
-    comments: [sampleProjectComments[1]], 
+    comments: [sampleProjectComments[1]],
+    members: [],
   },
    {
     id: 'proj-003',
@@ -199,7 +204,7 @@ export let mockProjects: StoreProject[] = [
     },
     projectTimeline: {
       totalDays: 45,
-      currentDay: 45, 
+      currentDay: 45,
       kickoffDate: formatDate(addDays(today, -60)),
     },
     threeDRenderUrl: 'https://picsum.photos/seed/kioskrender/800/600',
@@ -215,6 +220,7 @@ export let mockProjects: StoreProject[] = [
         it: { tasks: tasks.filter(t => t.department === 'IT' && ['task-it-003'].includes(t.id))}
     },
     comments: [],
+    members: [],
   }
 ];
 
@@ -223,7 +229,15 @@ export const getProjectById = (id: string): StoreProject | undefined => {
   return project ? JSON.parse(JSON.stringify(project)) : undefined;
 };
 
-export const mockHeadOfficeContacts = [
+export const mockHeadOfficeContacts: {
+  id: string;
+  name: string;
+  role: string;
+  department: Department;
+  email: string;
+  phone: string;
+  avatarSeed: string;
+}[] = [
   { id: "ho-001", name: "Eleanor Vance", role: "Chief Executive Officer", department: "Executive Office", email: "e.vance@storeflow.corp", phone: "(555) 010-0001", avatarSeed: "eleanor" },
   { id: "ho-002", name: "Marcus Thorne", role: "Chief Operations Officer", department: "Operations", email: "m.thorne@storeflow.corp", phone: "(555) 010-0002", avatarSeed: "marcus" },
   { id: "ho-003", name: "Sophia Chen", role: "Head of Property Development", department: "Property", email: "s.chen@storeflow.corp", phone: "(555) 010-0003", avatarSeed: "sophia" },
@@ -274,7 +288,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [
     requestorEmail: "it.lead@storeflow.corp",
     details: "Requesting approval for 10 hours of overtime for two IT technicians to complete network setup by EOW.",
     approverName: "Vaibhhav Raj Kumar", // Admin
-    approverEmail: "vaibhhavrajkumar@gmail.com", 
+    approverEmail: "vaibhhavrajkumar@gmail.com",
     status: "Pending",
     submissionDate: formatDate(addDays(today, 0)),
   },
@@ -346,73 +360,73 @@ const sampleImprovementPoints: ImprovementPoint[] = [
 ];
 
 export let mockStores: StoreItem[] = [
-  { 
-    id: 'store-001', 
-    name: 'Flagship Central', 
-    location: '1 Main Street, Big City', 
-    type: 'COCO', 
-    status: 'Operational', 
-    openingDate: formatDate(addDays(today, -365)), 
-    manager: 'Alice Smith', 
-    sqft: 5000, 
-    dailySales: 1200, 
-    customerSatisfaction: 4.5, 
-    inventoryLevels: { "Product A": 100, "Product B": 50}, 
+  {
+    id: 'store-001',
+    name: 'Flagship Central',
+    location: '1 Main Street, Big City',
+    type: 'COCO',
+    status: 'Operational',
+    openingDate: formatDate(addDays(today, -365)),
+    manager: 'Alice Smith',
+    sqft: 5000,
+    dailySales: 1200,
+    customerSatisfaction: 4.5,
+    inventoryLevels: { "Product A": 100, "Product B": 50},
     currentPromotions: ["Summer Sale 20% off"],
     improvementPoints: [...sampleImprovementPoints],
     ownershipChangeRequested: false,
   },
-  { 
-    id: 'store-002', 
-    name: 'Westside Express', 
-    location: '205 Commerce Ave, Big City', 
-    type: 'COCO', 
-    status: 'Operational', 
-    openingDate: formatDate(addDays(today, -180)), 
-    manager: 'Bob Johnson', 
-    sqft: 2500, 
-    dailySales: 850, 
-    customerSatisfaction: 4.2, 
-    inventoryLevels: { "Product C": 80, "Product D": 120}, 
+  {
+    id: 'store-002',
+    name: 'Westside Express',
+    location: '205 Commerce Ave, Big City',
+    type: 'COCO',
+    status: 'Operational',
+    openingDate: formatDate(addDays(today, -180)),
+    manager: 'Bob Johnson',
+    sqft: 2500,
+    dailySales: 850,
+    customerSatisfaction: 4.2,
+    inventoryLevels: { "Product C": 80, "Product D": 120},
     currentPromotions: ["Weekend Special Buy 1 Get 1"],
     improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Vaibhhav Raj Kumar', addedAt: formatDate(addDays(today, -10)) }],
     ownershipChangeRequested: true,
   },
-  { 
-    id: 'store-003', 
-    name: 'Suburbia Mart', 
-    location: '15 Suburbia Drive, Small Town', 
-    type: 'FOFO', 
-    status: 'Operational', 
-    openingDate: formatDate(addDays(today, -90)), 
-    manager: 'Carol Williams', 
-    sqft: 3000, 
-    dailySales: 950, 
-    customerSatisfaction: 4.7, 
-    inventoryLevels: { "Product A": 70, "Product E": 60}, 
+  {
+    id: 'store-003',
+    name: 'Suburbia Mart',
+    location: '15 Suburbia Drive, Small Town',
+    type: 'FOFO',
+    status: 'Operational',
+    openingDate: formatDate(addDays(today, -90)),
+    manager: 'Carol Williams',
+    sqft: 3000,
+    dailySales: 950,
+    customerSatisfaction: 4.7,
+    inventoryLevels: { "Product A": 70, "Product E": 60},
     currentPromotions: [],
     improvementPoints: [],
     ownershipChangeRequested: false,
   },
-  { 
-    id: 'store-004', 
-    name: 'Downtown New Site', 
-    location: '77 New Dev Ave, Big City', 
-    type: 'COCO', 
-    status: 'Under Construction', 
-    openingDate: formatDate(addDays(today, 60)), 
-    manager: 'TBD', 
+  {
+    id: 'store-004',
+    name: 'Downtown New Site',
+    location: '77 New Dev Ave, Big City',
+    type: 'COCO',
+    status: 'Under Construction',
+    openingDate: formatDate(addDays(today, 60)),
+    manager: 'TBD',
     sqft: 4000,
     improvementPoints: [],
   },
-  { 
-    id: 'store-005', 
-    name: 'East Village Franchise', 
-    location: '90 Village Green, Small Town', 
-    type: 'FOFO', 
-    status: 'Planned', 
-    openingDate: formatDate(addDays(today, 120)), 
-    manager: 'David Brown', 
+  {
+    id: 'store-005',
+    name: 'East Village Franchise',
+    location: '90 Village Green, Small Town',
+    type: 'FOFO',
+    status: 'Planned',
+    openingDate: formatDate(addDays(today, 120)),
+    manager: 'David Brown',
     sqft: 2200,
     improvementPoints: [],
   },
