@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, Download, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -153,8 +153,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
 
-  const visibleDocuments = React.useMemo(() => {
-    if (!projectData) return []; // Handles projectData being null initially
+  const visibleFiles = React.useMemo(() => {
+    if (!projectData) return [];
     return projectData.documents.filter(doc => {
       if (doc.hodOnly) {
         return isUserAdminOrHod;
@@ -877,7 +877,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
         </TabsList>
@@ -942,7 +942,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       </SelectTrigger>
                       <SelectContent>
                           <SelectItem value="All">All Priorities</SelectItem>
-                          {allPossibleTaskPriorities.map((prio) => ( // "None" is already removed from allPossibleTaskPriorities
+                          {allPossibleTaskPriorities.map((prio) => ( 
                               <SelectItem key={prio} value={prio}>
                                   {prio}
                               </SelectItem>
@@ -992,44 +992,45 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </Card>
         </TabsContent>
 
-        <TabsContent value="documents" className="mt-4">
+        <TabsContent value="files" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Documents ({visibleDocuments.length})</CardTitle>
-              <CardDescription>All project-related documents.</CardDescription>
+              <CardTitle>Files ({visibleFiles.length})</CardTitle>
+              <CardDescription>All project-related files. Click a card to view the file.</CardDescription>
             </CardHeader>
             <CardContent>
-              {visibleDocuments.length > 0 ? (
+              {visibleFiles.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {visibleDocuments.map((doc) => (
-                    <Card key={doc.id} className="overflow-hidden">
-                      {(doc.type === "3D Render" && doc.url.startsWith("blob:")) || (doc.type === "3D Render" && doc.url.startsWith("https")) ? (
-                        <Image src={doc.url} alt={doc.name} width={300} height={150} className="w-full h-32 object-cover" data-ai-hint={doc.dataAiHint || "office document"}/>
-                      ) : (
-                        <div className="h-32 bg-muted flex items-center justify-center">
-                          <FileText className="w-12 h-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      <CardContent className="p-3">
-                        <p className="font-medium text-sm truncate flex items-center" title={doc.name}>
-                          {doc.name}
-                          {doc.hodOnly && <ShieldCheck className="ml-2 h-4 w-4 text-primary" title="HOD Only" />}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{doc.type} - {doc.size}</p>
-                        <p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt} by {doc.uploadedBy || "System"}</p>
-                      </CardContent>
-                      <CardFooter className="p-3 border-t">
-                        <Button variant="outline" size="sm" className="w-full" asChild>
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer" download={!doc.url.startsWith("blob:") && !doc.url.startsWith("https")}>
-                            <Download className="mr-2 h-3.5 w-3.5" /> Download
-                          </a>
-                        </Button>
-                      </CardFooter>
-                    </Card>
+                  {visibleFiles.map((doc) => (
+                    <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:shadow-lg transition-shadow rounded-lg">
+                      <Card className="overflow-hidden h-full flex flex-col">
+                        {(doc.type === "3D Render" && doc.url.startsWith("blob:")) || (doc.type === "3D Render" && doc.url.startsWith("https")) ? (
+                          <div className="relative w-full h-32">
+                            <Image src={doc.url} alt={doc.name} layout="fill" objectFit="cover" data-ai-hint={doc.dataAiHint || "office document"}/>
+                          </div>
+                        ) : (
+                          <div className="h-32 bg-muted flex items-center justify-center">
+                            <FileText className="w-12 h-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        <CardContent className="p-3 flex-grow">
+                          <p className="font-medium text-sm truncate flex items-center" title={doc.name}>
+                            {doc.name}
+                            {doc.hodOnly && <ShieldCheck className="ml-2 h-4 w-4 text-primary shrink-0" title="HOD Only" />}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{doc.type} - {doc.size}</p>
+                          <p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt} by {doc.uploadedBy || "System"}</p>
+                        </CardContent>
+                         <CardFooter className="p-3 border-t flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Click to view</span>
+                            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                        </CardFooter>
+                      </Card>
+                    </a>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">No documents viewable by you for this project yet.</p>
+                <p className="text-muted-foreground">No files viewable by you for this project yet.</p>
               )}
             </CardContent>
           </Card>
@@ -1185,7 +1186,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      {allPossibleTaskPriorities.map(prio => ( // "None" is already removed from allPossibleTaskPriorities
+                      {allPossibleTaskPriorities.map(prio => ( 
                         <SelectItem key={prio} value={prio}>{prio}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1351,3 +1352,4 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     </section>
   );
 }
+
