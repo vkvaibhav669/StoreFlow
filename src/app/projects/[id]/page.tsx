@@ -195,6 +195,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     return projectData.tasks.filter(task => task.priority === taskFilterPriority);
   }, [projectData, taskFilterPriority]);
 
+  const availableMembersToAdd = React.useMemo(() => {
+    if (!projectData) return [];
+    const currentMemberEmails = (projectData.members || []).map(m => m.email);
+    return mockHeadOfficeContacts.filter(contact => !currentMemberEmails.includes(contact.email));
+  }, [projectData]);
+
+
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
@@ -604,7 +611,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     const updatedProjectData: StoreProject = {
         ...projectData,
         ...editingProjectForm,
-        status: editingProjectForm.status, // Ensure status is part of editingProjectForm
+        status: editingProjectForm.status,
         propertyDetails: {
             ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
             ...editingPropertyDetailsForm,
@@ -616,10 +623,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0,
         },
         milestones: editingMilestones,
-        blockers: editingBlockers,
+        blockers: editingBlockers, // Save the blockers edited/added within the dialog
         startDate: editingProjectForm.startDate ? utilFormatDate(new Date(editingProjectForm.startDate)) : projectData.startDate,
         projectedLaunchDate: editingProjectForm.projectedLaunchDate ? utilFormatDate(new Date(editingProjectForm.projectedLaunchDate)) : projectData.projectedLaunchDate,
-        members: projectData.members, // Ensure members are carried over if not edited directly here
+        members: projectData.members,
     };
 
     setProjectData(updatedProjectData);
@@ -672,12 +679,14 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       isResolved: false,
       reportedBy: user?.name || user?.email || "System",
     };
+    // Add to editingBlockers state, which will be saved when "Edit Project" dialog is saved
     setEditingBlockers(prev => [...prev, newBlocker].sort((a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()));
     setNewBlockerTitle("");
     setNewBlockerDescription("");
     setIsAddBlockerDialogOpen(false);
-    toast({ title: "Blocker Added", description: `"${newBlocker.title}" added to edit list. Save project to persist changes.` });
+    toast({ title: "Blocker Ready to Add", description: `"${newBlocker.title}" added. Save project to persist this new blocker.` });
   };
+
 
   const handleToggleTimelineBlockerResolution = (blockerId: string) => {
     if (!projectData) return;
@@ -687,7 +696,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         : b
     );
     const updatedProject = { ...projectData, blockers: updatedBlockers };
-    setProjectData(updatedProject);
+    setProjectData(updatedProject); // Update live project data
+    setEditingBlockers(updatedBlockers); // Also update editing state if dialog is open or for consistency
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -699,7 +709,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     if (!projectData) return;
     const updatedBlockers = (projectData.blockers || []).filter(b => b.id !== blockerId);
     const updatedProject = { ...projectData, blockers: updatedBlockers };
-    setProjectData(updatedProject);
+    setProjectData(updatedProject); // Update live project data
+    setEditingBlockers(updatedBlockers); // Also update editing state
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -758,12 +769,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       return updatedProject;
     });
   };
-
-  const availableMembersToAdd = React.useMemo(() => {
-    if (!projectData) return [];
-    const currentMemberEmails = (projectData.members || []).map(m => m.email);
-    return mockHeadOfficeContacts.filter(contact => !currentMemberEmails.includes(contact.email));
-  }, [projectData]);
 
 
   return (
