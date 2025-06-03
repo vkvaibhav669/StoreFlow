@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, DepartmentDetails, ApprovalRequest, ApprovalStatus, StoreItem, StoreType, ImprovementPoint } from '@/types';
 
 const today = new Date();
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -332,16 +332,93 @@ export const addApprovalRequest = (request: Omit<ApprovalRequest, 'id' | 'submis
   return newRequest;
 };
 
-export const mockStores: StoreItem[] = [
-  { id: 'store-001', name: 'Flagship Central', location: '1 Main Street, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -365)), manager: 'Alice Smith', sqft: 5000, dailySales: 1200, customerSatisfaction: 4.5, inventoryLevels: { "Product A": 100, "Product B": 50}, currentPromotions: ["Summer Sale 20% off"]},
-  { id: 'store-002', name: 'Westside Express', location: '205 Commerce Ave, Big City', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(today, -180)), manager: 'Bob Johnson', sqft: 2500, dailySales: 850, customerSatisfaction: 4.2, inventoryLevels: { "Product C": 80, "Product D": 120}, currentPromotions: ["Weekend Special Buy 1 Get 1"]},
-  { id: 'store-003', name: 'Suburbia Mart', location: '15 Suburbia Drive, Small Town', type: 'FOFO', status: 'Operational', openingDate: formatDate(addDays(today, -90)), manager: 'Carol Williams (Owner)', sqft: 3000, dailySales: 950, customerSatisfaction: 4.7, inventoryLevels: { "Product A": 70, "Product E": 60}, currentPromotions: []},
-  { id: 'store-004', name: 'Downtown New Site', location: '77 New Dev Ave, Big City', type: 'COCO', status: 'Under Construction', openingDate: formatDate(addDays(today, 60)), manager: 'TBD', sqft: 4000 },
-  { id: 'store-005', name: 'East Village Franchise', location: '90 Village Green, Small Town', type: 'FOFO', status: 'Planned', openingDate: formatDate(addDays(today, 120)), manager: 'David Brown (Prospective Owner)', sqft: 2200 },
+const sampleImprovementPoints: ImprovementPoint[] = [
+  { id: 'imp-1', text: 'Improve window display appeal to attract more foot traffic.', addedBy: 'Vaibhhav Raj Kumar', addedAt: formatDate(addDays(today, -5)), userAvatar: `https://picsum.photos/seed/admin/40/40`},
+  { id: 'imp-2', text: 'Staff training on new product line scheduled for next week.', addedBy: 'Alice Smith', addedAt: formatDate(addDays(today, -2)), userAvatar: `https://picsum.photos/seed/alice_manager/40/40`},
+];
+
+export let mockStores: StoreItem[] = [
+  { 
+    id: 'store-001', 
+    name: 'Flagship Central', 
+    location: '1 Main Street, Big City', 
+    type: 'COCO', 
+    status: 'Operational', 
+    openingDate: formatDate(addDays(today, -365)), 
+    manager: 'Alice Smith', 
+    sqft: 5000, 
+    dailySales: 1200, 
+    customerSatisfaction: 4.5, 
+    inventoryLevels: { "Product A": 100, "Product B": 50}, 
+    currentPromotions: ["Summer Sale 20% off"],
+    improvementPoints: [...sampleImprovementPoints]
+  },
+  { 
+    id: 'store-002', 
+    name: 'Westside Express', 
+    location: '205 Commerce Ave, Big City', 
+    type: 'COCO', 
+    status: 'Operational', 
+    openingDate: formatDate(addDays(today, -180)), 
+    manager: 'Bob Johnson', 
+    sqft: 2500, 
+    dailySales: 850, 
+    customerSatisfaction: 4.2, 
+    inventoryLevels: { "Product C": 80, "Product D": 120}, 
+    currentPromotions: ["Weekend Special Buy 1 Get 1"],
+    improvementPoints: [{id: 'imp-3', text: 'Consider loyalty program for repeat customers.', addedBy: 'Vaibhhav Raj Kumar', addedAt: formatDate(addDays(today, -10)) }]
+  },
+  { 
+    id: 'store-003', 
+    name: 'Suburbia Mart', 
+    location: '15 Suburbia Drive, Small Town', 
+    type: 'FOFO', 
+    status: 'Operational', 
+    openingDate: formatDate(addDays(today, -90)), 
+    manager: 'Carol Williams', // Made name consistent with user schema for easier matching
+    sqft: 3000, 
+    dailySales: 950, 
+    customerSatisfaction: 4.7, 
+    inventoryLevels: { "Product A": 70, "Product E": 60}, 
+    currentPromotions: [],
+    improvementPoints: []
+  },
+  { 
+    id: 'store-004', 
+    name: 'Downtown New Site', 
+    location: '77 New Dev Ave, Big City', 
+    type: 'COCO', 
+    status: 'Under Construction', 
+    openingDate: formatDate(addDays(today, 60)), 
+    manager: 'TBD', 
+    sqft: 4000,
+    improvementPoints: []
+  },
+  { 
+    id: 'store-005', 
+    name: 'East Village Franchise', 
+    location: '90 Village Green, Small Town', 
+    type: 'FOFO', 
+    status: 'Planned', 
+    openingDate: formatDate(addDays(today, 120)), 
+    manager: 'David Brown', 
+    sqft: 2200,
+    improvementPoints: []
+  },
 ];
 
 
 export const getStoreById = (id: string): StoreItem | undefined => {
   const store = mockStores.find(s => s.id === id);
+  // Deep copy to prevent direct mutation of mock data if component modifies it
   return store ? JSON.parse(JSON.stringify(store)) : undefined;
 };
+
+// Function to update a store in the mock data (e.g., when adding an improvement point)
+export const updateMockStore = (updatedStore: StoreItem): void => {
+  const index = mockStores.findIndex(s => s.id === updatedStore.id);
+  if (index !== -1) {
+    mockStores[index] = updatedStore;
+  }
+};
+

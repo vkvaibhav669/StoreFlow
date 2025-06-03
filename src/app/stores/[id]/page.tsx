@@ -5,22 +5,40 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStoreById } from "@/lib/data";
-import type { StoreItem } from "@/types";
+import { getStoreById, updateMockStore } from "@/lib/data";
+import type { StoreItem, ImprovementPoint } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle } from "lucide-react";
-import { format } from "date-fns";
-import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, ThumbsUp } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 
 export default function StoreDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+
   const [store, setStore] = React.useState<StoreItem | null>(null);
   const [loadingStore, setLoadingStore] = React.useState(true);
+  const [isAddImprovementDialogOpen, setIsAddImprovementDialogOpen] = React.useState(false);
+  const [newImprovementPointText, setNewImprovementPointText] = React.useState("");
   
   const storeId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -36,12 +54,70 @@ export default function StoreDetailsPage() {
       if (fetchedStore) {
         setStore(fetchedStore);
       } else {
-        // Handle store not found, e.g., redirect to a 404 page or show message
         router.push("/stores/not-found");
       }
       setLoadingStore(false);
     }
   }, [storeId, router]);
+
+  const currentUserRole = React.useMemo(() => {
+    if (!user) return 'user';
+    return user.role || 'user';
+  }, [user]);
+
+  const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
+  const isStoreManager = React.useMemo(() => {
+    if (!user || !store) return false;
+    return store.type === 'FOFO' && store.manager === user.name;
+  }, [user, store]);
+
+  const canManageImprovements = isUserAdminOrHod || isStoreManager;
+  const canRequestOwnershipChange = React.useMemo(() => {
+    if (!store) return false;
+    if (store.type === 'COCO') return isUserAdminOrHod;
+    if (store.type === 'FOFO') return isUserAdminOrHod || isStoreManager;
+    return false;
+  }, [store, isUserAdminOrHod, isStoreManager]);
+
+
+  const handleAddImprovementPoint = () => {
+    if (!newImprovementPointText.trim() || !store || !user) {
+      toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" });
+      return;
+    }
+
+    const newPoint: ImprovementPoint = {
+      id: `imp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      text: newImprovementPointText,
+      addedBy: user.name || user.email,
+      addedAt: new Date().toISOString(),
+      userAvatar: `https://picsum.photos/seed/${user.id}/40/40` // Placeholder avatar
+    };
+
+    const updatedStore = {
+      ...store,
+      improvementPoints: [...(store.improvementPoints || []), newPoint],
+    };
+
+    setStore(updatedStore);
+    updateMockStore(updatedStore); // Update the mock data source
+
+    toast({ title: "Improvement Point Added", description: "The new improvement point has been saved." });
+    setNewImprovementPointText("");
+    setIsAddImprovementDialogOpen(false);
+  };
+
+  const handleRequestOwnershipChange = () => {
+    if (!store) return;
+    const targetType = store.type === 'COCO' ? 'FOFO' : 'COCO';
+    // In a real app, this would trigger a backend process.
+    // For now, just show a toast.
+    toast({
+      title: "Ownership Change Requested",
+      description: `A request to change ownership of "${store.name}" to ${targetType} has been notionally sent to HOD.`,
+    });
+  };
+
 
   if (authLoading || loadingStore || !user) {
     return (
@@ -55,6 +131,7 @@ export default function StoreDetailsPage() {
   }
 
   if (!store) {
+    // This case should be handled by the redirect in useEffect, but as a fallback:
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <StoreIcon className="h-12 w-12 text-destructive mb-4" />
@@ -89,9 +166,19 @@ export default function StoreDetailsPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div><strong>Status:</strong> <Badge variant={store.status === "Operational" ? "default" : "outline"} className={store.status === "Operational" ? "bg-accent text-accent-foreground" : ""}>{store.status}</Badge></div>
-            <p><strong>Opening Date:</strong> {format(new Date(store.openingDate), "PPP")}</p>
+            <p><strong>Date Active Since:</strong> {format(new Date(store.openingDate), "PPP")}</p>
             {store.manager && <p><strong>Manager:</strong> {store.manager}</p>}
             {store.sqft && <p><strong>Size:</strong> {store.sqft.toLocaleString()} sqft</p>}
+             {canRequestOwnershipChange && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full mt-3"
+                onClick={handleRequestOwnershipChange}
+              >
+                Request Change to {store.type === 'COCO' ? 'FOFO' : 'COCO'}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -100,15 +187,15 @@ export default function StoreDetailsPage() {
             <CardTitle>Store Actions</CardTitle>
             <CardDescription>Manage store operations and requests.</CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button variant="outline" className="w-full justify-start text-left">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
               <Settings className="mr-2 h-4 w-4" />
               <div>
                 <p className="font-medium">Create Task / Instruction</p>
                 <p className="text-xs text-muted-foreground">Assign operational tasks to store.</p>
               </div>
             </Button>
-            <Button variant="outline" className="w-full justify-start text-left">
+            <Button variant="outline" className="w-full justify-start text-left h-auto py-3">
               <HelpCircle className="mr-2 h-4 w-4" />
                <div>
                 <p className="font-medium">Request Information</p>
@@ -118,7 +205,76 @@ export default function StoreDetailsPage() {
           </CardContent>
         </Card>
 
+        <Card className="lg:col-span-3">
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Key Improvement Points</CardTitle>
+                    <CardDescription>Track and manage areas for store enhancement.</CardDescription>
+                </div>
+                {canManageImprovements && (
+                <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm">
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Point
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[480px]">
+                        <DialogHeader>
+                            <DialogTitle>Add New Improvement Point</DialogTitle>
+                            <DialogDescription>
+                                Describe the area for improvement or action needed for {store.name}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-2">
+                            <Label htmlFor="improvement-text">Improvement Detail</Label>
+                            <Textarea
+                                id="improvement-text"
+                                value={newImprovementPointText}
+                                onChange={(e) => setNewImprovementPointText(e.target.value)}
+                                placeholder="e.g., Enhance visual merchandising near entrance."
+                                rows={4}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim()}>Save Point</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                )}
+            </CardHeader>
+            <CardContent>
+                {store.improvementPoints && store.improvementPoints.length > 0 ? (
+                    <ScrollArea className="h-[250px] pr-3">
+                        <ul className="space-y-4">
+                            {store.improvementPoints.slice().reverse().map(point => ( // Display newest first
+                                <li key={point.id} className="p-3 border rounded-md shadow-sm bg-muted/50">
+                                    <div className="flex items-start space-x-3">
+                                        <Avatar className="h-8 w-8 mt-0.5">
+                                            <AvatarImage src={point.userAvatar || `https://placehold.co/40x40.png?text=${point.addedBy.substring(0,1)}`} alt={point.addedBy} data-ai-hint="user avatar" />
+                                            <AvatarFallback>{point.addedBy.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                            <p className="text-sm whitespace-pre-wrap">{point.text}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Added by {point.addedBy} - {formatDistanceToNow(new Date(point.addedAt), { addSuffix: true })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </ScrollArea>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No improvement points added yet.</p>
+                )}
+            </CardContent>
+        </Card>
+
       </div>
     </section>
   );
 }
+

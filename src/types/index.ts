@@ -129,6 +129,14 @@ export interface ApprovalRequest {
 
 export type StoreType = "COCO" | "FOFO";
 
+export interface ImprovementPoint {
+  id: string;
+  text: string;
+  addedBy: string;
+  addedAt: string; // ISO Date string
+  userAvatar?: string; // Optional: URL to user's avatar
+}
+
 export interface StoreItem {
   id: string;
   name: string;
@@ -142,4 +150,6 @@ export interface StoreItem {
   customerSatisfaction?: number;
   inventoryLevels?: Record<string, number>;
   currentPromotions?: string[];
+  improvementPoints?: ImprovementPoint[];
 }
+
