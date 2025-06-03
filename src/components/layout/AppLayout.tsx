@@ -134,34 +134,59 @@ function DesktopSidebarToggle() {
   );
 }
 
+interface AppNotification {
+  id: number;
+  text: string;
+  href: string;
+  seen: boolean;
+}
+
 function Header() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
+
+  const initialNotifications: AppNotification[] = React.useMemo(() => user ? [
+    { id: 1, text: "Project Alpha: Task 'Finalize Design' overdue.", href: "#", seen: false },
+    { id: 2, text: "New comment on Downtown Flagship project.", href: "#", seen: false },
+    { id: 3, text: "StoreFlow version 1.1 is now available.", href: "#", seen: true },
+  ] : [], [user]);
+
+  const [notifications, setNotifications] = React.useState<AppNotification[]>(initialNotifications);
+
+  React.useEffect(() => {
+    // Reset notifications if user changes (e.g., logs out and logs in as another user)
+    setNotifications(initialNotifications);
+  }, [initialNotifications, user]);
+
 
   const handleSignOut = async () => {
     await signOut();
     // router.push("/auth/signin"); // signOut in context already handles this
   };
   
-  const notifications = user ? [ // Only show notifications if user is logged in
-    { id: 1, text: "Project Alpha: Task 'Finalize Design' overdue.", href: "#" },
-    { id: 2, text: "New comment on Downtown Flagship project.", href: "#" },
-    { id: 3, text: "StoreFlow version 1.1 is now available.", href: "#" },
-  ] : [];
-  const notificationCount = notifications.length;
+  const unseenNotificationCount = notifications.filter(n => !n.seen).length;
+
+  const handleNotificationOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      // Mark all currently unseen notifications as seen
+      setNotifications(prevNotifications =>
+        prevNotifications.map(n => n.seen ? n : { ...n, seen: true })
+      );
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6">
       <SidebarTrigger className="md:hidden" /> {/* Mobile sidebar trigger */}
       <div className="ml-auto flex items-center gap-4">
-        {user && ( // Only show notifications if logged in
-          <DropdownMenu>
+        {user && (
+          <DropdownMenu onOpenChange={handleNotificationOpenChange}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full relative">
                 <Bell className="h-5 w-5" />
-                {notificationCount > 0 && (
+                {unseenNotificationCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
-                    {notificationCount}
+                    {unseenNotificationCount}
                   </Badge>
                 )}
                 <span className="sr-only">Toggle notifications</span>
@@ -173,7 +198,7 @@ function Header() {
               {notifications.length > 0 ? (
                 notifications.map(notification => (
                   <DropdownMenuItem key={notification.id} asChild>
-                    <Link href={notification.href} className="text-sm p-2 block hover:bg-accent">
+                    <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", notification.seen && "text-muted-foreground")}>
                       {notification.text}
                     </Link>
                   </DropdownMenuItem>
