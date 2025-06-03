@@ -10,8 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit } from "lucide-react";
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
@@ -146,6 +146,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
   const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
   const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
+  const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>([]);
+
 
   const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
@@ -204,8 +206,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         });
         setEditingTimelineForm({
             totalDays: currentProject.projectTimeline?.totalDays,
-             // kickoffDate and currentDay might not be directly editable or derived
         });
+        setEditingMilestones(currentProject.milestones.map(m => ({...m})));
       } else {
         navigateToNotFound();
       }
@@ -604,24 +606,25 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         ...projectData,
         ...editingProjectForm,
         propertyDetails: {
-            ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }), // Ensure propertyDetails exists
+            ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
             ...editingPropertyDetailsForm,
-            sqft: Number(editingPropertyDetailsForm.sqft) || projectData.propertyDetails?.sqft || 0, // Ensure sqft is a number
+            sqft: Number(editingPropertyDetailsForm.sqft) || projectData.propertyDetails?.sqft || 0,
         },
         projectTimeline: {
-            ...(projectData.projectTimeline || { totalDays: 0, currentDay:0, kickoffDate: utilFormatDate(new Date()) }), // Ensure projectTimeline exists
+            ...(projectData.projectTimeline || { totalDays: 0, currentDay:0, kickoffDate: utilFormatDate(new Date()) }),
             ...editingTimelineForm,
-            totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0, // Ensure totalDays is a number
+            totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0,
         },
-        // Ensure dates are correctly formatted if they are changed
+        milestones: editingMilestones.map(m => ({ // Ensure new milestones get a persistent-like ID if they don't have one
+          ...m,
+          id: m.id.startsWith('new-milestone-') ? `ms-${Date.now()}-${Math.random().toString(36).substring(2,7)}` : m.id
+        })),
         startDate: editingProjectForm.startDate ? utilFormatDate(new Date(editingProjectForm.startDate)) : projectData.startDate,
         projectedLaunchDate: editingProjectForm.projectedLaunchDate ? utilFormatDate(new Date(editingProjectForm.projectedLaunchDate)) : projectData.projectedLaunchDate,
     };
     
-    // Update the local state for the page
     setProjectData(updatedProjectData);
 
-    // Update the project in the global mockProjects array
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProjectData;
@@ -631,6 +634,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setIsEditProjectDialogOpen(false);
   };
 
+  const handleEditMilestoneFieldChange = (index: number, field: keyof Milestone, value: any) => {
+    setEditingMilestones(prev =>
+      prev.map((m, i) => (i === index ? { ...m, [field]: value } : m))
+    );
+  };
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
@@ -646,7 +654,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           {isUserAdminOrHod && (
             <Dialog open={isEditProjectDialogOpen} onOpenChange={(isOpen) => {
               setIsEditProjectDialogOpen(isOpen);
-              if (isOpen && projectData) { // Re-initialize form on open
+              if (isOpen && projectData) { 
                   setEditingProjectForm({
                       name: projectData.name,
                       location: projectData.location,
@@ -665,6 +673,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   setEditingTimelineForm({
                       totalDays: projectData.projectTimeline?.totalDays,
                   });
+                  setEditingMilestones(projectData.milestones.map(m => ({...m})));
               }
             }}>
               <DialogTrigger asChild>
@@ -682,7 +691,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     Modify the details of this project. Click save when you&apos;re done.
                   </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[60vh] pr-6">
+                <ScrollArea className="max-h-[70vh] pr-6">
                 <div className="grid gap-4 py-4">
                   <h3 className="text-md font-semibold mb-1 col-span-full">Basic Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -759,6 +768,65 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </div>
                   </div>
 
+                  <h3 className="text-md font-semibold mt-6 mb-2 col-span-full border-t pt-4">Milestones</h3>
+                  <div className="col-span-full space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                    {editingMilestones.map((milestone, index) => (
+                      <div key={milestone.id || `new-${index}`} className="p-3 border rounded-md space-y-3 bg-muted/30 relative">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor={`milestoneName-${index}`}>Name</Label>
+                            <Input id={`milestoneName-${index}`} value={milestone.name} onChange={(e) => handleEditMilestoneFieldChange(index, 'name', e.target.value)} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`milestoneDate-${index}`}>Date</Label>
+                            <Input id={`milestoneDate-${index}`} type="date" value={milestone.date} onChange={(e) => handleEditMilestoneFieldChange(index, 'date', e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`milestoneDesc-${index}`}>Description</Label>
+                          <Textarea id={`milestoneDesc-${index}`} value={milestone.description || ""} onChange={(e) => handleEditMilestoneFieldChange(index, 'description', e.target.value)} rows={2}/>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id={`milestoneCompleted-${index}`} checked={milestone.completed} onCheckedChange={(checked) => handleEditMilestoneFieldChange(index, 'completed', !!checked)} />
+                          <Label htmlFor={`milestoneCompleted-${index}`} className="font-normal">Completed</Label>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-1 right-1 h-7 w-7 text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setEditingMilestones(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          aria-label="Remove milestone"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="col-span-full">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingMilestones(prev => [
+                          ...prev,
+                          {
+                            id: `new-milestone-${Date.now()}`, 
+                            name: "",
+                            date: utilFormatDate(new Date()),
+                            completed: false,
+                            description: "",
+                          },
+                        ]);
+                      }}
+                      className="mt-2"
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Milestone
+                    </Button>
+                  </div>
                 </div>
                 </ScrollArea>
                 <DialogFooter>
@@ -970,7 +1038,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
       <Card>
         <CardHeader>
-          <CardTitle>Project Overview</CardTitle>
+          <CardTitle id="project-overview-heading">Project Overview</CardTitle>
           <CardDescription>{projectData.location}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
@@ -1068,7 +1136,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
-                <CardTitle>All Tasks ({filteredTasksForTable.length})</CardTitle>
+                <CardTitle id="all-tasks-heading">All Tasks ({filteredTasksForTable.length})</CardTitle>
                 <CardDescription>Comprehensive list of tasks for this project. Click task name to view/edit.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -1132,7 +1200,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         <TabsContent value="files" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Files ({visibleFiles.length})</CardTitle>
+              <CardTitle id="project-files-heading">Files ({visibleFiles.length})</CardTitle>
               <CardDescription>All project-related files. Click a card to view the file.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1176,7 +1244,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         <TabsContent value="timeline" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Project Milestones &amp; Timeline</CardTitle>
+              <CardTitle id="project-timeline-heading">Project Milestones &amp; Timeline</CardTitle>
               <CardDescription>Key dates and progress over the {projectData.projectTimeline?.totalDays}-day plan.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1233,7 +1301,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         <TabsContent value="comments" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Project Discussion ({projectComments.length})</CardTitle>
+              <CardTitle id="project-comments-heading">Project Discussion ({projectComments.length})</CardTitle>
               <CardDescription>Share updates, ask questions, and collaborate with the team.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
