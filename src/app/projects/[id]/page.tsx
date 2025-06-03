@@ -11,10 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects } from "@/lib/data";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { CommentCard } from "@/components/comments/CommentCard";
@@ -42,6 +42,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Package2 } from "lucide-react";
+import { format } from "date-fns";
 
 
 interface DepartmentCardProps {
@@ -96,10 +97,11 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
 }
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
-const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low"]; // "None" removed
+const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low"]; 
+const propertyStatuses: StoreProject['propertyDetails']['status'][] = ["Identified", "Negotiating", "Finalized"];
+const storeTypes: StoreType[] = ["COCO", "FOFO"];
 
 export default function ProjectDetailsPage({ params: paramsProp }: { params: { id: string } }) {
-  // Hooks: React.use, useRouter, useToast, useAuth
   const resolvedParams = React.use(paramsProp);
   const projectId = resolvedParams.id;
   const { toast } = useToast();
@@ -107,8 +109,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const router = useRouter();
   const navigateToNotFound = useRouter().notFound;
 
-
-  // State Hooks
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
   const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
@@ -142,13 +142,15 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   const [taskFilterPriority, setTaskFilterPriority] = React.useState<TaskPriority | "All">("All");
 
+  const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = React.useState(false);
+  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
+  const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
+  const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
 
-  // Derived state & memoized values (must be before conditional returns)
-   const currentUserRole = React.useMemo(() => {
+  const currentUserRole = React.useMemo(() => {
     if (!user) return 'user';
-    // Hardcoded admin for example purposes
     if (user.email === 'vaibhhavrajkumar@gmail.com') return 'admin';
-    return user.role || 'user'; // Default to 'user' if role is not set
+    return user.role || 'user';
   }, [user]);
 
   const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
@@ -171,7 +173,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     return projectData.tasks.filter(task => task.priority === taskFilterPriority);
   }, [projectData, taskFilterPriority]);
 
-  // Effect Hooks
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
@@ -179,14 +180,32 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-    if (user) {
+    if (authLoading) return;
+    if (user && projectId) {
       const currentProject = getProjectById(projectId);
       if (currentProject) {
         setProjectData(currentProject);
         setProjectComments(currentProject.comments || []);
+        // Initialize edit form when project data loads or dialog opens
+        setEditingProjectForm({
+            name: currentProject.name,
+            location: currentProject.location,
+            status: currentProject.status,
+            startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
+            projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
+            franchiseType: currentProject.franchiseType,
+            threeDRenderUrl: currentProject.threeDRenderUrl,
+        });
+        setEditingPropertyDetailsForm({
+            address: currentProject.propertyDetails?.address,
+            sqft: currentProject.propertyDetails?.sqft,
+            status: currentProject.propertyDetails?.status,
+            notes: currentProject.propertyDetails?.notes,
+        });
+        setEditingTimelineForm({
+            totalDays: currentProject.projectTimeline?.totalDays,
+             // kickoffDate and currentDay might not be directly editable or derived
+        });
       } else {
         navigateToNotFound();
       }
@@ -194,7 +213,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   }, [projectId, user, authLoading, router, navigateToNotFound]);
 
 
-  // Conditional returns (loading states)
   if (authLoading || !user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
@@ -213,7 +231,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     );
   }
 
-  // Handler functions (defined after hooks and conditional returns)
   const calculateOverallProgress = (tasks: Task[]): number => {
     if (tasks.length === 0) return 0;
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
@@ -256,14 +273,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
-
       const updatedRootTasks = [...prevProjectData.tasks, newTaskToAdd];
-
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
-      
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
-        
         if (deptEnumKey === newTaskToAdd.department && !newDepartmentsState[currentDeptKeyString]) {
            if (newTaskToAdd.department === "Marketing") {
              newDepartmentsState[currentDeptKeyString] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
@@ -271,26 +284,21 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
              newDepartmentsState[currentDeptKeyString] = { tasks: [] };
            }
         }
-        
         if (newDepartmentsState[currentDeptKeyString]) {
           (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
-
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
-
       const finalUpdatedProjectData: StoreProject = {
         ...prevProjectData,
         tasks: updatedRootTasks,
         currentProgress: newOverallProgress,
         departments: newDepartmentsState,
       };
-
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = { ...finalUpdatedProjectData };
       }
-
       toast({ title: "Task Added", description: `Task "${newTaskToAdd.name}" has been added.` });
       return finalUpdatedProjectData;
     });
@@ -317,7 +325,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
       return;
     }
-
     const newDocument: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: newDocumentName,
@@ -329,7 +336,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       dataAiHint: newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : undefined,
       hodOnly: newDocumentHodOnly,
     };
-
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
       const updatedProject = {
@@ -343,7 +349,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       toast({ title: "Document Added", description: `Document "${newDocument.name}" has been uploaded.` });
       return updatedProject;
     });
-
     setNewDocumentFile(null);
     setNewDocumentName("");
     setNewDocumentType("");
@@ -351,7 +356,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setNewDocumentHodOnly(false);
     setIsAddDocumentDialogOpen(false);
   };
-
 
   const handleAddComment = () => {
     if (newCommentText.trim()) {
@@ -365,7 +369,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       };
       const updatedComments = [newComment, ...projectComments];
       setProjectComments(updatedComments);
-
       setProjectData(prev => {
         if (!prev) return null;
         const updatedProject = { ...prev, comments: updatedComments };
@@ -392,10 +395,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             text: replyText,
             replies: [],
           };
-          return {
-            ...comment,
-            replies: [newReply, ...(comment.replies || [])],
-          };
+          return { ...comment, replies: [newReply, ...(comment.replies || [])] };
         }
         if (comment.replies && comment.replies.length > 0) {
           return { ...comment, replies: addReplyRecursively(comment.replies) };
@@ -429,46 +429,33 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   const handleUpdateTaskDetails = () => {
     if (!selectedTask || !projectData) return;
-
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
     const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
     const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
     const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority;
-
     const hasChanges = newStatus !== selectedTask.status ||
       newAssignedTo !== (selectedTask.assignedTo || "") ||
       newDepartment !== selectedTask.department ||
       newPriority !== (selectedTask.priority || "Medium");
-
     if (!hasChanges) {
       toast({ title: "No Changes", description: "No details were modified for this task.", variant: "default" });
       setIsViewTaskDialogOpen(false);
       return;
     }
-
     const updatedTask: Task = {
-      ...selectedTask,
-      status: newStatus,
-      assignedTo: newAssignedTo,
-      department: newDepartment,
-      priority: newPriority
+      ...selectedTask, status: newStatus, assignedTo: newAssignedTo, department: newDepartment, priority: newPriority
     };
-
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
-
       const updatedRootTasks = prevProjectData.tasks.map(task =>
         task.id === selectedTask.id ? updatedTask : task
       );
-
       let newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
-
       const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
       if (newDepartment !== selectedTask.department && newDepartmentsState[oldDeptKey]) {
         (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks =
           ((newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id);
       }
-      
       const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
       if (!newDepartmentsState[newDeptKey]) {
         if (newDepartment === "Marketing") {
@@ -477,39 +464,29 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           newDepartmentsState[newDeptKey] = { tasks: [] };
         }
       }
-      
       allPossibleDepartments.forEach(deptEnumKey => {
         const currentDeptKeyString = deptEnumKey.toLowerCase() as keyof StoreProject['departments'];
         if (newDepartmentsState[currentDeptKeyString]) {
           (newDepartmentsState[currentDeptKeyString] as DepartmentDetails).tasks = updatedRootTasks.filter(task => task.department === deptEnumKey);
         }
       });
-
       const newOverallProgress = calculateOverallProgress(updatedRootTasks);
-
       const finalUpdatedProjectData: StoreProject = {
-        ...prevProjectData,
-        tasks: updatedRootTasks,
-        currentProgress: newOverallProgress,
-        departments: newDepartmentsState,
+        ...prevProjectData, tasks: updatedRootTasks, currentProgress: newOverallProgress, departments: newDepartmentsState,
       };
-
       const projectIndex = mockProjects.findIndex(p => p.id === finalUpdatedProjectData.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = { ...finalUpdatedProjectData };
       }
-
       toast({ title: "Task Details Updated", description: `Details for "${selectedTask.name}" have been updated.` });
-      setSelectedTask(updatedTask); // Update selectedTask in state if dialog remains open or for consistency
+      setSelectedTask(updatedTask); 
       return finalUpdatedProjectData;
     });
-
     setIsViewTaskDialogOpen(false);
   };
 
   const handlePostNewTaskComment = () => {
     if (!selectedTask || !newTaskCommentText.trim() || !projectData) return;
-
     const newComment: Comment = {
       id: `task-comment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       author: user?.name || user?.email || "Anonymous User",
@@ -518,16 +495,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       text: newTaskCommentText,
       replies: [],
     };
-
-    const updatedTask = {
-      ...selectedTask,
-      comments: [newComment, ...(selectedTask.comments || [])],
-    };
-
+    const updatedTask = { ...selectedTask, comments: [newComment, ...(selectedTask.comments || [])] };
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === selectedTask.id ? updatedTask : t);
-
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
@@ -538,7 +509,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             );
         }
       });
-
       const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState };
       const projectIndex = mockProjects.findIndex(p => p.id === finalProjectData.id);
       if (projectIndex !== -1) {
@@ -546,7 +516,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       }
       return finalProjectData;
     });
-
     setSelectedTask(updatedTask);
     setNewTaskCommentText("");
     toast({ title: "Comment Added to Task", description: "Your comment has been posted." });
@@ -554,10 +523,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: string) => {
     if (!projectData) return;
-
     let taskToUpdate = projectData.tasks.find(t => t.id === taskId);
     if (!taskToUpdate || !taskToUpdate.comments) return;
-
     const addReplyRecursively = (currentComments: Comment[]): Comment[] => {
       return currentComments.map(comment => {
         if (comment.id === commentId) {
@@ -577,14 +544,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         return comment;
       });
     };
-
     const updatedTaskComments = addReplyRecursively(taskToUpdate.comments);
     const updatedTaskWithReply = { ...taskToUpdate, comments: updatedTaskComments };
-
     setProjectData(prevProjectData => {
       if (!prevProjectData) return null;
       const updatedRootTasks = prevProjectData.tasks.map(t => t.id === taskId ? updatedTaskWithReply : t);
-
       const newDepartmentsState = JSON.parse(JSON.stringify(prevProjectData.departments || {})) as StoreProject['departments'];
       Object.keys(newDepartmentsState).forEach(deptKeyStr => {
         const deptKey = deptKeyStr as keyof StoreProject['departments'];
@@ -595,7 +559,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             );
         }
       });
-
       const finalProjectData = { ...prevProjectData, tasks: updatedRootTasks, departments: newDepartmentsState };
       const projectIndex = mockProjects.findIndex(p => p.id === finalProjectData.id);
       if (projectIndex !== -1) {
@@ -603,13 +566,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       }
       return finalProjectData;
     });
-
     if (selectedTask && selectedTask.id === taskId) {
       setSelectedTask(updatedTaskWithReply);
     }
     toast({ title: "Reply Posted to Task Comment", description: "Your reply has been added." });
   };
-
 
   const handleOpenDepartmentDialog = (title: string, tasks: Task[] = []) => {
     setDepartmentDialogTitle(`${title} - Tasks`);
@@ -624,6 +585,52 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
   const { departments = {} } = projectData;
 
+  const handleEditProjectFieldChange = (field: keyof StoreProject, value: any) => {
+    setEditingProjectForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditPropertyDetailChange = (field: keyof StoreProject['propertyDetails'], value: any) => {
+    setEditingPropertyDetailsForm(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const handleEditTimelineChange = (field: keyof StoreProject['projectTimeline'], value: any) => {
+    setEditingTimelineForm(prev => ({...prev, [field]: value}));
+  };
+
+  const handleSaveProjectChanges = () => {
+    if (!projectData) return;
+
+    const updatedProjectData: StoreProject = {
+        ...projectData,
+        ...editingProjectForm,
+        propertyDetails: {
+            ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }), // Ensure propertyDetails exists
+            ...editingPropertyDetailsForm,
+            sqft: Number(editingPropertyDetailsForm.sqft) || projectData.propertyDetails?.sqft || 0, // Ensure sqft is a number
+        },
+        projectTimeline: {
+            ...(projectData.projectTimeline || { totalDays: 0, currentDay:0, kickoffDate: utilFormatDate(new Date()) }), // Ensure projectTimeline exists
+            ...editingTimelineForm,
+            totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0, // Ensure totalDays is a number
+        },
+        // Ensure dates are correctly formatted if they are changed
+        startDate: editingProjectForm.startDate ? utilFormatDate(new Date(editingProjectForm.startDate)) : projectData.startDate,
+        projectedLaunchDate: editingProjectForm.projectedLaunchDate ? utilFormatDate(new Date(editingProjectForm.projectedLaunchDate)) : projectData.projectedLaunchDate,
+    };
+    
+    // Update the local state for the page
+    setProjectData(updatedProjectData);
+
+    // Update the project in the global mockProjects array
+    const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
+    if (projectIndex !== -1) {
+        mockProjects[projectIndex] = updatedProjectData;
+    }
+
+    toast({ title: "Project Updated", description: `${updatedProjectData.name} has been successfully updated.` });
+    setIsEditProjectDialogOpen(false);
+  };
+
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
@@ -636,6 +643,134 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         </Button>
         <h1 id="project-details-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {isUserAdminOrHod && (
+            <Dialog open={isEditProjectDialogOpen} onOpenChange={(isOpen) => {
+              setIsEditProjectDialogOpen(isOpen);
+              if (isOpen && projectData) { // Re-initialize form on open
+                  setEditingProjectForm({
+                      name: projectData.name,
+                      location: projectData.location,
+                      status: projectData.status,
+                      startDate: projectData.startDate ? utilFormatDate(new Date(projectData.startDate)) : "",
+                      projectedLaunchDate: projectData.projectedLaunchDate ? utilFormatDate(new Date(projectData.projectedLaunchDate)) : "",
+                      franchiseType: projectData.franchiseType,
+                      threeDRenderUrl: projectData.threeDRenderUrl,
+                  });
+                  setEditingPropertyDetailsForm({
+                      address: projectData.propertyDetails?.address,
+                      sqft: projectData.propertyDetails?.sqft,
+                      status: projectData.propertyDetails?.status,
+                      notes: projectData.propertyDetails?.notes,
+                  });
+                  setEditingTimelineForm({
+                      totalDays: projectData.projectTimeline?.totalDays,
+                  });
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 gap-1">
+                  <Edit className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Edit Project
+                  </span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Edit Project: {projectData.name}</DialogTitle>
+                  <DialogDescription>
+                    Modify the details of this project. Click save when you&apos;re done.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] pr-6">
+                <div className="grid gap-4 py-4">
+                  <h3 className="text-md font-semibold mb-1 col-span-full">Basic Information</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editProjectName">Project Name</Label>
+                      <Input id="editProjectName" value={editingProjectForm.name || ""} onChange={(e) => handleEditProjectFieldChange('name', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editProjectLocation">Location</Label>
+                      <Input id="editProjectLocation" value={editingProjectForm.location || ""} onChange={(e) => handleEditProjectFieldChange('location', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editProjectStatus">Status</Label>
+                      <Select value={editingProjectForm.status || ""} onValueChange={(value) => handleEditProjectFieldChange('status', value as StoreProject['status'])}>
+                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                        <SelectContent>
+                          {projectStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="editFranchiseType">Franchise Type</Label>
+                        <Select value={editingProjectForm.franchiseType || ""} onValueChange={(value) => handleEditProjectFieldChange('franchiseType', value as StoreType)}>
+                            <SelectTrigger><SelectValue placeholder="Select franchise type" /></SelectTrigger>
+                            <SelectContent>
+                                {storeTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="editStartDate">Start Date</Label>
+                        <Input id="editStartDate" type="date" value={editingProjectForm.startDate || ""} onChange={(e) => handleEditProjectFieldChange('startDate', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="editProjectedLaunchDate">Projected Launch Date</Label>
+                        <Input id="editProjectedLaunchDate" type="date" value={editingProjectForm.projectedLaunchDate || ""} onChange={(e) => handleEditProjectFieldChange('projectedLaunchDate', e.target.value)} />
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-md font-semibold mt-4 mb-1 col-span-full">Property Details</h3>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="editPropertyAddress">Address</Label>
+                        <Input id="editPropertyAddress" value={editingPropertyDetailsForm.address || ""} onChange={(e) => handleEditPropertyDetailChange('address', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="editPropertySqft">Sqft</Label>
+                        <Input id="editPropertySqft" type="number" value={editingPropertyDetailsForm.sqft || ""} onChange={(e) => handleEditPropertyDetailChange('sqft', Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="editPropertyStatus">Property Status</Label>
+                        <Select value={editingPropertyDetailsForm.status || ""} onValueChange={(value) => handleEditPropertyDetailChange('status', value as StoreProject['propertyDetails']['status'])}>
+                            <SelectTrigger><SelectValue placeholder="Select property status" /></SelectTrigger>
+                            <SelectContent>
+                                {propertyStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="editPropertyNotes">Property Notes</Label>
+                        <Textarea id="editPropertyNotes" value={editingPropertyDetailsForm.notes || ""} onChange={(e) => handleEditPropertyDetailChange('notes', e.target.value)} rows={3}/>
+                    </div>
+                  </div>
+
+                  <h3 className="text-md font-semibold mt-4 mb-1 col-span-full">Timeline & Visuals</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="editTotalDays">Total Project Days</Label>
+                        <Input id="editTotalDays" type="number" value={editingTimelineForm.totalDays || ""} onChange={(e) => handleEditTimelineChange('totalDays', Number(e.target.value))} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="editThreeDRenderUrl">3D Render URL</Label>
+                        <Input id="editThreeDRenderUrl" value={editingProjectForm.threeDRenderUrl || ""} onChange={(e) => handleEditProjectFieldChange('threeDRenderUrl', e.target.value)} placeholder="https://example.com/render.jpg"/>
+                    </div>
+                  </div>
+
+                </div>
+                </ScrollArea>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleSaveProjectChanges}>Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
           <Dialog open={isAddTaskDialogOpen} onOpenChange={(isOpen) => {
             setIsAddTaskDialogOpen(isOpen);
             if (!isOpen) {
@@ -841,11 +976,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm font-medium">Projected Launch Date</p>
-            <p className="text-muted-foreground">{projectData.projectedLaunchDate}</p>
+            <p className="text-muted-foreground">{projectData.projectedLaunchDate ? format(new Date(projectData.projectedLaunchDate), "PPP") : "N/A"}</p>
           </div>
           <div>
             <p className="text-sm font-medium">Start Date</p>
-            <p className="text-muted-foreground">{projectData.startDate}</p>
+            <p className="text-muted-foreground">{projectData.startDate ? format(new Date(projectData.startDate), "PPP") : "N/A"}</p>
           </div>
           {projectData.franchiseType && (
             <div>
@@ -866,10 +1001,12 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               <p className="text-muted-foreground">{projectData.propertyDetails.status} - {projectData.propertyDetails.sqft} sqft</p>
             </div>
           )}
-          <div>
-            <p className="text-sm font-medium">Project Timeline</p>
-            <p className="text-muted-foreground">Day {projectData.projectTimeline.currentDay} of {projectData.projectTimeline.totalDays}</p>
-          </div>
+          {projectData.projectTimeline && (
+             <div>
+                <p className="text-sm font-medium">Project Timeline</p>
+                <p className="text-muted-foreground">Day {projectData.projectTimeline.currentDay} of {projectData.projectTimeline.totalDays}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -979,7 +1116,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         <TableCell>{task.department}</TableCell>
                         <TableCell><Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge></TableCell>
                         <TableCell><Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "secondary" : "outline"}>{task.priority || "N/A"}</Badge></TableCell>
-                        <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{task.dueDate ? format(new Date(task.dueDate), "PPP") : "N/A"}</TableCell>
                         <TableCell className="text-right">{task.assignedTo || "N/A"}</TableCell>
                       </TableRow>
                     ))}
@@ -1019,7 +1156,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                             {doc.hodOnly && <ShieldCheck className="ml-2 h-4 w-4 text-primary shrink-0" title="HOD Only" />}
                           </p>
                           <p className="text-xs text-muted-foreground">{doc.type} - {doc.size}</p>
-                          <p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt} by {doc.uploadedBy || "System"}</p>
+                          <p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt ? format(new Date(doc.uploadedAt), "PPP") : "N/A"} by {doc.uploadedBy || "System"}</p>
                         </CardContent>
                          <CardFooter className="p-3 border-t flex items-center justify-between">
                             <span className="text-xs text-muted-foreground">Click to view</span>
@@ -1040,7 +1177,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           <Card>
             <CardHeader>
               <CardTitle>Project Milestones &amp; Timeline</CardTitle>
-              <CardDescription>Key dates and progress over the {projectData.projectTimeline.totalDays}-day plan.</CardDescription>
+              <CardDescription>Key dates and progress over the {projectData.projectTimeline?.totalDays}-day plan.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="relative pl-6">
@@ -1059,13 +1196,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     </div>
                     <div className="ml-6">
                       <h4 className="font-semibold">{milestone.name}</h4>
-                      <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1" />{milestone.date}</p>
+                      <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1" />{format(new Date(milestone.date), "PPP")}</p>
                       {milestone.description && <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>}
                     </div>
                   </div>
                 ))}
 
-                {projectData.status !== "Launched" && projectData.status !== "Planning" && (
+                {projectData.status !== "Launched" && projectData.status !== "Planning" && projectData.projectTimeline && (
                   <div className="relative mt-8 mb-6">
                     <div className="absolute -left-[calc(0.75rem)] top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary border-2 border-primary-foreground shadow">
                       <Clock className="h-3.5 w-3.5 text-primary-foreground" />
@@ -1085,7 +1222,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   </div>
                   <div className="ml-6">
                     <h4 className="font-semibold">{projectData.status === "Launched" ? "Launched!" : "Projected Launch"}</h4>
-                    <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1" />{projectData.projectedLaunchDate}</p>
+                    <p className="text-sm text-muted-foreground"><CalendarDays className="inline h-3.5 w-3.5 mr-1" />{projectData.projectedLaunchDate ? format(new Date(projectData.projectedLaunchDate), "PPP") : "N/A"}</p>
                   </div>
                 </div>
               </div>
@@ -1218,7 +1355,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 {selectedTask.dueDate && (
                   <div className="grid grid-cols-3 items-center gap-2">
                     <Label className="text-right text-muted-foreground">Due Date:</Label>
-                    <div className="col-span-2">{selectedTask.dueDate}</div>
+                    <div className="col-span-2">{format(new Date(selectedTask.dueDate), "PPP")}</div>
                   </div>
                 )}
                 <div className="grid grid-cols-3 items-center gap-2">
@@ -1332,7 +1469,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                         <Badge variant={task.status === "Completed" ? "outline" : "secondary"}>{task.status}</Badge>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">{task.assignedTo || "N/A"}</TableCell>
-                      <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{task.dueDate ? format(new Date(task.dueDate), "PPP") : "N/A"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
