@@ -421,6 +421,44 @@ export default function StoreDetailsPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
+                 {canManageImprovements && (
+                    <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Point
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[480px]">
+                            <DialogHeader>
+                                <DialogTitle>Add New Improvement Point</DialogTitle>
+                                <DialogDescription>
+                                    Describe the area for improvement or action needed for {store.name}.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4 space-y-2">
+                                <Label htmlFor="improvement-text">Improvement Detail</Label>
+                                <Textarea
+                                    id="improvement-text"
+                                    value={newImprovementPointText}
+                                    onChange={(e) => setNewImprovementPointText(e.target.value)}
+                                    placeholder="e.g., Enhance visual merchandising near entrance."
+                                    rows={4}
+                                />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim()}>Save Point</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
+                {canManageStoreTasks && (
+                     <Button size="sm" onClick={() => { setIsAddTaskDialogOpen(true); setEditingStoreTask(null); setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" }); }}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                    </Button>
+                )}
             </div>
           </CardContent>
         </Card>
@@ -431,39 +469,6 @@ export default function StoreDetailsPage() {
                     <CardTitle>Key Improvement Points</CardTitle>
                     <CardDescription>Track and manage areas for store enhancement.</CardDescription>
                 </div>
-                {canManageImprovements && (
-                <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button size="sm">
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Point
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[480px]">
-                        <DialogHeader>
-                            <DialogTitle>Add New Improvement Point</DialogTitle>
-                            <DialogDescription>
-                                Describe the area for improvement or action needed for {store.name}.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4 space-y-2">
-                            <Label htmlFor="improvement-text">Improvement Detail</Label>
-                            <Textarea
-                                id="improvement-text"
-                                value={newImprovementPointText}
-                                onChange={(e) => setNewImprovementPointText(e.target.value)}
-                                placeholder="e.g., Enhance visual merchandising near entrance."
-                                rows={4}
-                            />
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim()}>Save Point</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-                )}
             </CardHeader>
             <CardContent>
                 {store.improvementPoints && store.improvementPoints.length > 0 ? (
@@ -590,12 +595,6 @@ export default function StoreDetailsPage() {
                   </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {canManageStoreTasks && (
-                <Button size="sm" onClick={() => { setIsAddTaskDialogOpen(true); setEditingStoreTask(null); setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" }); }}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Task
-                </Button>
-              )}
             </div>
           </CardHeader>
           <CardContent>
