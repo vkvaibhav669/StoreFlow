@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -80,7 +81,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick, is
         <CardTitle className="flex items-center gap-2 text-lg">
           <Icon className="h-5 w-5 text-primary" />
           {title}
-          {isLockedForCurrentUser && <Lock className="h-4 w-4 text-muted-foreground" titleAccess="Access restricted" />}
+          {isLockedForCurrentUser && <Lock className="h-4 w-4 text-muted-foreground" title="Access restricted" />}
         </CardTitle>
         {!isLockedForCurrentUser && totalTasks > 0 && (
           <CardDescription>{completedTasks} of {totalTasks} tasks completed.</CardDescription>
@@ -197,35 +198,47 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const canManageAnyMember = isUserSuperAdmin || isUserAdmin;
 
 
+  const currentUserProjectMembership = React.useMemo(() => {
+    if (!user || !projectData?.members) return undefined;
+    return projectData.members.find(m => m.email === user.email);
+  }, [user, projectData?.members]);
+
+
   const visibleFiles = React.useMemo(() => {
     if (!projectData) return [];
-    // Members can see the files tab and non-HOD files. HOD-only files are restricted further.
-    return projectData.documents.filter(doc => {
-      if (doc.hodOnly) {
-        return isUserSuperAdmin || isUserAdmin; // Assuming Admins are like HODs for file viewing
-      }
-      return true;
-    });
-  }, [projectData, isUserSuperAdmin, isUserAdmin]);
+    if (isUserAdmin || isUserSuperAdmin) return projectData.documents;
+    // Members cannot see files tab, but if they could, it would be this:
+    // return projectData.documents.filter(doc => !doc.hodOnly);
+    if (isUserMember) return []; // Members cannot see files tab as per requirement
+    return projectData.documents.filter(doc => !doc.hodOnly);
+  }, [projectData, isUserAdmin, isUserSuperAdmin, isUserMember]);
 
   const filteredTasksForTable = React.useMemo(() => {
     if (!projectData) return [];
-    if (taskFilterPriority === "All") {
-      return projectData.tasks;
+    let tasksToFilter = projectData.tasks;
+
+    if (isUserMember) {
+      if (currentUserProjectMembership && currentUserProjectMembership.department) {
+        tasksToFilter = projectData.tasks.filter(
+          task => task.department === currentUserProjectMembership.department
+        );
+      } else {
+        return []; // Member not on project or no department, show no tasks in "All Tasks"
+      }
     }
-    return projectData.tasks.filter(task => task.priority === taskFilterPriority);
-  }, [projectData, taskFilterPriority]);
+
+    if (taskFilterPriority === "All") {
+      return tasksToFilter;
+    }
+    return tasksToFilter.filter(task => task.priority === taskFilterPriority);
+  }, [projectData, taskFilterPriority, isUserMember, currentUserProjectMembership]);
+
 
   const availableMembersToAdd = React.useMemo(() => {
     if (!projectData) return [];
     const currentMemberEmails = (projectData.members || []).map(m => m.email);
     return mockHeadOfficeContacts.filter(contact => !currentMemberEmails.includes(contact.email));
   }, [projectData]);
-
-  const currentUserProjectMembership = React.useMemo(() => {
-    if (!user || !projectData?.members) return undefined;
-    return projectData.members.find(m => m.email === user.email);
-  }, [user, projectData?.members]);
 
 
   React.useEffect(() => {
@@ -297,7 +310,6 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       toast({ title: "Error", description: "Task Name, Department, and Assignee are required.", variant: "destructive" });
       return;
     }
-    // Member role cannot assign tasks - this button would be hidden, but good to double check
     if (isUserMember) {
         toast({ title: "Permission Denied", description: "Members cannot assign new tasks.", variant: "destructive"});
         return;
@@ -369,6 +381,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
       return;
     }
+    // All users (including Members) can upload files as per current interpretation
     const newDocument: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: newDocumentName,
@@ -478,20 +491,28 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
     const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority;
     
-    // Members can only change status of tasks assigned to them (or if unassigned but in their dept?)
-    // For simplicity, let's say Members can only change status for now if it's their task.
-    // Admins/SuperAdmins can change anything.
     const isTaskAssignedToCurrentUser = selectedTask.assignedTo === user.email || selectedTask.assignedTo === user.name;
+    const isTaskInMembersDepartment = currentUserProjectMembership?.department === selectedTask.department;
 
-    if (isUserMember && !isTaskAssignedToCurrentUser && (newAssignedTo !== selectedTask.assignedTo || newDepartment !== selectedTask.department || newPriority !== selectedTask.priority) ) {
-        toast({ title: "Permission Denied", description: "Members can only update the status of their own tasks or tasks in their department if unassigned. Other fields cannot be changed.", variant: "destructive"});
-        return;
-    }
-     if (isUserMember && (newDepartment !== selectedTask.department || newPriority !== selectedTask.priority)) {
-        toast({ title: "Permission Denied", description: "Members cannot change task department or priority.", variant: "destructive"});
-        // Allow status and assignee change if it's their task
-        if (newAssignedTo !== selectedTask.assignedTo && !isTaskAssignedToCurrentUser) {
+    // Member Restrictions:
+    // Can only change status.
+    // Can only change assignee if the task is in their department AND currently unassigned, OR if it's already assigned to them.
+    // Cannot change department or priority.
+    if (isUserMember) {
+        if (newDepartment !== selectedTask.department || newPriority !== (selectedTask.priority || "Medium")) {
+             toast({ title: "Permission Denied", description: "Members cannot change task department or priority.", variant: "destructive"});
              return;
+        }
+        if (newAssignedTo !== selectedTask.assignedTo) { // Member is trying to change assignee
+            if (!isTaskInMembersDepartment) { // Task not in their department
+                toast({ title: "Permission Denied", description: "Members can only reassign tasks within their own department.", variant: "destructive"});
+                return;
+            }
+            if (selectedTask.assignedTo && !isTaskAssignedToCurrentUser) { // Task is assigned, but not to them
+                toast({ title: "Permission Denied", description: "Members cannot reassign tasks already assigned to someone else (unless it's their own).", variant: "destructive"});
+                return;
+            }
+             // Allow if task is unassigned in their dept, or if it's their own task
         }
     }
 
@@ -636,8 +657,9 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     toast({ title: "Reply Posted to Task Comment", description: "Your reply has been added." });
   };
 
-  const handleOpenDepartmentDialog = (title: string, tasks: Task[] = [], isLocked?: boolean) => {
-    if (isLocked) {
+  const handleOpenDepartmentDialog = (title: string, departmentKey: Department | undefined, tasks: Task[] = []) => {
+    // For members, check if their project-specific department matches the card's department
+    if (isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== departmentKey)) {
         toast({ title: "Access Restricted", description: "You do not have permission to view details for this department.", variant: "default"});
         return;
     }
@@ -776,7 +798,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   };
 
   const handleAddProjectMember = () => {
-    if (!selectedNewMemberEmail || !projectData || !canEditProject) { // Also check edit permission
+    if (!selectedNewMemberEmail || !projectData || !canEditProject) {
       toast({ title: "Error or Permission Denied", description: "Please select a person to add, or you may not have permission.", variant: "destructive" });
       return;
     }
@@ -819,13 +841,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         return;
     }
     
-    const allUsers = authService.getAllMockUsers(); // Fetch all users to check roles
+    const allUsers = authService.getAllMockUsers(); 
     const targetUser = allUsers.find(u => u.email === memberToRemoveInfo.email);
     const targetUserRole = targetUser?.role;
 
     let canProceed = false;
     if (user.role === 'SuperAdmin') {
-        canProceed = targetUserRole !== 'SuperAdmin'; // SuperAdmin cannot remove another SuperAdmin (typically)
+        canProceed = targetUserRole !== 'SuperAdmin'; 
         if (!canProceed && targetUserRole === 'SuperAdmin') toast({ title: "Permission Denied", description: "SuperAdmins cannot remove other SuperAdmins.", variant: "destructive"});
     } else if (user.role === 'Admin') {
         canProceed = targetUserRole === 'Member';
@@ -1229,7 +1251,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     <Input id="docAiHint" value={newDocumentDataAiHint} onChange={(e) => setNewDocumentDataAiHint(e.target.value)} className="sm:col-span-3" placeholder="e.g., modern storefront" />
                   </div>
                 )}
-                {(isUserAdmin || isUserSuperAdmin) && ( // Only Admin/SuperAdmin can mark HOD only
+                {(isUserAdmin || isUserSuperAdmin) && ( 
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="docHodOnly" className="sm:text-right">
                     Visibility
@@ -1306,18 +1328,18 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
+          {!isUserMember && <TabsTrigger value="files">Files</TabsTrigger>}
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="departments" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Property')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Property'} />}
+            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', 'Property', departments.property?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Property')} />}
 
             {departments.project &&
-              <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Project')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Project'}>
-                {!(isUserMember && currentUserProjectMembership?.department !== 'Project') && projectData.threeDRenderUrl && (
+              <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', 'Project', departments.project?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Project')}>
+                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Project')) && projectData.threeDRenderUrl && (
                   <div className="my-2">
                     <p className="text-xs font-medium mb-1">3D Store Visual:</p>
                     <a href={projectData.threeDRenderUrl} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
@@ -1328,19 +1350,19 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               </DepartmentCard>
             }
 
-            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Merchandising')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Merchandising'} />}
+            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', 'Merchandising', departments.merchandising?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Merchandising')} />}
 
             {departments.hr &&
-              <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'HR')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'HR'}>
-                {!(isUserMember && currentUserProjectMembership?.department !== 'HR') && departments.hr.totalNeeded && (
+              <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', 'HR', departments.hr?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'HR')}>
+                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'HR')) && departments.hr.totalNeeded && (
                   <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
                 )}
               </DepartmentCard>
             }
 
             {departments.marketing &&
-              <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Marketing')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Marketing'}>
-                {!(isUserMember && currentUserProjectMembership?.department !== 'Marketing') && departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
+              <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', 'Marketing', departments.marketing?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Marketing')}>
+                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Marketing')) && departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
                   <div className="mt-2">
                     <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
                     <ul className="space-y-0.5 text-xs">
@@ -1353,7 +1375,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             }
 
             {departments.it && (
-              <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'IT')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'IT'} />
+              <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', 'IT', departments.it?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'IT')} />
             )}
           </div>
         </TabsContent>
@@ -1365,7 +1387,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 <CardTitle id="project-members-heading">Project Members ({projectData.members?.length || 0})</CardTitle>
                 <CardDescription>Team members assigned to this project.</CardDescription>
               </div>
-              {canEditProject && ( // Only Admin/SuperAdmin can add members
+              {canEditProject && (
                  <Dialog open={isAddMemberDialogOpen} onOpenChange={(isOpen) => {
                     setIsAddMemberDialogOpen(isOpen);
                     if (!isOpen) {
@@ -1452,7 +1474,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                           )}
                         </div>
                         {canManageAnyMember && (
-                          <Button
+                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -1482,8 +1504,16 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           <Card>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3">
               <div>
-                <CardTitle id="all-tasks-heading">All Tasks ({filteredTasksForTable.length})</CardTitle>
-                <CardDescription>Comprehensive list of tasks for this project. Click task name to view/edit.</CardDescription>
+                <CardTitle id="all-tasks-heading">
+                  {isUserMember && currentUserProjectMembership?.department ? `${currentUserProjectMembership.department} Tasks` : "All Tasks"}
+                  ({filteredTasksForTable.length})
+                </CardTitle>
+                <CardDescription>
+                  {isUserMember && currentUserProjectMembership?.department
+                    ? `Tasks for the ${currentUserProjectMembership.department} department in this project.`
+                    : "Comprehensive list of tasks for this project."}
+                  Click task name to view/edit.
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Label htmlFor="taskPriorityFilter" className="text-sm text-muted-foreground whitespace-nowrap">Filter by Priority:</Label>
@@ -1537,12 +1567,17 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-muted-foreground text-center py-4">No tasks match the current filter.</p>
+                 <p className="text-muted-foreground text-center py-4">
+                  {isUserMember && !currentUserProjectMembership?.department
+                    ? "You are not assigned to a specific department for this project to view tasks."
+                    : "No tasks match the current filter or your department's tasks."}
+                </p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {!isUserMember && (
         <TabsContent value="files" className="mt-4">
           <Card>
             <CardHeader>
@@ -1586,6 +1621,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         <TabsContent value="timeline" className="mt-4">
           <Card>
@@ -1672,7 +1708,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                               <p className="text-xs text-muted-foreground mt-2">Resolved On: {format(new Date(blocker.dateResolved), "PPP")}</p>
                             )}
                           </CardContent>
-                          {canEditProject && ( // Only Admin/SuperAdmin can manage blockers
+                          {canEditProject && ( 
                             <CardFooter className="p-4 pt-0 flex justify-end gap-2">
                                <Button
                                 variant="ghost"
@@ -1774,7 +1810,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   <Select
                     value={editingSelectedTaskDepartment}
                     onValueChange={(value) => setEditingSelectedTaskDepartment(value as Department | "")}
-                    disabled={isUserMember} // Members cannot change department
+                    disabled={isUserMember} 
                   >
                     <SelectTrigger id="taskDepartmentEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select department" />
@@ -1791,7 +1827,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   <Select
                     value={editingSelectedTaskPriority}
                     onValueChange={(value) => setEditingSelectedTaskPriority(value as TaskPriority | "")}
-                    disabled={isUserMember} // Members cannot change priority
+                    disabled={isUserMember} 
                   >
                     <SelectTrigger id="taskPriorityEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select priority" />
@@ -1808,7 +1844,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   <Select
                     value={editingTaskStatus}
                     onValueChange={(value) => setEditingTaskStatus(value as Task['status'] | "")}
-                    // All roles can change status
+                    
                   >
                     <SelectTrigger id="taskStatusEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select status" />
@@ -1841,7 +1877,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     onChange={(e) => setEditingTaskAssignedTo(e.target.value)}
                     className="sm:col-span-2"
                     placeholder="Assignee name"
-                    disabled={isUserMember && !(selectedTask.assignedTo === user.email || selectedTask.assignedTo === user.name)} // Member can only reassign their own tasks or unassigned from their dept.
+                    disabled={isUserMember && !( (selectedTask.assignedTo === user.email || selectedTask.assignedTo === user.name) || (!selectedTask.assignedTo && currentUserProjectMembership?.department === selectedTask.department) )}
                   />
                 </div>
               </div>
@@ -1962,7 +1998,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         </DialogContent>
       </Dialog>
 
-       {/* Add Milestone Dialog (Only for Admin/SuperAdmin) */}
+       
       {canEditProject && (
       <Dialog open={isAddMilestoneDialogOpen} onOpenChange={(isOpen) => {
           setIsAddMilestoneDialogOpen(isOpen);
@@ -1999,7 +2035,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       </Dialog>
       )}
 
-      {/* Add Blocker Dialog (Only for Admin/SuperAdmin) */}
+      
       {canEditProject && (
       <Dialog open={isAddBlockerDialogOpen} onOpenChange={(isOpen) => {
           setIsAddBlockerDialogOpen(isOpen);
@@ -2031,7 +2067,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
       </Dialog>
       )}
 
-      {/* Confirm Remove Member Dialog */}
+      
       <AlertDialog open={isConfirmRemoveMemberDialogOpen} onOpenChange={setIsConfirmRemoveMemberDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
