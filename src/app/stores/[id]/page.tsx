@@ -74,6 +74,8 @@ export default function StoreDetailsPage() {
   const [taskFilterStatus, setTaskFilterStatus] = React.useState<StoreTask['status'] | "All">("All");
   const [editingStoreTask, setEditingStoreTask] = React.useState<StoreTask | null>(null);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = React.useState(false);
+  const [isRequestInfoDialogOpen, setIsRequestInfoDialogOpen] = React.useState(false);
+  const [requestInfoText, setRequestInfoText] = React.useState("");
 
 
   const storeId = typeof params.id === 'string' ? params.id : undefined;
@@ -102,7 +104,7 @@ export default function StoreDetailsPage() {
   const isUserSuperAdmin = currentUserRole === 'SuperAdmin';
   const isUserMember = currentUserRole === 'Member';
 
-  const canManageStoreFeatures = isUserAdmin || isUserSuperAdmin; // For adding points, tasks
+  const canManageStoreFeatures = isUserAdmin || isUserSuperAdmin;
 
   const canRequestOwnershipChange = React.useMemo(() => {
     if (!store) return false;
@@ -282,7 +284,7 @@ export default function StoreDetailsPage() {
         assignedTo: newTaskForm.assignedTo.trim() || undefined,
         priority: newTaskForm.priority,
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
-        status: editingStoreTask.status, // Preserve existing status during edit
+        status: editingStoreTask.status, 
     };
     const updatedTasks = (store.tasks || []).map(t => t.id === editingStoreTask.id ? updatedTask : t);
     const updatedStore = { ...store, tasks: updatedTasks };
@@ -322,6 +324,20 @@ export default function StoreDetailsPage() {
     setStore(updatedStore);
     updateMockStore(updatedStore);
     toast({ title: "Task Deleted", description: `Task "${taskToDelete.title}" has been removed.` });
+  };
+
+  const handleSendRequestInfo = () => {
+    if (!requestInfoText.trim() || !store) {
+      toast({ title: "Cannot Send", description: "Please enter a message for your request.", variant: "destructive" });
+      return;
+    }
+    // Simulate sending email
+    toast({
+      title: "Information Request Sent (Simulated)",
+      description: `Your request: "${requestInfoText.substring(0, 50)}..." has been "sent" to the store manager ${store.manager ? `(${store.manager})` : ''}.`,
+    });
+    setRequestInfoText("");
+    setIsRequestInfoDialogOpen(false);
   };
 
 
@@ -432,10 +448,43 @@ export default function StoreDetailsPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
              <div className="flex flex-wrap gap-2 items-center">
-                <Button variant="outline" size="sm">
-                  <HelpCircle className="mr-2 h-4 w-4" />
-                  Request Info
-                </Button>
+                <Dialog open={isRequestInfoDialogOpen} onOpenChange={(isOpen) => {
+                    setIsRequestInfoDialogOpen(isOpen);
+                    if (!isOpen) setRequestInfoText(""); 
+                }}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                            <HelpCircle className="mr-2 h-4 w-4" /> Request Info
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Request Information from Store Manager</DialogTitle>
+                            <DialogDescription>
+                                Compose your message below. This will be sent to {store.manager || 'the store manager'}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Label htmlFor="request-info-message" className="sr-only">Your Message</Label>
+                            <Textarea
+                                id="request-info-message"
+                                value={requestInfoText}
+                                onChange={(e) => setRequestInfoText(e.target.value)}
+                                placeholder="Type your information request here..."
+                                rows={5}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button onClick={handleSendRequestInfo} disabled={!requestInfoText.trim()}>
+                                Send Request
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
                 {canRequestOwnershipChange && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
