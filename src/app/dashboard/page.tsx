@@ -131,7 +131,7 @@ export default function DashboardPage() {
       alert("Project Name and Location are required.");
       return;
     }
-    if (!canAddProject) {
+    if (!canAddProject) { // This check ensures only Admin/SuperAdmin can create
         alert("You do not have permission to add projects.");
         return;
     }
