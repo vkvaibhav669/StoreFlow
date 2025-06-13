@@ -181,97 +181,12 @@ export default function MyApprovalsPage() {
   return (
     <section className="my-approvals-content flex flex-col gap-6" aria-labelledby="my-approvals-heading">
       <h1 id="my-approvals-heading" className="text-2xl font-semibold md:text-3xl mt-4">Approvals Center</h1>
-      <Tabs defaultValue="awaiting-my-action" className="w-full">
+      <Tabs defaultValue="submit-new-request" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="awaiting-my-action">Awaiting My Action ({requestsAwaitingMyAction.length})</TabsTrigger>
-          <TabsTrigger value="my-submitted-requests">My Submitted Requests ({mySubmittedRequests.length})</TabsTrigger>
           <TabsTrigger value="submit-new-request">Submit New Request</TabsTrigger>
+          <TabsTrigger value="my-submitted-requests">My Submitted Requests ({mySubmittedRequests.length})</TabsTrigger>
+          <TabsTrigger value="awaiting-my-action">Awaiting My Action ({requestsAwaitingMyAction.length})</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="awaiting-my-action" className="mt-4">
-          {requestsAwaitingMyAction.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center">No requests are currently awaiting your action.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {requestsAwaitingMyAction.map(req => (
-                <Card key={req.id}>
-                  <CardHeader>
-                    <CardTitle>{req.title}</CardTitle>
-                    <CardDescription>
-                      From: {req.requestorName} ({req.requestingDepartment})
-                      {req.projectName && ` | Project: ${req.projectName}`}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">Submitted: {format(new Date(req.submissionDate), "PPP")}</p>
-                    <p className="text-sm whitespace-pre-wrap">{req.details}</p>
-                  </CardContent>
-                  <CardFooter className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleApprovalAction(req.id, "Rejected")}>
-                      <XCircle className="mr-2 h-4 w-4" /> Reject
-                    </Button>
-                    <Button size="sm" onClick={() => handleApprovalAction(req.id, "Approved")}>
-                      <CheckCircle className="mr-2 h-4 w-4" /> Approve
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="my-submitted-requests" className="mt-4">
-          {mySubmittedRequests.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center">You have not submitted any approval requests yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-             <div className="grid gap-4 md:grid-cols-2">
-              {mySubmittedRequests.map(req => (
-                <Card key={req.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle>{req.title}</CardTitle>
-                            <CardDescription>
-                                To: {req.approverName}
-                                {req.projectName && ` | Project: ${req.projectName}`}
-                            </CardDescription>
-                        </div>
-                         <Badge variant={getStatusBadgeVariant(req.status)} className={getStatusBadgeClass(req.status)}>
-                            {req.status}
-                        </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                     <p className="text-sm text-muted-foreground">Submitted: {format(new Date(req.submissionDate), "PPP")}</p>
-                     {req.lastUpdateDate && (
-                        <p className="text-sm text-muted-foreground">Last Update: {format(new Date(req.lastUpdateDate), "PPP p")}</p>
-                     )}
-                     <p className="text-sm pt-2 whitespace-pre-wrap">{req.details}</p>
-                     {req.approvalComments && req.approvalComments.length > 0 && (
-                        <div className="pt-2 mt-2 border-t">
-                            <h4 className="text-xs font-semibold mb-1 text-muted-foreground">Approver Comments:</h4>
-                            {req.approvalComments.map(comment => (
-                                <div key={comment.id} className="text-xs p-2 bg-muted rounded-md">
-                                    <p className="italic">"{comment.text}"</p>
-                                    <p className="text-right text-muted-foreground/80">- {comment.author} on {format(new Date(comment.timestamp), "PP")}</p>
-                                </div>
-                            ))}
-                        </div>
-                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
 
         <TabsContent value="submit-new-request" className="mt-4">
           <Card className="w-full max-w-2xl mx-auto">
@@ -365,7 +280,95 @@ export default function MyApprovalsPage() {
             </form>
           </Card>
         </TabsContent>
+
+        <TabsContent value="my-submitted-requests" className="mt-4">
+          {mySubmittedRequests.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-center">You have not submitted any approval requests yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+             <div className="grid gap-4 md:grid-cols-2">
+              {mySubmittedRequests.map(req => (
+                <Card key={req.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle>{req.title}</CardTitle>
+                            <CardDescription>
+                                To: {req.approverName}
+                                {req.projectName && ` | Project: ${req.projectName}`}
+                            </CardDescription>
+                        </div>
+                         <Badge variant={getStatusBadgeVariant(req.status)} className={getStatusBadgeClass(req.status)}>
+                            {req.status}
+                        </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                     <p className="text-sm text-muted-foreground">Submitted: {format(new Date(req.submissionDate), "PPP")}</p>
+                     {req.lastUpdateDate && (
+                        <p className="text-sm text-muted-foreground">Last Update: {format(new Date(req.lastUpdateDate), "PPP p")}</p>
+                     )}
+                     <p className="text-sm pt-2 whitespace-pre-wrap">{req.details}</p>
+                     {req.approvalComments && req.approvalComments.length > 0 && (
+                        <div className="pt-2 mt-2 border-t">
+                            <h4 className="text-xs font-semibold mb-1 text-muted-foreground">Approver Comments:</h4>
+                            {req.approvalComments.map(comment => (
+                                <div key={comment.id} className="text-xs p-2 bg-muted rounded-md">
+                                    <p className="italic">"{comment.text}"</p>
+                                    <p className="text-right text-muted-foreground/80">- {comment.author} on {format(new Date(comment.timestamp), "PP")}</p>
+                                </div>
+                            ))}
+                        </div>
+                     )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="awaiting-my-action" className="mt-4">
+          {requestsAwaitingMyAction.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-center">No requests are currently awaiting your action.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {requestsAwaitingMyAction.map(req => (
+                <Card key={req.id}>
+                  <CardHeader>
+                    <CardTitle>{req.title}</CardTitle>
+                    <CardDescription>
+                      From: {req.requestorName} ({req.requestingDepartment})
+                      {req.projectName && ` | Project: ${req.projectName}`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">Submitted: {format(new Date(req.submissionDate), "PPP")}</p>
+                    <p className="text-sm whitespace-pre-wrap">{req.details}</p>
+                  </CardContent>
+                  <CardFooter className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleApprovalAction(req.id, "Rejected")}>
+                      <XCircle className="mr-2 h-4 w-4" /> Reject
+                    </Button>
+                    <Button size="sm" onClick={() => handleApprovalAction(req.id, "Approved")}>
+                      <CheckCircle className="mr-2 h-4 w-4" /> Approve
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
     </section>
   );
 }
+
+
+    
