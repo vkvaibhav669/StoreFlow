@@ -282,6 +282,7 @@ export default function StoreDetailsPage() {
         assignedTo: newTaskForm.assignedTo.trim() || undefined,
         priority: newTaskForm.priority,
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
+        status: editingStoreTask.status, // Preserve existing status during edit
     };
     const updatedTasks = (store.tasks || []).map(t => t.id === editingStoreTask.id ? updatedTask : t);
     const updatedStore = { ...store, tasks: updatedTasks };
@@ -295,7 +296,7 @@ export default function StoreDetailsPage() {
 
 
   const handleUpdateStoreTaskStatus = (taskId: string, newStatus: StoreTask['status']) => {
-    if (!store || !canManageStoreFeatures) { // Even changing status might be restricted for Members if not their task
+    if (!store || !canManageStoreFeatures) { 
         toast({title: "Permission Denied", description: "You do not have permission to update task status.", variant: "destructive"});
         return;
     }
@@ -776,3 +777,4 @@ export default function StoreDetailsPage() {
     </section>
   );
 }
+
