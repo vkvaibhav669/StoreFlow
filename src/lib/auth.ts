@@ -1,3 +1,4 @@
+
 // IMPORTANT: This is a MOCK authentication system for prototyping.
 // DO NOT use this in a production environment. Passwords are stored in plaintext.
 'use client'; // To use localStorage
@@ -21,12 +22,12 @@ const COMMON_TEST_PASSWORD = 'TestAdmin@7669';
 
 // Pre-seeded regular test user (will become a Member if not one of the above)
 const PRESEEDED_REGULAR_USER_EMAIL = "karan.malhotra@storeflow.corp";
-const PRESEEDED_REGULAR_USER_PASSWORD = "70669$RRSVk"; // Can be same as OG_ADMIN_PASSWORD or different
+const PRESEEDED_REGULAR_USER_PASSWORD = "70669$RRSVk"; 
 const PRESEEDED_REGULAR_USER_NAME = "Karan Malhotra (Test User)";
 
 
 interface StoredUser extends User {
-  passwordHash: string; // In a real app, this would be a proper hash
+  passwordHash: string; 
 }
 
 function getStoredUsers(): StoredUser[] {
@@ -44,14 +45,26 @@ function getStoredUsers(): StoredUser[] {
     }
   }
 
-  // Ensure specific test users exist with correct roles
-  const ensureUser = (email: string, name: string, role: UserRole, passwordHash: string) => {
-    const existingUserIndex = users.findIndex(u => u.email === email);
+  const ensureUser = (email: string, name: string, role: UserRole, passwordHashValue: string) => {
+    const lowerEmail = email.toLowerCase();
+    const existingUserIndex = users.findIndex(u => u.email.toLowerCase() === lowerEmail);
     if (existingUserIndex !== -1) {
-      // Update existing user if role or other details need to be enforced
-      users[existingUserIndex] = { ...users[existingUserIndex], name, role, passwordHash };
+      const existingId = users[existingUserIndex].id;
+      users[existingUserIndex] = { 
+        id: existingId,
+        name, 
+        email: lowerEmail, // Store/ensure as lowercase
+        role, 
+        passwordHash: passwordHashValue 
+      };
     } else {
-      users.push({ id: `user-${email}-${Date.now()}`.slice(0,20), name, email, role, passwordHash });
+      users.push({ 
+        id: `user-${lowerEmail}-${Date.now()}`.slice(0,20), 
+        name, 
+        email: lowerEmail, // Store as lowercase
+        role, 
+        passwordHash: passwordHashValue 
+      });
     }
   };
 
@@ -60,16 +73,9 @@ function getStoredUsers(): StoredUser[] {
   ensureUser(ADMIN_EMAIL_TEST, 'Vaibhav V Rajkumar (Admin)', 'Admin', COMMON_TEST_PASSWORD);
   ensureUser(MEMBER_EMAIL_TEST, 'VK Vaibhav (Member)', 'Member', COMMON_TEST_PASSWORD);
   
-  // Ensure the pre-seeded regular test user exists as a Member
-  const regularTestUserExists = users.some(u => u.email === PRESEEDED_REGULAR_USER_EMAIL);
+  const regularTestUserExists = users.some(u => u.email.toLowerCase() === PRESEEDED_REGULAR_USER_EMAIL.toLowerCase());
   if (!regularTestUserExists) {
-    users.push({
-      id: 'user-karan-test-001',
-      name: PRESEEDED_REGULAR_USER_NAME,
-      email: PRESEEDED_REGULAR_USER_EMAIL,
-      passwordHash: PRESEEDED_REGULAR_USER_PASSWORD,
-      role: 'Member', // Default role for this pre-seeded user
-    });
+    ensureUser(PRESEEDED_REGULAR_USER_EMAIL, PRESEEDED_REGULAR_USER_NAME, 'Member', PRESEEDED_REGULAR_USER_PASSWORD);
   }
   
   saveStoredUsers(users);
@@ -105,8 +111,6 @@ function setCurrentUser(user: User | null): void {
   }
 }
 
-// Function to get all users (useful for SuperAdmin tasks, though not implemented in UI yet)
-// This is a mock function; in a real app, this would be a protected API endpoint.
 export function getAllMockUsers(): User[] {
   const storedUsers = getStoredUsers();
   return storedUsers.map(({ passwordHash, ...user }) => user);
@@ -117,7 +121,8 @@ export async function signUp(name: string, email: string, password: string): Pro
   return new Promise((resolve, reject) => {
     setTimeout(() => { 
       const users = getStoredUsers();
-      if (users.find(u => u.email === email)) {
+      const lowerEmail = email.toLowerCase();
+      if (users.find(u => u.email.toLowerCase() === lowerEmail)) {
         reject(new Error('User already exists with this email.'));
         return;
       }
@@ -125,15 +130,15 @@ export async function signUp(name: string, email: string, password: string): Pro
       const newUser: StoredUser = {
         id: `user-${Date.now()}`,
         name,
-        email,
-        role: 'Member', // New sign-ups default to Member role
+        email: lowerEmail, // Store as lowercase
+        role: 'Member', 
         passwordHash: password, 
       };
       
       users.push(newUser);
       saveStoredUsers(users);
       
-      const { passwordHash, ...userToReturn } = newUser;
+      const { passwordHash: storedPasswordHash, ...userToReturn } = newUser; // Alias to avoid conflict
       setCurrentUser(userToReturn);
       resolve(userToReturn);
     }, 500);
@@ -143,16 +148,17 @@ export async function signUp(name: string, email: string, password: string): Pro
 export async function signIn(email: string, password: string): Promise<User> {
    return new Promise((resolve, reject) => {
     setTimeout(() => {
-      const users = getStoredUsers(); // Ensures all test users are loaded
-      const storedUser = users.find(u => u.email === email);
+      const users = getStoredUsers(); 
+      const lowerEmail = email.toLowerCase();
+      const storedUser = users.find(u => u.email.toLowerCase() === lowerEmail);
 
       if (!storedUser) {
-        reject(new Error('Invalid email or password.'));
+        reject(new Error('Invalid email or password. (User not found)'));
         return;
       }
 
       if (storedUser.passwordHash !== password) {
-        reject(new Error('Invalid email or password.'));
+        reject(new Error('Invalid email or password. (Password mismatch)'));
         return;
       }
       
