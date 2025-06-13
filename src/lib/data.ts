@@ -92,10 +92,10 @@ const sampleTaskComments: Comment[] = [
 
 export const tasks: Task[] = [
   { id: 'task-it-001', name: 'Setup Network Infrastructure', description: 'Install routers, switches, and access points.', department: 'IT', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 7)), assignedTo: "arjun.reddy@storeflow.corp", comments: [] },
-  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "karan.malhotra@storeflow.corp", comments: [...sampleTaskComments] },
+  { id: 'task-it-002', name: 'Configure Point of Sale Systems', description: 'Install software and test hardware.', department: 'IT', status: 'Pending', priority: 'High', dueDate: formatDate(addDays(today, 10)), assignedTo: "vkvaibhav36@gmail.com", comments: [...sampleTaskComments] },
   { id: 'task-it-003', name: 'Employee Account Creation', description: 'Create user accounts for new staff.', department: 'IT', status: 'Completed', priority: 'Medium', dueDate: formatDate(addDays(today, -3)), assignedTo: "arjun.reddy@storeflow.corp", comments: [] },
   { id: 'task-hr-001', name: 'Onboarding Paperwork Review', description: 'Process new hire documentation.', department: 'HR', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "rohan.sharma@storeflow.corp", comments: [] },
-  { id: 'task-mkt-001', name: 'Social Media Content Calendar (India)', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "karan.malhotra@storeflow.corp", comments: [] },
+  { id: 'task-mkt-001', name: 'Social Media Content Calendar (India)', description: 'Plan posts for the next month.', department: 'Marketing', status: 'Pending', priority: 'Medium', dueDate: formatDate(addDays(today, 8)), assignedTo: "vkvaibhav36@gmail.com", comments: [] },
   { id: 'task-proj-001', name: 'Finalize Interior Layout (Mumbai)', department: 'Project', status: 'Completed', priority: 'High', dueDate: formatDate(addDays(today, -10)), assignedTo: "aditya.patel@storeflow.corp", comments: [] },
   { id: 'task-proj-002', name: 'Source Local Contractors (Bangalore)', department: 'Project', status: 'In Progress', priority: 'High', dueDate: formatDate(addDays(today, 2)), assignedTo: "aditya.patel@storeflow.corp", comments: [] },
   { id: 'task-merch-001', name: 'Select Product SKUs (India Focus)', department: 'Merchandising', status: 'In Progress', priority: 'Medium', dueDate: formatDate(addDays(today, 5)), assignedTo: "anjali.nair@storeflow.corp", comments: [] },
@@ -127,7 +127,7 @@ export let mockProjects: StoreProject[] = [
     threeDRenderUrl: 'https://picsum.photos/seed/mumbaiStore1/800/600',
     tasks: [
         ...tasks.filter(t => ['task-proj-001', 'task-merch-001', 'task-hr-001', 'task-mkt-001', 'task-prop-001', 'task-it-001'].includes(t.id)),
-        { id: 'task-df-001', name: 'Review safety protocols (Mumbai)', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'karan.malhotra@storeflow.corp', dueDate: formatDate(addDays(today, 3)), comments: [] }
+        { id: 'task-df-001', name: 'Review safety protocols (Mumbai)', department: 'Project', status: 'Pending', priority: 'Medium', assignedTo: 'vkvaibhav36@gmail.com', dueDate: formatDate(addDays(today, 3)), comments: [] }
     ],
     documents: sampleDocs.map((doc, i) => ({ ...doc, id: `doc-1-${i}`})),
     milestones: sampleMilestones.map((m, i) => ({ ...m, id: `milestone-1-${i}`})),
@@ -150,6 +150,7 @@ export let mockProjects: StoreProject[] = [
     members: [
       { email: "aditya.patel@storeflow.corp", name: "Aditya Patel", roleInProject: "Project Lead", department: "Projects", avatarSeed: "aditya" },
       { email: "meera.desai@storeflow.corp", name: "Meera Desai", roleInProject: "Property Consultant", department: "Property", avatarSeed: "meera" },
+      { email: "vkvaibhav36@gmail.com", name: "VK Vaibhav (Member)", roleInProject: "IT Support Specialist", department: "IT", avatarSeed: "vkvaibhav" },
     ],
   },
   {
@@ -174,7 +175,7 @@ export let mockProjects: StoreProject[] = [
     },
     tasks: [
         ...tasks.filter(t => ['task-prop-002', 'task-it-002', 'task-proj-002'].includes(t.id)),
-        { id: 'task-sm-001', name: 'Plan store layout mockups (Bangalore)', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'karan.malhotra@storeflow.corp', dueDate: formatDate(addDays(today, 12)), comments: [] }
+        { id: 'task-sm-001', name: 'Plan store layout mockups (Bangalore)', department: 'Project', status: 'Pending', priority: 'High', assignedTo: 'vkvaibhav36@gmail.com', dueDate: formatDate(addDays(today, 12)), comments: [] }
     ],
     documents: [sampleDocs[0], sampleDocs[2]].map((doc, i) => ({ ...doc, id: `doc-2-${i}`})),
     milestones: [sampleMilestones[0]].map((m, i) => ({ ...m, id: `milestone-2-${i}`})),
@@ -186,7 +187,7 @@ export let mockProjects: StoreProject[] = [
     },
     comments: [sampleProjectComments[1]],
     members: [
-       { email: "karan.malhotra@storeflow.corp", name: "Karan Malhotra", roleInProject: "Franchise POC", department: "Projects", avatarSeed: "karan" }
+       { email: "vkvaibhav36@gmail.com", name: "VK Vaibhav (Member)", roleInProject: "Franchise IT Liason", department: "IT", avatarSeed: "vkvaibhav_bglr" }
     ],
   },
    {
@@ -248,7 +249,9 @@ export const mockHeadOfficeContacts: {
   { id: "ho-006", name: "Rohan Sharma", role: "Head of Human Resources", department: "HR", email: "rohan.sharma@storeflow.corp", phone: "(+91) 98010-00006", avatarSeed: "rohan" },
   { id: "ho-007", name: "Deepika Iyer", role: "Head of Marketing", department: "Marketing", email: "deepika.iyer@storeflow.corp", phone: "(+91) 98010-00007", avatarSeed: "deepika" },
   { id: "ho-008", name: "Arjun Reddy", role: "Head of IT", department: "IT", email: "arjun.reddy@storeflow.corp", phone: "(+91) 98010-00008", avatarSeed: "arjun" },
-  { id: "ho-009", name: "Karan Malhotra", role: "Test User / Analyst", department: "IT", email: "karan.malhotra@storeflow.corp", phone: "(+91) 98010-00009", avatarSeed: "karan_test" },
+  { id: "ho-009", name: "VK Vaibhav (Member)", role: "Test User / Analyst", department: "IT", email: "vkvaibhav36@gmail.com", phone: "(+91) 98010-00009", avatarSeed: "vk_test" },
+  { id: "ho-010", name: "Vaibhav V Rajkumar (Admin)", role: "Test Admin", department: "Operations", email: "vaibhavvrajkumar@gmail.com", phone: "(+91) 98010-00010", avatarSeed: "vvr_test" },
+  { id: "ho-011", name: "Vaibhav Rajkumar (SA)", role: "Test SuperAdmin", department: "Executive Office", email: "vaibhhavrajkumar@gmail.com", phone: "(+91) 98010-00011", avatarSeed: "vr_test" },
 ];
 
 
@@ -259,8 +262,8 @@ export let mockApprovalRequests: ApprovalRequest[] = [
     projectName: "Mumbai Phoenix Mall Flagship",
     projectId: "proj-001",
     requestingDepartment: "Marketing",
-    requestorName: "Karan Malhotra",
-    requestorEmail: "karan.malhotra@storeflow.corp",
+    requestorName: "VK Vaibhav (Member)",
+    requestorEmail: "vkvaibhav36@gmail.com",
     details: "Need an additional ₹3,00,000 for targeted social media ads to boost pre-launch awareness for Mumbai. Expected ROI is an increase in footfall by 15% during opening week.",
     approverName: "Deepika Iyer", // Head of Marketing
     approverEmail: "deepika.iyer@storeflow.corp",
@@ -276,8 +279,8 @@ export let mockApprovalRequests: ApprovalRequest[] = [
     requestorName: "Rajesh Kumar",
     requestorEmail: "rajesh.kumar@franchise.example.com", // Example non-HO email
     details: "Proposing to engage 'SecureBharat Ltd.' for on-site security during mall operating hours in Bangalore. Contract details attached.",
-    approverName: "Karan Malhotra",
-    approverEmail: "karan.malhotra@storeflow.corp",
+    approverName: "VK Vaibhav (Member)",
+    approverEmail: "vkvaibhav36@gmail.com",
     status: "Pending",
     submissionDate: formatDate(addDays(today, -1)),
   },
@@ -301,8 +304,8 @@ export let mockApprovalRequests: ApprovalRequest[] = [
     projectName: "Delhi Connaught Place Express",
     projectId: "proj-003",
     requestingDepartment: "Property",
-    requestorName: "Karan Malhotra",
-    requestorEmail: "karan.malhotra@storeflow.corp",
+    requestorName: "VK Vaibhav (Member)",
+    requestorEmail: "vkvaibhav36@gmail.com",
     details: "Seeking approval to exercise the 1-year lease extension option for the Delhi Connaught Place location as per agreement.",
     approverName: "Meera Desai",
     approverEmail: "meera.desai@storeflow.corp",
@@ -314,8 +317,8 @@ export let mockApprovalRequests: ApprovalRequest[] = [
     id: 'appr-005',
     title: "Requisition for New HR Software (India)",
     requestingDepartment: "HR",
-    requestorName: "Karan Malhotra",
-    requestorEmail: "karan.malhotra@storeflow.corp",
+    requestorName: "VK Vaibhav (Member)",
+    requestorEmail: "vkvaibhav36@gmail.com",
     details: "Request to purchase 'HRConnect India Pro' software to streamline onboarding and payroll. Cost ₹1,50,000/year.",
     approverName: "Rohan Sharma",
     approverEmail: "rohan.sharma@storeflow.corp",
