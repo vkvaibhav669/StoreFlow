@@ -97,31 +97,26 @@ export default function StoreDetailsPage() {
     }
   }, [storeId, router, toast]);
 
-  const currentUserRole = React.useMemo(() => {
-    if (!user) return 'user';
-    return user.role || 'user';
-  }, [user]);
+  const currentUserRole = user?.role;
+  const isUserAdmin = currentUserRole === 'Admin';
+  const isUserSuperAdmin = currentUserRole === 'SuperAdmin';
+  const isUserMember = currentUserRole === 'Member';
 
-  const isUserAdminOrHod = currentUserRole === 'admin' || currentUserRole === 'hod';
-  const isStoreManager = React.useMemo(() => {
-    if (!user || !store) return false;
-    return store.type === 'FOFO' && store.manager === user.name;
-  }, [user, store]);
-
-  const canManageImprovements = isUserAdminOrHod || isStoreManager; 
-  const canManageStoreTasks = isUserAdminOrHod || isStoreManager; 
+  const canManageStoreFeatures = isUserAdmin || isUserSuperAdmin; // For adding points, tasks
 
   const canRequestOwnershipChange = React.useMemo(() => {
     if (!store) return false;
-    if (store.type === 'COCO') return isUserAdminOrHod;
-    if (store.type === 'FOFO') return isUserAdminOrHod || isStoreManager;
-    return false;
-  }, [store, isUserAdminOrHod, isStoreManager]);
+    return isUserAdmin || isUserSuperAdmin || (store.type === 'FOFO' && store.manager === user?.name);
+  }, [store, isUserAdmin, isUserSuperAdmin, user?.name]);
 
 
   const handleAddImprovementPoint = () => {
     if (!newImprovementPointText.trim() || !store || !user) {
       toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" });
+      return;
+    }
+    if (!canManageStoreFeatures) {
+      toast({ title: "Permission Denied", description: "You do not have permission to add improvement points.", variant: "destructive" });
       return;
     }
     const newPoint: ImprovementPoint = {
@@ -142,7 +137,10 @@ export default function StoreDetailsPage() {
   };
 
   const handleToggleOwnershipChangeRequest = () => {
-    if (!store) return;
+    if (!store || !canRequestOwnershipChange) {
+        toast({title: "Permission Denied", description: "You do not have permission to request an ownership change for this store.", variant: "destructive"});
+        return;
+    }
     const currentlyRequested = !!store.ownershipChangeRequested;
     const newRequestedState = !currentlyRequested;
     const targetType = store.type === 'COCO' ? 'FOFO' : 'COCO';
@@ -161,7 +159,10 @@ export default function StoreDetailsPage() {
   };
 
   const handleToggleImprovementResolved = (pointId: string) => {
-    if (!store || !user) return;
+    if (!store || !user || !canManageStoreFeatures) {
+        toast({title: "Permission Denied", description: "You do not have permission to update improvement points.", variant: "destructive"});
+        return;
+    }
     let pointIsNowResolved = false;
     const updatedPoints = (store.improvementPoints || []).map(p => {
       if (p.id === pointId) {
@@ -225,6 +226,10 @@ export default function StoreDetailsPage() {
       toast({ title: "Error", description: "Task title is required.", variant: "destructive" });
       return;
     }
+     if (!canManageStoreFeatures) {
+      toast({ title: "Permission Denied", description: "You do not have permission to add tasks.", variant: "destructive" });
+      return;
+    }
     const newTask: StoreTask = {
       id: `stask-${store.id}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       storeId: store.id,
@@ -246,8 +251,11 @@ export default function StoreDetailsPage() {
   };
   
   const handleOpenEditTaskDialog = (task: StoreTask) => {
+    if (!canManageStoreFeatures) {
+      toast({ title: "Permission Denied", description: "You do not have permission to edit tasks.", variant: "destructive" });
+      return;
+    }
     setEditingStoreTask(task);
-    // Initialize form with task data
     setNewTaskForm({
         title: task.title,
         description: task.description || "",
@@ -262,6 +270,10 @@ export default function StoreDetailsPage() {
     if (!editingStoreTask || !newTaskForm.title.trim() || !store || !user) {
         toast({ title: "Error", description: "Task title is required.", variant: "destructive" });
         return;
+    }
+    if (!canManageStoreFeatures) {
+      toast({ title: "Permission Denied", description: "You do not have permission to edit tasks.", variant: "destructive" });
+      return;
     }
     const updatedTask: StoreTask = {
         ...editingStoreTask,
@@ -283,7 +295,10 @@ export default function StoreDetailsPage() {
 
 
   const handleUpdateStoreTaskStatus = (taskId: string, newStatus: StoreTask['status']) => {
-    if (!store) return;
+    if (!store || !canManageStoreFeatures) { // Even changing status might be restricted for Members if not their task
+        toast({title: "Permission Denied", description: "You do not have permission to update task status.", variant: "destructive"});
+        return;
+    }
     const updatedTasks = (store.tasks || []).map(task =>
       task.id === taskId ? { ...task, status: newStatus } : task
     );
@@ -294,7 +309,10 @@ export default function StoreDetailsPage() {
   };
 
   const handleDeleteStoreTask = (taskId: string) => {
-    if (!store) return;
+    if (!store || !canManageStoreFeatures) {
+        toast({title: "Permission Denied", description: "You do not have permission to delete tasks.", variant: "destructive"});
+        return;
+    }
     const taskToDelete = store.tasks?.find(t => t.id === taskId);
     if (!taskToDelete) return;
 
@@ -435,46 +453,44 @@ export default function StoreDetailsPage() {
                     </DropdownMenu>
                 )}
             </div>
+            {canManageStoreFeatures && (
             <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-dashed">
-                 {canManageImprovements && (
-                    <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add Point
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[480px]">
-                            <DialogHeader>
-                                <DialogTitle>Add New Improvement Point</DialogTitle>
-                                <DialogDescription>
-                                    Describe the area for improvement or action needed for {store.name}.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 space-y-2">
-                                <Label htmlFor="improvement-text">Improvement Detail</Label>
-                                <Textarea
-                                    id="improvement-text"
-                                    value={newImprovementPointText}
-                                    onChange={(e) => setNewImprovementPointText(e.target.value)}
-                                    placeholder="e.g., Enhance visual merchandising near entrance."
-                                    rows={4}
-                                />
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button variant="outline">Cancel</Button>
-                                </DialogClose>
-                                <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim()}>Save Point</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                )}
-                {canManageStoreTasks && (
-                     <Button size="sm" onClick={() => { setIsAddTaskDialogOpen(true); setEditingStoreTask(null); setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" }); }}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Task
-                    </Button>
-                )}
+                <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm">
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Point
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[480px]">
+                        <DialogHeader>
+                            <DialogTitle>Add New Improvement Point</DialogTitle>
+                            <DialogDescription>
+                                Describe the area for improvement or action needed for {store.name}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-2">
+                            <Label htmlFor="improvement-text">Improvement Detail</Label>
+                            <Textarea
+                                id="improvement-text"
+                                value={newImprovementPointText}
+                                onChange={(e) => setNewImprovementPointText(e.target.value)}
+                                placeholder="e.g., Enhance visual merchandising near entrance."
+                                rows={4}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim()}>Save Point</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                 <Button size="sm" onClick={() => { setIsAddTaskDialogOpen(true); setEditingStoreTask(null); setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" }); }}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                </Button>
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -510,7 +526,7 @@ export default function StoreDetailsPage() {
                                                 </p>
                                             )}
                                         </div>
-                                        {canManageImprovements && (
+                                        {canManageStoreFeatures && (
                                            <div className="flex flex-col items-end space-y-1">
                                                 <Switch
                                                     id={`resolve-switch-${point.id}`}
@@ -623,7 +639,7 @@ export default function StoreDetailsPage() {
                           <h4 className="font-semibold text-md">{task.title}</h4>
                           {task.description && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{task.description}</p>}
                         </div>
-                         {canManageStoreTasks && (
+                         {canManageStoreFeatures && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -673,7 +689,7 @@ export default function StoreDetailsPage() {
               </ScrollArea>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No tasks match the current filter. {taskFilterStatus === "All" && "Try adding a new task!"}
+                No tasks match the current filter. {taskFilterStatus === "All" && canManageStoreFeatures && "Try adding a new task!"}
               </p>
             )}
           </CardContent>
@@ -760,4 +776,3 @@ export default function StoreDetailsPage() {
     </section>
   );
 }
-

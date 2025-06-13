@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -10,8 +9,9 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById, mockProjects, mockHeadOfficeContacts } from "@/lib/data";
-import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember } from "@/types";
-import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown } from "lucide-react";
+import * as authService from "@/lib/auth"; // For fetching all users to check roles
+import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
+import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, formatDate as utilFormatDate, addDays as utilAddDays } from "@/lib/utils";
@@ -62,31 +62,35 @@ interface DepartmentCardProps {
   notes?: string;
   children?: React.ReactNode;
   onClick?: () => void;
+  isLockedForCurrentUser?: boolean;
 }
 
-function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: DepartmentCardProps) {
+function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick, isLockedForCurrentUser }: DepartmentCardProps) {
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const totalTasks = tasks.length;
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const activeTasksToList = tasks.filter(task => task.status === 'Pending' || task.status === 'In Progress');
 
+  const effectiveOnClick = isLockedForCurrentUser ? undefined : onClick;
+
   return (
-    <Card onClick={onClick} className={cn(onClick ? "cursor-pointer hover:shadow-lg transition-shadow" : "")}>
+    <Card onClick={effectiveOnClick} className={cn(effectiveOnClick ? "cursor-pointer hover:shadow-lg transition-shadow" : "opacity-75", isLockedForCurrentUser && "bg-muted/50")}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Icon className="h-5 w-5 text-primary" />
           {title}
+          {isLockedForCurrentUser && <Lock className="h-4 w-4 text-muted-foreground" titleAccess="Access restricted" />}
         </CardTitle>
-        {totalTasks > 0 && (
+        {!isLockedForCurrentUser && totalTasks > 0 && (
           <CardDescription>{completedTasks} of {totalTasks} tasks completed.</CardDescription>
         )}
       </CardHeader>
       <CardContent className="space-y-3">
-        {totalTasks > 0 && <Progress value={progress} className="h-2" />}
-        {notes && <p className="text-sm text-muted-foreground italic">{notes}</p>}
-        {children}
-        {activeTasksToList.length > 0 && (
+        {!isLockedForCurrentUser && totalTasks > 0 && <Progress value={progress} className="h-2" />}
+        {!isLockedForCurrentUser && notes && <p className="text-sm text-muted-foreground italic">{notes}</p>}
+        {!isLockedForCurrentUser && children}
+        {!isLockedForCurrentUser && activeTasksToList.length > 0 && (
           <ul className="space-y-1 text-sm">
             {activeTasksToList.slice(0, 3).map(task => (
               <li key={task.id} className="flex items-center justify-between">
@@ -99,8 +103,9 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick }: 
             {activeTasksToList.length > 3 && <li className="text-xs text-muted-foreground text-center">+{activeTasksToList.length - 3} more active tasks</li>}
           </ul>
         )}
-        {activeTasksToList.length === 0 && tasks.length > 0 && !children && <p className="text-sm text-muted-foreground">No active (Pending/In Progress) tasks for this department.</p>}
-        {tasks.length === 0 && !children && <p className="text-sm text-muted-foreground">No tasks for this department yet.</p>}
+        {!isLockedForCurrentUser && activeTasksToList.length === 0 && tasks.length > 0 && !children && <p className="text-sm text-muted-foreground">No active (Pending/In Progress) tasks for this department.</p>}
+        {!isLockedForCurrentUser && tasks.length === 0 && !children && <p className="text-sm text-muted-foreground">No tasks for this department yet.</p>}
+        {isLockedForCurrentUser && <p className="text-sm text-muted-foreground text-center py-2">Details for this department are restricted for your role or project assignment.</p>}
       </CardContent>
     </Card>
   );
@@ -180,26 +185,28 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   const [newMemberIsProjectHod, setNewMemberIsProjectHod] = React.useState(false);
 
   const [isConfirmRemoveMemberDialogOpen, setIsConfirmRemoveMemberDialogOpen] = React.useState(false);
-  const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string } | null>(null);
+  const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string, role?: UserRole } | null>(null);
 
 
-  const currentUserRole = React.useMemo(() => {
-    if (!user) return 'user';
-    if (user.email === 'priya.verma@storeflow.corp') return 'admin'; // Updated admin email
-    return user.role || 'user';
-  }, [user]);
+  const currentUserRole = user?.role;
+  const isUserSuperAdmin = currentUserRole === 'SuperAdmin';
+  const isUserAdmin = currentUserRole === 'Admin';
+  const isUserMember = currentUserRole === 'Member';
 
-  const isUserAdminOrHod = React.useMemo(() => currentUserRole === 'admin' || currentUserRole === 'hod', [currentUserRole]);
+  const canEditProject = isUserSuperAdmin || isUserAdmin;
+  const canManageAnyMember = isUserSuperAdmin || isUserAdmin;
+
 
   const visibleFiles = React.useMemo(() => {
     if (!projectData) return [];
+    // Members can see the files tab and non-HOD files. HOD-only files are restricted further.
     return projectData.documents.filter(doc => {
       if (doc.hodOnly) {
-        return isUserAdminOrHod;
+        return isUserSuperAdmin || isUserAdmin; // Assuming Admins are like HODs for file viewing
       }
       return true;
     });
-  }, [projectData, isUserAdminOrHod]);
+  }, [projectData, isUserSuperAdmin, isUserAdmin]);
 
   const filteredTasksForTable = React.useMemo(() => {
     if (!projectData) return [];
@@ -214,6 +221,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     const currentMemberEmails = (projectData.members || []).map(m => m.email);
     return mockHeadOfficeContacts.filter(contact => !currentMemberEmails.includes(contact.email));
   }, [projectData]);
+
+  const currentUserProjectMembership = React.useMemo(() => {
+    if (!user || !projectData?.members) return undefined;
+    return projectData.members.find(m => m.email === user.email);
+  }, [user, projectData?.members]);
 
 
   React.useEffect(() => {
@@ -284,6 +296,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     if (!newTaskName || !newTaskDepartment || !newTaskAssignedTo) {
       toast({ title: "Error", description: "Task Name, Department, and Assignee are required.", variant: "destructive" });
       return;
+    }
+    // Member role cannot assign tasks - this button would be hidden, but good to double check
+    if (isUserMember) {
+        toast({ title: "Permission Denied", description: "Members cannot assign new tasks.", variant: "destructive"});
+        return;
     }
 
     const newTaskToAdd: Task = {
@@ -460,10 +477,30 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
     const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
     const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority;
+    
+    // Members can only change status of tasks assigned to them (or if unassigned but in their dept?)
+    // For simplicity, let's say Members can only change status for now if it's their task.
+    // Admins/SuperAdmins can change anything.
+    const isTaskAssignedToCurrentUser = selectedTask.assignedTo === user.email || selectedTask.assignedTo === user.name;
+
+    if (isUserMember && !isTaskAssignedToCurrentUser && (newAssignedTo !== selectedTask.assignedTo || newDepartment !== selectedTask.department || newPriority !== selectedTask.priority) ) {
+        toast({ title: "Permission Denied", description: "Members can only update the status of their own tasks or tasks in their department if unassigned. Other fields cannot be changed.", variant: "destructive"});
+        return;
+    }
+     if (isUserMember && (newDepartment !== selectedTask.department || newPriority !== selectedTask.priority)) {
+        toast({ title: "Permission Denied", description: "Members cannot change task department or priority.", variant: "destructive"});
+        // Allow status and assignee change if it's their task
+        if (newAssignedTo !== selectedTask.assignedTo && !isTaskAssignedToCurrentUser) {
+             return;
+        }
+    }
+
+
     const hasChanges = newStatus !== selectedTask.status ||
       newAssignedTo !== (selectedTask.assignedTo || "") ||
       newDepartment !== selectedTask.department ||
       newPriority !== (selectedTask.priority || "Medium");
+
     if (!hasChanges) {
       toast({ title: "No Changes", description: "No details were modified for this task.", variant: "default" });
       setIsViewTaskDialogOpen(false);
@@ -599,7 +636,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     toast({ title: "Reply Posted to Task Comment", description: "Your reply has been added." });
   };
 
-  const handleOpenDepartmentDialog = (title: string, tasks: Task[] = []) => {
+  const handleOpenDepartmentDialog = (title: string, tasks: Task[] = [], isLocked?: boolean) => {
+    if (isLocked) {
+        toast({ title: "Access Restricted", description: "You do not have permission to view details for this department.", variant: "default"});
+        return;
+    }
     setDepartmentDialogTitle(`${title} - Tasks`);
     setDepartmentDialogTasks(tasks);
     setIsDepartmentTasksDialogOpen(true);
@@ -620,7 +661,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   };
 
   const handleSaveProjectChanges = () => {
-    if (!projectData || !editingProjectForm.status) return;
+    if (!projectData || !editingProjectForm.status || !canEditProject) {
+      toast({ title: "Permission Denied or Error", description: "You do not have permission to edit this project, or there was an error.", variant: "destructive"});
+      return;
+    }
 
     const updatedProjectData: StoreProject = {
         ...projectData,
@@ -702,7 +746,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
 
   const handleToggleTimelineBlockerResolution = (blockerId: string) => {
-    if (!projectData) return;
+    if (!projectData || !canEditProject) return;
     const updatedBlockers = (projectData.blockers || []).map(b =>
       b.id === blockerId
         ? { ...b, isResolved: !b.isResolved, dateResolved: !b.isResolved ? utilFormatDate(new Date()) : undefined }
@@ -710,7 +754,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     );
     const updatedProject = { ...projectData, blockers: updatedBlockers };
     setProjectData(updatedProject);
-    setEditingBlockers(updatedBlockers);
+    setEditingBlockers(updatedBlockers); // Also update the editing state if Edit Project dialog might be open
     const projectIndex = mockProjects.findIndex(p => p.id === projectData.id);
     if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
@@ -719,7 +763,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   };
 
   const handleRemoveTimelineBlocker = (blockerId: string) => {
-    if (!projectData) return;
+    if (!projectData || !canEditProject) return;
     const updatedBlockers = (projectData.blockers || []).filter(b => b.id !== blockerId);
     const updatedProject = { ...projectData, blockers: updatedBlockers };
     setProjectData(updatedProject);
@@ -732,8 +776,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
   };
 
   const handleAddProjectMember = () => {
-    if (!selectedNewMemberEmail || !projectData) {
-      toast({ title: "Error", description: "Please select a person to add.", variant: "destructive" });
+    if (!selectedNewMemberEmail || !projectData || !canEditProject) { // Also check edit permission
+      toast({ title: "Error or Permission Denied", description: "Please select a person to add, or you may not have permission.", variant: "destructive" });
       return;
     }
     const personToAdd = mockHeadOfficeContacts.find(p => p.email === selectedNewMemberEmail);
@@ -769,22 +813,57 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     setIsAddMemberDialogOpen(false);
   };
 
-  const handleRemoveProjectMember = (memberEmail: string) => {
-    if (!projectData) return;
+  const confirmRemoveMember = () => {
+    if (!memberToRemoveInfo || !projectData || !user?.role) {
+        setIsConfirmRemoveMemberDialogOpen(false);
+        return;
+    }
+    
+    const allUsers = authService.getAllMockUsers(); // Fetch all users to check roles
+    const targetUser = allUsers.find(u => u.email === memberToRemoveInfo.email);
+    const targetUserRole = targetUser?.role;
+
+    let canProceed = false;
+    if (user.role === 'SuperAdmin') {
+        canProceed = targetUserRole !== 'SuperAdmin'; // SuperAdmin cannot remove another SuperAdmin (typically)
+        if (!canProceed && targetUserRole === 'SuperAdmin') toast({ title: "Permission Denied", description: "SuperAdmins cannot remove other SuperAdmins.", variant: "destructive"});
+    } else if (user.role === 'Admin') {
+        canProceed = targetUserRole === 'Member';
+        if (!canProceed) toast({ title: "Permission Denied", description: "Admins can only remove Members.", variant: "destructive"});
+    }
+
+    if (!canProceed) {
+        setIsConfirmRemoveMemberDialogOpen(false);
+        setMemberToRemoveInfo(null);
+        return;
+    }
+
     setProjectData(prev => {
       if (!prev) return null;
-      const updatedMembers = (prev.members || []).filter(m => m.email !== memberEmail);
+      const updatedMembers = (prev.members || []).filter(m => m.email !== memberToRemoveInfo.email);
       const updatedProject = { ...prev, members: updatedMembers };
       const projectIndex = mockProjects.findIndex(p => p.id === updatedProject.id);
       if (projectIndex !== -1) {
         mockProjects[projectIndex] = updatedProject;
       }
-      const removedMember = (prev.members || []).find(m => m.email === memberEmail);
-      toast({ title: "Member Removed", description: `${removedMember?.name || 'Member'} has been removed from the project.` });
+      toast({ title: "Member Removed", description: `${memberToRemoveInfo.name} has been removed from the project.` });
       return updatedProject;
     });
-    setMemberToRemoveInfo(null); // Clear after removal
-    setIsConfirmRemoveMemberDialogOpen(false); // Close dialog
+    setMemberToRemoveInfo(null); 
+    setIsConfirmRemoveMemberDialogOpen(false); 
+  };
+
+  const openRemoveMemberDialog = (member: ProjectMember) => {
+    if (!user?.role) return;
+    const allUsers = authService.getAllMockUsers();
+    const targetUser = allUsers.find(u => u.email === member.email);
+
+    if (user.role === 'SuperAdmin' || (user.role === 'Admin' && targetUser?.role === 'Member')) {
+      setMemberToRemoveInfo({ email: member.email, name: member.name, role: targetUser?.role });
+      setIsConfirmRemoveMemberDialogOpen(true);
+    } else {
+       toast({ title: "Permission Denied", description: "You do not have permission to remove this member.", variant: "destructive"});
+    }
   };
 
 
@@ -799,7 +878,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         </Button>
         <h1 id="project-details-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">{projectData.name}</h1>
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-          {isUserAdminOrHod && (
+          {canEditProject && (
             <Dialog open={isEditProjectDialogOpen} onOpenChange={(isOpen) => {
               setIsEditProjectDialogOpen(isOpen);
               if (isOpen && projectData) {
@@ -1006,6 +1085,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               setNewTaskPriority("Medium");
             }
           }}>
+           {!isUserMember && (
             <DialogTrigger asChild>
               <Button size="sm" className="h-8 gap-1">
                 <PlusCircle className="h-3.5 w-3.5" />
@@ -1014,6 +1094,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 </span>
               </Button>
             </DialogTrigger>
+           )}
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Add New Task</DialogTitle>
@@ -1148,6 +1229,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     <Input id="docAiHint" value={newDocumentDataAiHint} onChange={(e) => setNewDocumentDataAiHint(e.target.value)} className="sm:col-span-3" placeholder="e.g., modern storefront" />
                   </div>
                 )}
+                {(isUserAdmin || isUserSuperAdmin) && ( // Only Admin/SuperAdmin can mark HOD only
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="docHodOnly" className="sm:text-right">
                     Visibility
@@ -1161,6 +1243,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     <Label htmlFor="docHodOnly" className="font-normal text-sm">Share with HOD only</Label>
                   </div>
                 </div>
+                )}
               </div>
               <DialogFooter>
                 <DialogClose asChild>
@@ -1230,11 +1313,11 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
 
         <TabsContent value="departments" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property?.tasks || [])} />}
+            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', departments.property?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Property')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Property'} />}
 
             {departments.project &&
-              <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project?.tasks || [])}>
-                {projectData.threeDRenderUrl && (
+              <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', departments.project?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Project')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Project'}>
+                {!(isUserMember && currentUserProjectMembership?.department !== 'Project') && projectData.threeDRenderUrl && (
                   <div className="my-2">
                     <p className="text-xs font-medium mb-1">3D Store Visual:</p>
                     <a href={projectData.threeDRenderUrl} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
@@ -1245,19 +1328,19 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
               </DepartmentCard>
             }
 
-            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising?.tasks || [])} />}
+            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', departments.merchandising?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Merchandising')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Merchandising'} />}
 
             {departments.hr &&
-              <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [])}>
-                {departments.hr.totalNeeded && (
+              <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', departments.hr?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'HR')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'HR'}>
+                {!(isUserMember && currentUserProjectMembership?.department !== 'HR') && departments.hr.totalNeeded && (
                   <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
                 )}
               </DepartmentCard>
             }
 
             {departments.marketing &&
-              <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing?.tasks || [])}>
-                {departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
+              <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', departments.marketing?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'Marketing')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'Marketing'}>
+                {!(isUserMember && currentUserProjectMembership?.department !== 'Marketing') && departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
                   <div className="mt-2">
                     <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
                     <ul className="space-y-0.5 text-xs">
@@ -1270,7 +1353,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
             }
 
             {departments.it && (
-              <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [])} />
+              <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', departments.it?.tasks || [], isUserMember && currentUserProjectMembership?.department !== 'IT')} isLockedForCurrentUser={isUserMember && currentUserProjectMembership?.department !== 'IT'} />
             )}
           </div>
         </TabsContent>
@@ -1282,7 +1365,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                 <CardTitle id="project-members-heading">Project Members ({projectData.members?.length || 0})</CardTitle>
                 <CardDescription>Team members assigned to this project.</CardDescription>
               </div>
-              {isUserAdminOrHod && (
+              {canEditProject && ( // Only Admin/SuperAdmin can add members
                  <Dialog open={isAddMemberDialogOpen} onOpenChange={(isOpen) => {
                     setIsAddMemberDialogOpen(isOpen);
                     if (!isOpen) {
@@ -1368,15 +1451,12 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                             </Badge>
                           )}
                         </div>
-                        {isUserAdminOrHod && (
+                        {canManageAnyMember && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              setMemberToRemoveInfo({ email: member.email, name: member.name });
-                              setIsConfirmRemoveMemberDialogOpen(true);
-                            }}
+                            onClick={() => openRemoveMemberDialog(member)}
                             aria-label={`Remove ${member.name}`}
                           >
                             <UserX className="h-4 w-4" />
@@ -1501,7 +1581,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">No files viewable by you for this project yet.</p>
+                <p className="text-muted-foreground text-center py-4">No files viewable by you for this project yet.</p>
               )}
             </CardContent>
           </Card>
@@ -1592,7 +1672,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                               <p className="text-xs text-muted-foreground mt-2">Resolved On: {format(new Date(blocker.dateResolved), "PPP")}</p>
                             )}
                           </CardContent>
-                          {isUserAdminOrHod && (
+                          {canEditProject && ( // Only Admin/SuperAdmin can manage blockers
                             <CardFooter className="p-4 pt-0 flex justify-end gap-2">
                                <Button
                                 variant="ghost"
@@ -1694,7 +1774,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   <Select
                     value={editingSelectedTaskDepartment}
                     onValueChange={(value) => setEditingSelectedTaskDepartment(value as Department | "")}
-                    disabled={!isUserAdminOrHod}
+                    disabled={isUserMember} // Members cannot change department
                   >
                     <SelectTrigger id="taskDepartmentEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select department" />
@@ -1711,7 +1791,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   <Select
                     value={editingSelectedTaskPriority}
                     onValueChange={(value) => setEditingSelectedTaskPriority(value as TaskPriority | "")}
-                    disabled={!isUserAdminOrHod}
+                    disabled={isUserMember} // Members cannot change priority
                   >
                     <SelectTrigger id="taskPriorityEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select priority" />
@@ -1728,6 +1808,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                   <Select
                     value={editingTaskStatus}
                     onValueChange={(value) => setEditingTaskStatus(value as Task['status'] | "")}
+                    // All roles can change status
                   >
                     <SelectTrigger id="taskStatusEdit" className="sm:col-span-2">
                       <SelectValue placeholder="Select status" />
@@ -1760,6 +1841,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
                     onChange={(e) => setEditingTaskAssignedTo(e.target.value)}
                     className="sm:col-span-2"
                     placeholder="Assignee name"
+                    disabled={isUserMember && !(selectedTask.assignedTo === user.email || selectedTask.assignedTo === user.name)} // Member can only reassign their own tasks or unassigned from their dept.
                   />
                 </div>
               </div>
@@ -1880,7 +1962,8 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
         </DialogContent>
       </Dialog>
 
-       {/* Add Milestone Dialog */}
+       {/* Add Milestone Dialog (Only for Admin/SuperAdmin) */}
+      {canEditProject && (
       <Dialog open={isAddMilestoneDialogOpen} onOpenChange={(isOpen) => {
           setIsAddMilestoneDialogOpen(isOpen);
           if (!isOpen) {
@@ -1914,8 +1997,10 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
-      {/* Add Blocker Dialog */}
+      {/* Add Blocker Dialog (Only for Admin/SuperAdmin) */}
+      {canEditProject && (
       <Dialog open={isAddBlockerDialogOpen} onOpenChange={(isOpen) => {
           setIsAddBlockerDialogOpen(isOpen);
           if (!isOpen) {
@@ -1944,6 +2029,7 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Confirm Remove Member Dialog */}
       <AlertDialog open={isConfirmRemoveMemberDialogOpen} onOpenChange={setIsConfirmRemoveMemberDialogOpen}>
@@ -1951,17 +2037,13 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Member Removal</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove {memberToRemoveInfo?.name || 'this member'} from the project? This action cannot be undone.
+              Are you sure you want to remove {memberToRemoveInfo?.name || 'this member'} (Role: {memberToRemoveInfo?.role || 'N/A'}) from the project? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setMemberToRemoveInfo(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (memberToRemoveInfo) {
-                  handleRemoveProjectMember(memberToRemoveInfo.email);
-                }
-              }}
+              onClick={confirmRemoveMember}
               className={buttonVariants({ variant: "destructive" })}
             >
               Confirm Removal
@@ -1973,6 +2055,3 @@ export default function ProjectDetailsPage({ params: paramsProp }: { params: { i
     </section>
   );
 }
-
-
-    

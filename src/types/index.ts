@@ -1,5 +1,4 @@
 
-
 export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
 
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
@@ -87,7 +86,7 @@ export interface ProjectMember { // This type is used for defining project team 
   department?: Department; // Department they belong to in general
   avatarSeed?: string;
   isProjectHod?: boolean;
-  role?: string; // General role in company from mockHeadOfficeContacts
+  role?: string; // General role in company from mockHeadOfficeContacts - This might refer to their global role in the future
   phone?: string; // from mockHeadOfficeContacts
 }
 
@@ -129,11 +128,13 @@ export interface StoreProject {
   members?: ProjectMember[];
 }
 
+export type UserRole = "Member" | "Admin" | "SuperAdmin";
+
 export interface User {
   id: string;
   name?: string;
   email: string;
-  role: "admin" | "user" | "hod";
+  role: UserRole;
 }
 
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Withdrawn";

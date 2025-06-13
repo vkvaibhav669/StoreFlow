@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react"; 
@@ -19,7 +18,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase, Globe } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -36,15 +35,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-// Removed Select import as it might only be used for language now
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@/types";
+import type { User, UserRole } from "@/types";
+import type { NavItem } from "@/types/nav";
+
 
 interface SidebarNavProps {
-  // Add any specific props if needed
+  items: NavItem[];
 }
 
-function SidebarNav({}: SidebarNavProps) {
+function SidebarNav({ items }: SidebarNavProps) {
   const pathname = usePathname();
   const { open } = useSidebar();
   const { user, loading } = useAuth();
@@ -59,7 +59,7 @@ function SidebarNav({}: SidebarNavProps) {
     );
   }
 
-  if (!user) { // Only show minimal navigation if not logged in
+  if (!user) { 
     return (
        <nav className="flex flex-col gap-1 px-2 mt-4">
          <Link href="/auth/signin" passHref legacyBehavior>
@@ -80,7 +80,7 @@ function SidebarNav({}: SidebarNavProps) {
 
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {siteConfig.sidebarNav.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         return (
           <Link key={item.href} href={item.href} passHref legacyBehavior>
@@ -152,6 +152,7 @@ type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme" | "green-
 
 function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
+  // const [selectedLanguage, setSelectedLanguage] = React.useState("en");
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -160,6 +161,9 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
       const initialTheme = storedTheme || "blue-theme"; 
       setCurrentTheme(initialTheme);
       applyTheme(initialTheme);
+
+      // const storedLanguage = localStorage.getItem("appLanguage") || "en";
+      // setSelectedLanguage(storedLanguage);
 
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => {
@@ -201,6 +205,18 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
     applyTheme(newTheme);
   };
   
+  // const handleLanguageChange = (langCode: string) => {
+  //   setSelectedLanguage(langCode);
+  //   if (typeof window !== "undefined") {
+  //     localStorage.setItem("appLanguage", langCode);
+  //   }
+  //   const langName = langCode === "hi" ? "Hindi" : langCode === "ta" ? "Tamil" : langCode === "bn" ? "Bengali" : langCode === "te" ? "Telugu" : langCode === "mr" ? "Marathi" : "English";
+  //   toast({
+  //     title: "Language Preference Updated",
+  //     description: `Language set to ${langName}. Full application translation is not yet implemented.`,
+  //   });
+  // };
+  
   const isCustomThemeActive = currentTheme === "blue-theme" || currentTheme === "pink-theme" || currentTheme === "green-theme";
 
   return (
@@ -218,7 +234,7 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
           </TabsList>
           <TabsContent value="account" className="pt-6 space-y-6">
-            <div>
+             <div>
                 <Label className="text-base font-medium">Profile Management</Label>
                  <p className="text-sm text-muted-foreground mt-1">
                     Account management features (e.g., change password, update profile details, language preferences) are not fully implemented in this prototype.
@@ -359,6 +375,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  const getSidebarItemsForRole = (role: UserRole | undefined): NavItem[] => {
+    if (!role) return [];
+    if (role === 'Member') {
+      return siteConfig.sidebarNav.filter(item =>
+        ['/dashboard', '/my-stores', '/my-tasks', '/my-approvals'].includes(item.href)
+      );
+    }
+    // Admin and SuperAdmin see all items by default from siteConfig
+    return siteConfig.sidebarNav;
+  };
+
+  const sidebarNavItems = React.useMemo(() => getSidebarItemsForRole(user?.role), [user?.role]);
+
 
   function Header() {
     return (
@@ -384,7 +413,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 {notifications.length > 0 ? (
                   notifications.map(notification => (
                     <DropdownMenuItem key={notification.id} asChild>
-                      <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", notification.seen && "text-muted-foreground")}>
+                      <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", !notification.seen && "font-semibold")}>
                         {notification.text}
                       </Link>
                     </DropdownMenuItem>
@@ -423,7 +452,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <DropdownMenuContent align="end">
                 {user ? (
                   <>
-                    <DropdownMenuLabel>{user.name || user.email}</DropdownMenuLabel>
+                    <DropdownMenuLabel>{user.name || user.email} <Badge variant="outline" className="ml-2">{user.role}</Badge></DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/dashboard')}>Dashboard</DropdownMenuItem>
                      <DropdownMenuItem onClick={() => router.push('/contact-ho')}>
@@ -506,7 +535,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </SidebarHeader>
             <SidebarContent className='flex-1 overflow-y-auto'>
               <ScrollArea className='h-full'>
-                <SidebarNav />
+                <SidebarNav items={sidebarNavItems} />
               </ScrollArea>
             </SidebarContent>
             <SidebarFooter className='p-2 border-t'>

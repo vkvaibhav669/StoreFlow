@@ -100,6 +100,8 @@ export default function DashboardPage() {
     storeOwnershipFilter: "All" as StoreType | "All",
   });
 
+  const canAddProject = user?.role === 'Admin' || user?.role === 'SuperAdmin';
+
   React.useEffect(() => {
     if (!loading && !user) {
       router.replace("/auth/signin");
@@ -128,6 +130,10 @@ export default function DashboardPage() {
     if (!newProjectName.trim() || !newProjectLocation.trim()) {
       alert("Project Name and Location are required.");
       return;
+    }
+    if (!canAddProject) {
+        alert("You do not have permission to add projects.");
+        return;
     }
 
     const today = new Date();
@@ -274,111 +280,112 @@ export default function DashboardPage() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
-                setIsAddProjectDialogOpen(isOpen);
-                if (!isOpen) {
-                    setNewProjectName("");
-                    setNewProjectLocation("");
-                    setNewProjectFranchiseType("COCO");
-                    setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
-                    setMarkAsUpcoming(false);
-                }
-            }}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-8 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Project
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Add New Project</DialogTitle>
-                  <DialogDescription>
-                    Enter the details for your new store project.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                    <Label htmlFor="projectName" className="sm:text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="projectName"
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      className="sm:col-span-3"
-                      placeholder="e.g., City Center Flagship"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                    <Label htmlFor="projectLocation" className="sm:text-right">
-                      Location
-                    </Label>
-                    <Input
-                      id="projectLocation"
-                      value={newProjectLocation}
-                      onChange={(e) => setNewProjectLocation(e.target.value)}
-                      className="sm:col-span-3"
-                      placeholder="e.g., 789 Market St, Big City"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                    <Label htmlFor="franchiseType" className="sm:text-right">
-                      Franchise Type
-                    </Label>
-                    <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)}>
-                        <SelectTrigger id="franchiseType" className="sm:col-span-3">
-                            <SelectValue placeholder="Select franchise type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {allStoreTypes.map(type => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
-                    <Label className="sm:text-right pt-2">
-                      Departments
-                    </Label>
-                    <div className="sm:col-span-3 grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-2">
-                      {allDepartmentKeys.map(dept => (
-                        <div key={dept} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`dept-${dept}`}
-                            checked={selectedDepartments[dept]}
-                            onCheckedChange={(checked) => handleDepartmentChange(dept, !!checked)}
-                          />
-                          <Label htmlFor={`dept-${dept}`} className="font-normal">{dept}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                    <Label htmlFor="markUpcoming" className="sm:text-right">
-                      Options
-                    </Label>
-                    <div className="sm:col-span-3 flex items-center space-x-2">
-                      <Checkbox
-                        id="markUpcoming"
-                        checked={markAsUpcoming}
-                        onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
+            {canAddProject && (
+              <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
+                  setIsAddProjectDialogOpen(isOpen);
+                  if (!isOpen) {
+                      setNewProjectName("");
+                      setNewProjectLocation("");
+                      setNewProjectFranchiseType("COCO");
+                      setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
+                      setMarkAsUpcoming(false);
+                  }
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-8 gap-1">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Add Project
+                    </span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Add New Project</DialogTitle>
+                    <DialogDescription>
+                      Enter the details for your new store project.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                      <Label htmlFor="projectName" className="sm:text-right">
+                        Name
+                      </Label>
+                      <Input
+                        id="projectName"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        className="sm:col-span-3"
+                        placeholder="e.g., City Center Flagship"
                       />
-                      <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                      <Label htmlFor="projectLocation" className="sm:text-right">
+                        Location
+                      </Label>
+                      <Input
+                        id="projectLocation"
+                        value={newProjectLocation}
+                        onChange={(e) => setNewProjectLocation(e.target.value)}
+                        className="sm:col-span-3"
+                        placeholder="e.g., 789 Market St, Big City"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                      <Label htmlFor="franchiseType" className="sm:text-right">
+                        Franchise Type
+                      </Label>
+                      <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)}>
+                          <SelectTrigger id="franchiseType" className="sm:col-span-3">
+                              <SelectValue placeholder="Select franchise type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {allStoreTypes.map(type => (
+                                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
+                      <Label className="sm:text-right pt-2">
+                        Departments
+                      </Label>
+                      <div className="sm:col-span-3 grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-2">
+                        {allDepartmentKeys.map(dept => (
+                          <div key={dept} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`dept-${dept}`}
+                              checked={selectedDepartments[dept]}
+                              onCheckedChange={(checked) => handleDepartmentChange(dept, !!checked)}
+                            />
+                            <Label htmlFor={`dept-${dept}`} className="font-normal">{dept}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                      <Label htmlFor="markUpcoming" className="sm:text-right">
+                        Options
+                      </Label>
+                      <div className="sm:col-span-3 flex items-center space-x-2">
+                        <Checkbox
+                          id="markUpcoming"
+                          checked={markAsUpcoming}
+                          onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
+                        />
+                        <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                     <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button onClick={handleAddProject}>Create Project</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                       <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleAddProject}>Create Project</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
       </div>
 

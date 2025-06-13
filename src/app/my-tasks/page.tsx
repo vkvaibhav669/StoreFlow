@@ -53,7 +53,6 @@ export default function MyTasksPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // State for Assign New Task tab
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
@@ -66,13 +65,14 @@ export default function MyTasksPage() {
   const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
   const assignToInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Effect for "My Assigned Tasks"
+  const canAssignTasks = user?.role === 'Admin' || user?.role === 'SuperAdmin';
+
   React.useEffect(() => {
     const tasksForCurrentUser: UserTask[] = [];
     mockProjects.forEach((project: StoreProject) => {
       project.tasks.forEach((task: Task) => {
         const isAssignedToCurrentUser = 
-          task.assignedTo === "Current User" ||
+          task.assignedTo === "Current User" || // This generic assignment might need rethinking with real auth
           (user && user.name && task.assignedTo === user.name) ||
           (user && user.email && task.assignedTo === user.email);
 
@@ -88,7 +88,6 @@ export default function MyTasksPage() {
     setUserTasks(tasksForCurrentUser);
   }, [user]);
 
-  // Effect for "Assign New Task" assignee suggestions
   React.useEffect(() => {
     if (assignToSearchTerm.trim() === "") {
       setAssignToSuggestions([]);
@@ -146,6 +145,11 @@ export default function MyTasksPage() {
   const handleAssignTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!canAssignTasks) {
+        toast({ title: "Permission Denied", description: "You do not have permission to assign tasks.", variant: "destructive" });
+        return;
+    }
+
     if (!selectedProjectId || !taskName || !selectedDepartment || !selectedAssigneeInfo?.email) {
       toast({
         title: "Error",
@@ -188,11 +192,12 @@ export default function MyTasksPage() {
         (targetProject.departments[deptKey] as { tasks: Task[] }).tasks = [];
       }
       (targetProject.departments[deptKey] as { tasks: Task[] }).tasks.push(newTask);
-    } else if (targetProject.departments && deptKey === 'it') {
+    } else if (targetProject.departments && deptKey === 'it') { // Handle case where 'it' department might not exist initially
        targetProject.departments.it = { ...targetProject.departments.it, tasks: [...(targetProject.departments.it?.tasks || []), newTask] };
-    } else if (targetProject.departments) {
+    } else if (targetProject.departments) { // Generic fallback for other departments
         targetProject.departments[deptKey] = { tasks: [newTask] };
     }
+
 
     targetProject.currentProgress = calculateOverallProgress(targetProject.tasks);
 
@@ -208,9 +213,9 @@ export default function MyTasksPage() {
       <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl">My Tasks</h1>
       
       <Tabs defaultValue="my-assigned-tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={cn("grid w-full", canAssignTasks ? "grid-cols-2" : "grid-cols-1")}>
           <TabsTrigger value="my-assigned-tasks">My Assigned Tasks ({userTasks.length})</TabsTrigger>
-          <TabsTrigger value="assign-new-task">Assign New Task</TabsTrigger>
+          {canAssignTasks && <TabsTrigger value="assign-new-task">Assign New Task</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="my-assigned-tasks" className="mt-4">
@@ -273,193 +278,194 @@ export default function MyTasksPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="assign-new-task" className="mt-4">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle id="assign-task-form-heading" className="text-xl">Assign New Task</CardTitle>
-              <CardDescription>Fill in the details below to assign a new task.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAssignTaskSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="project-assign">Project *</Label>
-                  <Select value={selectedProjectId} onValueChange={setSelectedProjectId} required>
-                    <SelectTrigger id="project-assign">
-                      <SelectValue placeholder="Select a project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="taskName-assign">Task Name *</Label>
-                  <Input
-                    id="taskName-assign"
-                    value={taskName}
-                    onChange={(e) => setTaskName(e.target.value)}
-                    placeholder="e.g., Finalize budget proposal"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="taskDescription-assign">Task Description (Optional)</Label>
-                  <Textarea
-                    id="taskDescription-assign"
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    placeholder="Provide more details about the task..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {canAssignTasks && (
+          <TabsContent value="assign-new-task" className="mt-4">
+            <Card className="max-w-2xl mx-auto">
+              <CardHeader>
+                <CardTitle id="assign-task-form-heading" className="text-xl">Assign New Task</CardTitle>
+                <CardDescription>Fill in the details below to assign a new task.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleAssignTaskSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="assignedTo-assign">Assign To *</Label>
-                    <Popover open={isAssignToPopoverOpen} onOpenChange={setIsAssignToPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <Input
-                          type="text"
-                          id="assignedTo-assign"
-                          ref={assignToInputRef}
-                          placeholder="Type name or email..."
-                          value={assignToSearchTerm}
-                          onChange={(e) => {
-                            setAssignToSearchTerm(e.target.value);
-                            setSelectedAssigneeInfo(null);
-                            if (e.target.value.trim() !== "") {
-                               setIsAssignToPopoverOpen(true);
-                            } else {
-                               setIsAssignToPopoverOpen(false);
-                            }
-                          }}
-                          onFocus={() => {
-                            if (assignToSearchTerm.trim() !== "" && assignToSuggestions.length > 0) {
-                              setIsAssignToPopoverOpen(true);
-                            }
-                          }}
-                          required={!selectedAssigneeInfo?.email}
-                          className="w-full"
-                        />
-                      </PopoverTrigger>
-                      {assignToSuggestions.length > 0 && (
-                        <PopoverContent
-                          className="p-0 w-[--radix-popover-trigger-width]"
-                          side="bottom"
-                          align="start"
-                          onOpenAutoFocus={(e) => e.preventDefault()}
-                        >
-                          <Command>
-                            <CommandList>
-                              <CommandEmpty>{isValidEmail(assignToSearchTerm) ? "No exact match. You can invite." : "No contacts found."}</CommandEmpty>
-                              <CommandGroup>
-                                {assignToSuggestions.map((item, index) => (
-                                  <CommandItem
-                                    key={('id' in item ? item.id : item.email) + index}
-                                    onSelect={() => handleSelectAssignee(item)}
-                                    className="cursor-pointer"
-                                  >
-                                    {'type' in item && item.type === 'invite' ? (
-                                      <div className="flex items-center">
-                                        <Mail className="mr-2 h-4 w-4" />
-                                        <span>Invite {item.email}</span>
-                                      </div>
-                                    ) : (
-                                      <div className="flex flex-col">
-                                        <div className="flex items-center">
-                                           <Users className="mr-2 h-4 w-4" />
-                                           <span>{(item as HeadOfficeContactType).name}</span>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground ml-6">
-                                            {(item as HeadOfficeContactType).email} - {(item as HeadOfficeContactType).department || 'N/A Dept'}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      )}
-                    </Popover>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="department-assign">Department *</Label>
-                    <Select value={selectedDepartment} onValueChange={(val) => setSelectedDepartment(val as Department | "")} required>
-                      <SelectTrigger id="department-assign">
-                        <SelectValue placeholder="Select department" />
+                    <Label htmlFor="project-assign">Project *</Label>
+                    <Select value={selectedProjectId} onValueChange={setSelectedProjectId} required>
+                      <SelectTrigger id="project-assign">
+                        <SelectValue placeholder="Select a project" />
                       </SelectTrigger>
                       <SelectContent>
-                        {allDepartmentKeys.map(dept => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
+                        {mockProjects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="taskName-assign">Task Name *</Label>
+                    <Input
+                      id="taskName-assign"
+                      value={taskName}
+                      onChange={(e) => setTaskName(e.target.value)}
+                      placeholder="e.g., Finalize budget proposal"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="taskDescription-assign">Task Description (Optional)</Label>
+                    <Textarea
+                      id="taskDescription-assign"
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="Provide more details about the task..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <Label htmlFor="taskPriority-assign">Priority</Label>
-                        <Select value={taskPriority} onValueChange={(value) => setTaskPriority(value as TaskPriority)}>
-                          <SelectTrigger id="taskPriority-assign">
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="None">None</SelectItem>
-                          </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate-assign">Due Date (Optional)</Label>
-                      <Popover>
+                      <Label htmlFor="assignedTo-assign">Assign To *</Label>
+                      <Popover open={isAssignToPopoverOpen} onOpenChange={setIsAssignToPopoverOpen}>
                         <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            id="dueDate-assign"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !dueDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dueDate}
-                            onSelect={setDueDate}
-                            initialFocus
+                          <Input
+                            type="text"
+                            id="assignedTo-assign"
+                            ref={assignToInputRef}
+                            placeholder="Type name or email..."
+                            value={assignToSearchTerm}
+                            onChange={(e) => {
+                              setAssignToSearchTerm(e.target.value);
+                              setSelectedAssigneeInfo(null);
+                              if (e.target.value.trim() !== "") {
+                                 setIsAssignToPopoverOpen(true);
+                              } else {
+                                 setIsAssignToPopoverOpen(false);
+                              }
+                            }}
+                            onFocus={() => {
+                              if (assignToSearchTerm.trim() !== "" && assignToSuggestions.length > 0) {
+                                setIsAssignToPopoverOpen(true);
+                              }
+                            }}
+                            required={!selectedAssigneeInfo?.email}
+                            className="w-full"
                           />
-                        </PopoverContent>
+                        </PopoverTrigger>
+                        {assignToSuggestions.length > 0 && (
+                          <PopoverContent
+                            className="p-0 w-[--radix-popover-trigger-width]"
+                            side="bottom"
+                            align="start"
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                          >
+                            <Command>
+                              <CommandList>
+                                <CommandEmpty>{isValidEmail(assignToSearchTerm) ? "No exact match. You can invite." : "No contacts found."}</CommandEmpty>
+                                <CommandGroup>
+                                  {assignToSuggestions.map((item, index) => (
+                                    <CommandItem
+                                      key={('id' in item ? item.id : item.email) + index}
+                                      onSelect={() => handleSelectAssignee(item)}
+                                      className="cursor-pointer"
+                                    >
+                                      {'type' in item && item.type === 'invite' ? (
+                                        <div className="flex items-center">
+                                          <Mail className="mr-2 h-4 w-4" />
+                                          <span>Invite {item.email}</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col">
+                                          <div className="flex items-center">
+                                             <Users className="mr-2 h-4 w-4" />
+                                             <span>{(item as HeadOfficeContactType).name}</span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground ml-6">
+                                              {(item as HeadOfficeContactType).email} - {(item as HeadOfficeContactType).department || 'N/A Dept'}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        )}
                       </Popover>
                     </div>
-                </div>
 
-                <Button type="submit" className="w-full" disabled={!selectedAssigneeInfo?.email && !isValidEmail(assignToSearchTerm)}>
-                  Assign Task
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <div className="space-y-2">
+                      <Label htmlFor="department-assign">Department *</Label>
+                      <Select value={selectedDepartment} onValueChange={(val) => setSelectedDepartment(val as Department | "")} required>
+                        <SelectTrigger id="department-assign">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allDepartmentKeys.map(dept => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                          <Label htmlFor="taskPriority-assign">Priority</Label>
+                          <Select value={taskPriority} onValueChange={(value) => setTaskPriority(value as TaskPriority)}>
+                            <SelectTrigger id="taskPriority-assign">
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="High">High</SelectItem>
+                              <SelectItem value="Medium">Medium</SelectItem>
+                              <SelectItem value="Low">Low</SelectItem>
+                              <SelectItem value="None">None</SelectItem>
+                            </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="dueDate-assign">Due Date (Optional)</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              id="dueDate-assign"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !dueDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={dueDate}
+                              onSelect={setDueDate}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={!selectedAssigneeInfo?.email && !isValidEmail(assignToSearchTerm)}>
+                    Assign Task
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </section>
   );
 }
-
