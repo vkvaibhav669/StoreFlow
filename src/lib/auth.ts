@@ -1,91 +1,35 @@
 
 // IMPORTANT: This is a MOCK authentication system for prototyping.
-// DO NOT use this in a production environment. Passwords are stored in plaintext.
+// DO NOT use this in a production environment.
 'use client'; // To use localStorage
 
 import type { User, UserRole } from '@/types';
 
-const USERS_STORAGE_KEY = 'storeflow_mock_users';
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
+const API_BASE_URL = '/api'; // Assuming API routes are in the same Next.js app
 
-// Original Admin user - now SuperAdmin
-const OG_ADMIN_EMAIL = 'priya.verma@storeflow.corp';
-const OG_ADMIN_PASSWORD = '70669$RRSVk';
-const OG_ADMIN_NAME = 'Priya Verma';
-
-// Provided test users
-const SUPER_ADMIN_EMAIL_TEST = 'vaibhhavrajkumar@gmail.com';
-const ADMIN_EMAIL_TEST = 'vaibhavvrajkumar@gmail.com';
-const MEMBER_EMAIL_TEST = 'vkvaibhav36@gmail.com';
-const COMMON_TEST_PASSWORD = 'TestAdmin@7669';
-
-
-// Pre-seeded regular test user (will become a Member if not one of the above)
-const PRESEEDED_REGULAR_USER_EMAIL = "karan.malhotra@storeflow.corp";
-const PRESEEDED_REGULAR_USER_PASSWORD = "70669$RRSVk"; 
-const PRESEEDED_REGULAR_USER_NAME = "Karan Malhotra (Test User)";
-
-
-interface StoredUser extends User {
-  passwordHash: string; 
-}
-
-function getStoredUsers(): StoredUser[] {
-  if (typeof window === 'undefined') return [];
-  const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-  let users: StoredUser[] = [];
-
-  if (usersJson) {
-    try {
-      users = JSON.parse(usersJson);
-    } catch (e) {
-      console.error("Error parsing users from localStorage", e);
-      localStorage.removeItem(USERS_STORAGE_KEY); 
-      users = []; 
+// Helper function for API requests (specific to auth if needed, or use a global one)
+async function fetchAuthAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(errorData.message || `API request failed: ${response.status}`);
     }
+    if (response.status === 204) return undefined as T;
+    return response.json() as T;
+  } catch (error) {
+    console.error(`Auth API call to ${endpoint} failed:`, error);
+    throw error;
   }
-
-  const ensureUser = (email: string, name: string, role: UserRole, passwordHashValue: string) => {
-    const lowerEmail = email.toLowerCase();
-    const existingUserIndex = users.findIndex(u => u.email.toLowerCase() === lowerEmail);
-    if (existingUserIndex !== -1) {
-      const existingId = users[existingUserIndex].id;
-      users[existingUserIndex] = { 
-        id: existingId,
-        name, 
-        email: lowerEmail, // Store/ensure as lowercase
-        role, 
-        passwordHash: passwordHashValue 
-      };
-    } else {
-      users.push({ 
-        id: `user-${lowerEmail}-${Date.now()}`.slice(0,20), 
-        name, 
-        email: lowerEmail, // Store as lowercase
-        role, 
-        passwordHash: passwordHashValue 
-      });
-    }
-  };
-
-  ensureUser(OG_ADMIN_EMAIL, OG_ADMIN_NAME, 'SuperAdmin', OG_ADMIN_PASSWORD);
-  ensureUser(SUPER_ADMIN_EMAIL_TEST, 'Vaibhav Rajkumar (SA)', 'SuperAdmin', COMMON_TEST_PASSWORD);
-  ensureUser(ADMIN_EMAIL_TEST, 'Vaibhav V Rajkumar (Admin)', 'Admin', COMMON_TEST_PASSWORD);
-  ensureUser(MEMBER_EMAIL_TEST, 'VK Vaibhav (Member)', 'Member', COMMON_TEST_PASSWORD);
-  
-  const regularTestUserExists = users.some(u => u.email.toLowerCase() === PRESEEDED_REGULAR_USER_EMAIL.toLowerCase());
-  if (!regularTestUserExists) {
-    ensureUser(PRESEEDED_REGULAR_USER_EMAIL, PRESEEDED_REGULAR_USER_NAME, 'Member', PRESEEDED_REGULAR_USER_PASSWORD);
-  }
-  
-  saveStoredUsers(users);
-  return users;
 }
 
-function saveStoredUsers(users: StoredUser[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-}
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
@@ -111,69 +55,49 @@ function setCurrentUser(user: User | null): void {
   }
 }
 
-export function getAllMockUsers(): User[] {
-  const storedUsers = getStoredUsers();
-  return storedUsers.map(({ passwordHash, ...user }) => user);
-}
-
-
 export async function signUp(name: string, email: string, password: string): Promise<User> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => { 
-      const users = getStoredUsers();
-      const lowerEmail = email.toLowerCase();
-      if (users.find(u => u.email.toLowerCase() === lowerEmail)) {
-        reject(new Error('User already exists with this email.'));
-        return;
-      }
-
-      const newUser: StoredUser = {
-        id: `user-${Date.now()}`,
-        name,
-        email: lowerEmail, // Store as lowercase
-        role: 'Member', 
-        passwordHash: password, 
-      };
-      
-      users.push(newUser);
-      saveStoredUsers(users);
-      
-      const { passwordHash: storedPasswordHash, ...userToReturn } = newUser; // Alias to avoid conflict
-      setCurrentUser(userToReturn);
-      resolve(userToReturn);
-    }, 500);
+  const lowerEmail = email.toLowerCase();
+  // In a real app, the API would handle user creation and password hashing.
+  // The API would return the new user object (without passwordHash).
+  const newUser = await fetchAuthAPI<User>('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ name, email: lowerEmail, password }),
   });
+  setCurrentUser(newUser);
+  return newUser;
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
-   return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const users = getStoredUsers(); 
-      const lowerEmail = email.toLowerCase();
-      const storedUser = users.find(u => u.email.toLowerCase() === lowerEmail);
-
-      if (!storedUser) {
-        reject(new Error('Invalid email or password. (User not found)'));
-        return;
-      }
-
-      if (storedUser.passwordHash !== password) {
-        reject(new Error('Invalid email or password. (Password mismatch)'));
-        return;
-      }
-      
-      const { passwordHash, ...userToReturn } = storedUser;
-      setCurrentUser(userToReturn);
-      resolve(userToReturn);
-    }, 500);
+  const lowerEmail = email.toLowerCase();
+  // The API would validate credentials and return the user object or an error.
+  const user = await fetchAuthAPI<User>('/auth/signin', {
+    method: 'POST',
+    body: JSON.stringify({ email: lowerEmail, password }),
   });
+  setCurrentUser(user);
+  return user;
 }
 
 export async function signOut(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(() => { 
-      setCurrentUser(null);
-      resolve();
-    }, 300);
-  });
+  // Inform the backend about sign-out if necessary (e.g., to invalidate a session/token)
+  // For a simple mock, just clearing local state is enough.
+  // await fetchAuthAPI<void>('/auth/signout', { method: 'POST' }); // Example
+  setCurrentUser(null);
+  return Promise.resolve();
 }
+
+// This function would now fetch from your /api/users endpoint
+export async function getAllMockUsers(): Promise<User[]> {
+  // This function is less relevant if users are managed by a proper auth system + DB.
+  // If you need a list of users for assignment, your API should provide an endpoint for that.
+  // For now, it can return an empty array or be removed if not used by UI directly.
+  // Example: return await fetchAuthAPI<User[]>('/users/list-for-assignment');
+  console.warn("getAllMockUsers is a mock function and should be replaced with an API call if user listing is needed.");
+  return Promise.resolve([]);
+}
+
+// The hardcoded test users from the previous `auth.ts` would now typically be
+// created via your application's sign-up flow or seeded directly into your MongoDB
+// database by your backend setup scripts.
+// The frontend no longer manages the user list directly.
+    

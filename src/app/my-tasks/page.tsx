@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { mockProjects, mockHeadOfficeContacts } from "@/lib/data";
-import type { Task, StoreProject, Department, TaskPriority, ProjectMember as HeadOfficeContactType } from "@/types";
+import { getProjectsForTaskAssignment, getHeadOfficeContacts, assignTaskToUserInProject } from "@/lib/data"; // Updated imports
+import type { Task, StoreProject, Department, TaskPriority, ProjectMember as HeadOfficeContactType, UserTask } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,18 +22,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpRight, CalendarIcon, Users, Mail } from "lucide-react";
+import { ArrowUpRight, CalendarIcon, Users, Mail, Package2 } from "lucide-react"; // Added Package2
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup } from "@/components/ui/command";
+import { getTasksForUser } from "@/lib/data";
 
-
-interface UserTask extends Task {
-  projectName: string;
-  projectId: string;
-}
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
@@ -50,8 +46,13 @@ const isValidEmail = (email: string): boolean => {
 
 export default function MyTasksPage() {
   const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+
+  const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>([]);
+  const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>([]);
+  const [dataLoading, setDataLoading] = React.useState(true);
+
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
@@ -64,29 +65,32 @@ export default function MyTasksPage() {
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
   const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
   const assignToInputRef = React.useRef<HTMLInputElement>(null);
+  const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
 
   const canAssignTasks = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
   React.useEffect(() => {
-    const tasksForCurrentUser: UserTask[] = [];
-    mockProjects.forEach((project: StoreProject) => {
-      project.tasks.forEach((task: Task) => {
-        const isAssignedToCurrentUser = 
-          task.assignedTo === "Current User" || // This generic assignment might need rethinking with real auth
-          (user && user.name && task.assignedTo === user.name) ||
-          (user && user.email && task.assignedTo === user.email);
-
-        if (isAssignedToCurrentUser) {
-          tasksForCurrentUser.push({
-            ...task,
-            projectName: project.name,
-            projectId: project.id,
-          });
-        }
+    if (user && !authLoading) {
+      setDataLoading(true);
+      Promise.all([
+        getTasksForUser(user.email), // Assuming email is the unique identifier for tasks
+        canAssignTasks ? getProjectsForTaskAssignment() : Promise.resolve([]),
+        canAssignTasks ? getHeadOfficeContacts() : Promise.resolve([])
+      ]).then(([tasks, projects, contacts]) => {
+        setUserTasks(tasks as UserTask[]); // Cast might be needed if getTasksForUser returns base Task[]
+        setProjectsForAssignment(projects);
+        setHeadOfficeContacts(contacts);
+      }).catch(error => {
+        console.error("Error fetching initial data for MyTasksPage:", error);
+        toast({ title: "Error", description: "Could not load tasks or project data.", variant: "destructive" });
+      }).finally(() => {
+        setDataLoading(false);
       });
-    });
-    setUserTasks(tasksForCurrentUser);
-  }, [user]);
+    } else if (!authLoading && !user) {
+        setDataLoading(false); // Not logged in, no data to load
+    }
+  }, [user, authLoading, canAssignTasks, toast]);
+
 
   React.useEffect(() => {
     if (assignToSearchTerm.trim() === "") {
@@ -96,7 +100,7 @@ export default function MyTasksPage() {
     }
 
     const searchTermLower = assignToSearchTerm.toLowerCase();
-    const filteredContacts = mockHeadOfficeContacts.filter(
+    const filteredContacts = headOfficeContacts.filter( // Use fetched contacts
       contact =>
         contact.name.toLowerCase().includes(searchTermLower) ||
         contact.email.toLowerCase().includes(searchTermLower)
@@ -111,15 +115,16 @@ export default function MyTasksPage() {
     setAssignToSuggestions(suggestions);
     setIsAssignToPopoverOpen(suggestions.length > 0);
 
-  }, [assignToSearchTerm]);
+  }, [assignToSearchTerm, headOfficeContacts]);
 
   const handleSelectAssignee = (item: HeadOfficeContactType | { type: 'invite'; email: string }) => {
     if ('type' in item && item.type === 'invite') {
       setSelectedAssigneeInfo({ email: item.email, name: item.email });
       setAssignToSearchTerm(item.email);
+      // Mock invitation toast, as backend isn't implemented for invites
       toast({
         title: "Mock Invitation",
-        description: `A mock invitation will be sent to ${item.email} to collaborate.`,
+        description: `A mock invitation would be sent to ${item.email} to collaborate if backend supported it.`,
       });
     } else {
       setSelectedAssigneeInfo({ email: item.email, name: item.name });
@@ -142,11 +147,13 @@ export default function MyTasksPage() {
     setTaskPriority("Medium");
   };
 
-  const handleAssignTaskSubmit = (e: React.FormEvent) => {
+  const handleAssignTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmittingTask(true);
 
     if (!canAssignTasks) {
         toast({ title: "Permission Denied", description: "You do not have permission to assign tasks.", variant: "destructive" });
+        setIsSubmittingTask(false);
         return;
     }
 
@@ -156,61 +163,62 @@ export default function MyTasksPage() {
         description: "Please fill in Project, Task Name, Department, and select an Assignee.",
         variant: "destructive",
       });
+      setIsSubmittingTask(false);
       return;
     }
 
-    const projectIndex = mockProjects.findIndex(p => p.id === selectedProjectId);
-    if (projectIndex === -1) {
+    const targetProject = projectsForAssignment.find(p => p.id === selectedProjectId);
+    if (!targetProject) {
       toast({
         title: "Error",
         description: "Selected project not found.",
         variant: "destructive",
       });
+      setIsSubmittingTask(false);
       return;
     }
 
-    const targetProject = mockProjects[projectIndex];
-
-    const newTask: Task = {
-      id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    const newTaskPayload: Partial<Task> = {
+      // id is generated by backend
       name: taskName,
       department: selectedDepartment as Department,
       description: taskDescription || undefined,
-      assignedTo: selectedAssigneeInfo.email,
+      assignedTo: selectedAssigneeInfo.email, // Backend will resolve this to user ID if needed
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
       status: "Pending",
       priority: taskPriority,
       comments: [],
     };
 
-    targetProject.tasks.push(newTask);
-
-    const deptKey = selectedDepartment.toLowerCase() as keyof StoreProject['departments'];
-
-    if (targetProject.departments && targetProject.departments[deptKey]) {
-      if (!(targetProject.departments[deptKey] as { tasks: Task[] }).tasks) {
-        (targetProject.departments[deptKey] as { tasks: Task[] }).tasks = [];
-      }
-      (targetProject.departments[deptKey] as { tasks: Task[] }).tasks.push(newTask);
-    } else if (targetProject.departments && deptKey === 'it') { // Handle case where 'it' department might not exist initially
-       targetProject.departments.it = { ...targetProject.departments.it, tasks: [...(targetProject.departments.it?.tasks || []), newTask] };
-    } else if (targetProject.departments) { // Generic fallback for other departments
-        targetProject.departments[deptKey] = { tasks: [newTask] };
+    try {
+        const assignedTask = await assignTaskToUserInProject(selectedProjectId, newTaskPayload);
+        toast({
+            title: "Success!",
+            description: `Task "${assignedTask.name}" assigned to ${selectedAssigneeInfo.name} for project "${targetProject.name}".`,
+        });
+        // Potentially refresh userTasks if this task is assigned to current user, or update projectsForAssignment if progress changes
+        // For simplicity, we'll just reset the form here. A more robust solution would involve state management or re-fetching.
+        resetAssignTaskForm();
+    } catch (error) {
+        console.error("Error assigning task:", error);
+        toast({ title: "Error Assigning Task", description: (error as Error).message || "Could not assign task.", variant: "destructive" });
+    } finally {
+        setIsSubmittingTask(false);
     }
-
-
-    targetProject.currentProgress = calculateOverallProgress(targetProject.tasks);
-
-    toast({
-      title: "Success!",
-      description: `Task "${taskName}" assigned successfully to ${selectedAssigneeInfo.name} for project "${targetProject.name}".`,
-    });
-    resetAssignTaskForm();
   };
+
+  if (authLoading || dataLoading) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+            <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+            <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading tasks..."}</p>
+        </div>
+    );
+  }
 
   return (
     <section className="my-tasks-content flex flex-col gap-6" aria-labelledby="my-tasks-heading">
-      <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl">My Tasks</h1>
+      <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl mt-4">My Tasks</h1>
       
       <Tabs defaultValue="my-assigned-tasks" className="w-full">
         <TabsList className={cn("grid w-full", canAssignTasks ? "grid-cols-2" : "grid-cols-1")}>
@@ -261,7 +269,7 @@ export default function MyTasksPage() {
                             {task.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{task.dueDate || "N/A"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{task.dueDate ? format(new Date(task.dueDate), "PPP") : "N/A"}</TableCell>
                         <TableCell className="text-right">
                           <Button asChild variant="outline" size="sm">
                             <Link href={`/projects/${task.projectId}`}>
@@ -289,16 +297,17 @@ export default function MyTasksPage() {
                 <form onSubmit={handleAssignTaskSubmit} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="project-assign">Project *</Label>
-                    <Select value={selectedProjectId} onValueChange={setSelectedProjectId} required>
+                    <Select value={selectedProjectId} onValueChange={setSelectedProjectId} required disabled={isSubmittingTask}>
                       <SelectTrigger id="project-assign">
                         <SelectValue placeholder="Select a project" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockProjects.map((project) => (
+                        {projectsForAssignment.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
                           </SelectItem>
                         ))}
+                         {projectsForAssignment.length === 0 && <div className="p-2 text-sm text-muted-foreground text-center">No projects available.</div>}
                       </SelectContent>
                     </Select>
                   </div>
@@ -311,6 +320,7 @@ export default function MyTasksPage() {
                       onChange={(e) => setTaskName(e.target.value)}
                       placeholder="e.g., Finalize budget proposal"
                       required
+                      disabled={isSubmittingTask}
                     />
                   </div>
 
@@ -322,6 +332,7 @@ export default function MyTasksPage() {
                       onChange={(e) => setTaskDescription(e.target.value)}
                       placeholder="Provide more details about the task..."
                       rows={3}
+                      disabled={isSubmittingTask}
                     />
                   </div>
 
@@ -338,7 +349,7 @@ export default function MyTasksPage() {
                             value={assignToSearchTerm}
                             onChange={(e) => {
                               setAssignToSearchTerm(e.target.value);
-                              setSelectedAssigneeInfo(null);
+                              setSelectedAssigneeInfo(null); // Reset if user types again
                               if (e.target.value.trim() !== "") {
                                  setIsAssignToPopoverOpen(true);
                               } else {
@@ -352,6 +363,7 @@ export default function MyTasksPage() {
                             }}
                             required={!selectedAssigneeInfo?.email}
                             className="w-full"
+                            disabled={isSubmittingTask}
                           />
                         </PopoverTrigger>
                         {assignToSuggestions.length > 0 && (
@@ -359,7 +371,7 @@ export default function MyTasksPage() {
                             className="p-0 w-[--radix-popover-trigger-width]"
                             side="bottom"
                             align="start"
-                            onOpenAutoFocus={(e) => e.preventDefault()}
+                            onOpenAutoFocus={(e) => e.preventDefault()} // Prevent input from losing focus
                           >
                             <Command>
                               <CommandList>
@@ -367,7 +379,7 @@ export default function MyTasksPage() {
                                 <CommandGroup>
                                   {assignToSuggestions.map((item, index) => (
                                     <CommandItem
-                                      key={('id' in item ? item.id : item.email) + index}
+                                      key={('id' in item ? item.id : item.email) + index} // Use item.id if available (from HeadOfficeContactType)
                                       onSelect={() => handleSelectAssignee(item)}
                                       className="cursor-pointer"
                                     >
@@ -399,7 +411,7 @@ export default function MyTasksPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="department-assign">Department *</Label>
-                      <Select value={selectedDepartment} onValueChange={(val) => setSelectedDepartment(val as Department | "")} required>
+                      <Select value={selectedDepartment} onValueChange={(val) => setSelectedDepartment(val as Department | "")} required disabled={isSubmittingTask}>
                         <SelectTrigger id="department-assign">
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
@@ -417,7 +429,7 @@ export default function MyTasksPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                           <Label htmlFor="taskPriority-assign">Priority</Label>
-                          <Select value={taskPriority} onValueChange={(value) => setTaskPriority(value as TaskPriority)}>
+                          <Select value={taskPriority} onValueChange={(value) => setTaskPriority(value as TaskPriority)} disabled={isSubmittingTask}>
                             <SelectTrigger id="taskPriority-assign">
                               <SelectValue placeholder="Select priority" />
                             </SelectTrigger>
@@ -440,6 +452,7 @@ export default function MyTasksPage() {
                                 "w-full justify-start text-left font-normal",
                                 !dueDate && "text-muted-foreground"
                               )}
+                              disabled={isSubmittingTask}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
@@ -457,8 +470,8 @@ export default function MyTasksPage() {
                       </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={!selectedAssigneeInfo?.email && !isValidEmail(assignToSearchTerm)}>
-                    Assign Task
+                  <Button type="submit" className="w-full" disabled={isSubmittingTask || (!selectedAssigneeInfo?.email && !isValidEmail(assignToSearchTerm))}>
+                    {isSubmittingTask ? "Assigning..." : "Assign Task"}
                   </Button>
                 </form>
               </CardContent>

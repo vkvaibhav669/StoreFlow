@@ -6,8 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { mockProjects } from "@/lib/data";
-import type { StoreProject, Department, DepartmentDetails, StoreType } from "@/types";
+import { createProject, getAllProjects } from "@/lib/data"; // Updated import
+import type { StoreProject, Department, StoreType } from "@/types";
 import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatDate, addDays } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 function ProjectCard({ project }: { project: StoreProject }) {
   return (
@@ -51,7 +52,7 @@ function ProjectCard({ project }: { project: StoreProject }) {
           )}
         </div>
         <CardDescription className="max-w-lg text-balance leading-relaxed">
-          {project.location} - Projected Launch: {project.projectedLaunchDate}
+          {project.location} - Projected Launch: {project.projectedLaunchDate ? new Date(project.projectedLaunchDate).toLocaleDateString() : 'N/A'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -76,11 +77,16 @@ const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising",
 const allStoreTypes: StoreType[] = ["COCO", "FOFO"];
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
-  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(() => [...mockProjects]);
+  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
+  const [projectsLoading, setProjectsLoading] = React.useState(true);
+  const [projectsError, setProjectsError] = React.useState<string | null>(null);
+
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
+  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false);
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
@@ -103,17 +109,38 @@ export default function DashboardPage() {
   const canAddProject = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
   React.useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.replace("/auth/signin");
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
-  if (loading || !user) {
+  React.useEffect(() => {
+    if (user) {
+      const fetchProjects = async () => {
+        setProjectsLoading(true);
+        setProjectsError(null);
+        try {
+          const projects = await getAllProjects();
+          setDashboardProjects(projects);
+        } catch (error) {
+          setProjectsError("Failed to load projects. Please try again.");
+          console.error("Error fetching projects:", error);
+          toast({ title: "Error", description: "Could not load projects.", variant: "destructive" });
+        } finally {
+          setProjectsLoading(false);
+        }
+      };
+      fetchProjects();
+    }
+  }, [user, toast]);
+
+
+  if (authLoading || (!user && !authLoading)) { // Show loading if auth is loading or if user is null and auth is done
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{loading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
-        {!loading && !user && (
+        <p className="text-muted-foreground">{authLoading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
+        {!authLoading && !user && (
           <Button onClick={() => router.push('/auth/signin')} className="mt-4">
             Go to Sign In
           </Button>
@@ -126,34 +153,32 @@ export default function DashboardPage() {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
   };
 
-  const handleAddProject = () => {
+  const handleAddProject = async () => {
     if (!newProjectName.trim() || !newProjectLocation.trim()) {
-      alert("Project Name and Location are required.");
+      toast({ title: "Validation Error", description: "Project Name and Location are required.", variant: "destructive" });
       return;
     }
-    if (!canAddProject) { // This check ensures only Admin/SuperAdmin can create
-        alert("You do not have permission to add projects.");
-        return;
+    if (!canAddProject) {
+      toast({ title: "Permission Denied", description: "You do not have permission to add projects.", variant: "destructive" });
+      return;
     }
 
+    setIsSubmittingProject(true);
     const today = new Date();
-    const newProjectId = `proj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
-    const projectDepartments: Partial<StoreProject['departments']> = {};
-
+    
+    const projectDepartmentsData: Partial<StoreProject['departments']> = {};
     allDepartmentKeys.forEach(dept => {
       if (selectedDepartments[dept]) {
         const deptKey = dept.toLowerCase() as keyof StoreProject['departments'];
         if (dept === "Marketing") {
-          projectDepartments[deptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
+          projectDepartmentsData[deptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
         } else {
-          projectDepartments[deptKey] = { tasks: [] };
+          projectDepartmentsData[deptKey] = { tasks: [] };
         }
       }
     });
 
-    const newProject: StoreProject = {
-      id: newProjectId,
+    const newProjectPayload: Partial<StoreProject> = {
       name: newProjectName,
       location: newProjectLocation,
       franchiseType: newProjectFranchiseType,
@@ -176,22 +201,27 @@ export default function DashboardPage() {
       tasks: [],
       documents: [],
       milestones: [],
-      departments: projectDepartments,
+      departments: projectDepartmentsData,
       comments: [],
     };
 
-    mockProjects.push(newProject);
-    setDashboardProjects([...mockProjects]);
+    try {
+      const createdProject = await createProject(newProjectPayload);
+      setDashboardProjects(prevProjects => [createdProject, ...prevProjects]);
+      toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
 
-    setNewProjectName("");
-    setNewProjectLocation("");
-    setNewProjectFranchiseType("COCO");
-    setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => {
-      acc[curr] = false;
-      return acc;
-    }, {} as Record<Department, boolean>));
-    setMarkAsUpcoming(false);
-    setIsAddProjectDialogOpen(false);
+      setNewProjectName("");
+      setNewProjectLocation("");
+      setNewProjectFranchiseType("COCO");
+      setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
+      setMarkAsUpcoming(false);
+      setIsAddProjectDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      toast({ title: "Error", description: "Failed to create project. Please try again.", variant: "destructive" });
+    } finally {
+      setIsSubmittingProject(false);
+    }
   };
 
   const upcomingProjects = React.useMemo(() => {
@@ -223,6 +253,27 @@ export default function DashboardPage() {
     }
     return projects;
   }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
+
+  if (projectsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">Loading projects...</p>
+      </div>
+    );
+  }
+
+  if (projectsError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <p className="text-destructive font-semibold">Error Loading Projects</p>
+        <p className="text-muted-foreground">{projectsError}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
+      </div>
+    );
+  }
+
 
   return (
     <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
@@ -292,7 +343,7 @@ export default function DashboardPage() {
                   }
               }}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="h-8 gap-1">
+                  <Button size="sm" className="h-8 gap-1" disabled={isSubmittingProject}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                       Add Project
@@ -317,6 +368,7 @@ export default function DashboardPage() {
                         onChange={(e) => setNewProjectName(e.target.value)}
                         className="sm:col-span-3"
                         placeholder="e.g., City Center Flagship"
+                        disabled={isSubmittingProject}
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
@@ -329,13 +381,14 @@ export default function DashboardPage() {
                         onChange={(e) => setNewProjectLocation(e.target.value)}
                         className="sm:col-span-3"
                         placeholder="e.g., 789 Market St, Big City"
+                        disabled={isSubmittingProject}
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                       <Label htmlFor="franchiseType" className="sm:text-right">
                         Franchise Type
                       </Label>
-                      <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)}>
+                      <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)} disabled={isSubmittingProject}>
                           <SelectTrigger id="franchiseType" className="sm:col-span-3">
                               <SelectValue placeholder="Select franchise type" />
                           </SelectTrigger>
@@ -357,6 +410,7 @@ export default function DashboardPage() {
                               id={`dept-${dept}`}
                               checked={selectedDepartments[dept]}
                               onCheckedChange={(checked) => handleDepartmentChange(dept, !!checked)}
+                              disabled={isSubmittingProject}
                             />
                             <Label htmlFor={`dept-${dept}`} className="font-normal">{dept}</Label>
                           </div>
@@ -372,6 +426,7 @@ export default function DashboardPage() {
                           id="markUpcoming"
                           checked={markAsUpcoming}
                           onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
+                          disabled={isSubmittingProject}
                         />
                         <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
                       </div>
@@ -379,9 +434,11 @@ export default function DashboardPage() {
                   </div>
                   <DialogFooter>
                     <DialogClose asChild>
-                       <Button variant="outline">Cancel</Button>
+                       <Button variant="outline" disabled={isSubmittingProject}>Cancel</Button>
                     </DialogClose>
-                    <Button onClick={handleAddProject}>Create Project</Button>
+                    <Button onClick={handleAddProject} disabled={isSubmittingProject}>
+                        {isSubmittingProject ? "Creating..." : "Create Project"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -457,3 +514,4 @@ export default function DashboardPage() {
     </section>
   );
 }
+    
