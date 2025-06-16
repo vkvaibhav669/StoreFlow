@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, notFound } from "next/navigation"; // Imported notFound
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -10,7 +10,7 @@ import {
   updateStore,
   addImprovementPointToStore,
   updateImprovementPointInStore,
-  addCommentToImprovementPoint, // Assuming this can handle replies if commentData has a parentId
+  addCommentToImprovementPoint,
   addStoreTask,
   updateStoreTask,
   deleteStoreTask
@@ -102,27 +102,27 @@ export default function StoreDetailsPage() {
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    if (user && storeId) { // Ensure user is loaded before fetching
+    if (user && storeId) { 
       setLoadingStore(true);
       getStoreById(storeId)
         .then((fetchedStore) => {
           if (fetchedStore) {
             setStore(fetchedStore);
           } else {
-            router.replace("/my-stores"); // Or a specific not-found page for stores
-            toast({title: "Store Not Found", description: "The requested store could not be found.", variant: "destructive"});
+            notFound(); // Use Next.js notFound function
           }
         })
         .catch(error => {
           console.error("Failed to fetch store:", error);
           toast({title: "Error", description: "Could not load store details.", variant: "destructive"});
-          router.replace("/my-stores");
+          // Optionally, could also call notFound() here or redirect to a generic error page
+          router.replace("/my-stores"); 
         })
         .finally(() => {
           setLoadingStore(false);
         });
     } else if (!authLoading && !user) {
-        router.replace("/auth/signin"); // Redirect if user is not authenticated and auth check is done
+        router.replace("/auth/signin"); 
     }
   }, [storeId, user, authLoading, router, toast]);
 
@@ -273,25 +273,16 @@ export default function StoreDetailsPage() {
 
   const handleReplyToImprovementComment = async (pointId: string, commentId: string, replyText: string) => {
     if (!replyText.trim() || !store || !user) return;
-    // For replies, we need to be more careful with optimistic updates or rely on backend to return full structure
-    // Using a generic updateStore for now as a simpler approach if a dedicated reply API isn't there.
-    // Ideally, addCommentToImprovementPoint would handle a `parentId` or we'd have a dedicated reply endpoint.
-    
-    // Let's assume `addCommentToImprovementPoint` can be used, and we add a temporary parentId to the payload
-    // that the backend understands for nesting. This is an assumption about the API.
     setIsSubmittingImpComment(prev => ({...prev, [`${pointId}-${commentId}`]: true}));
     const newReplyPayload: Partial<CommentType> & { parentCommentId?: string } = { 
       author: user.name || user.email || "System", 
       avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`, 
       timestamp: new Date().toISOString(), 
       text: replyText,
-      parentCommentId: commentId // Hypothetical field for backend
+      parentCommentId: commentId 
     };
 
     try {
-      // This API call might need to change if it doesn't support replies this way.
-      // If the API returns the *parent comment* updated, or the *entire point* updated, that's better.
-      // For now, assume it returns just the new reply, and we update client-side.
       const addedReply = await addCommentToImprovementPoint(store.id, pointId, newReplyPayload);
       
       setStore(prevStore => {
@@ -395,7 +386,6 @@ export default function StoreDetailsPage() {
         assignedTo: newTaskForm.assignedTo.trim() || undefined,
         priority: newTaskForm.priority,
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
-        // status will be handled by handleUpdateStoreTaskStatus
     };
     try {
         const updatedTask = await updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload);
@@ -403,7 +393,7 @@ export default function StoreDetailsPage() {
             if(!prevStore) return null;
             return {
                 ...prevStore,
-                tasks: (prevStore.tasks || []).map(t => t.id === editingStoreTask.id ? {...updatedTask, status: t.status } : t) // Keep original status unless changed via dropdown
+                tasks: (prevStore.tasks || []).map(t => t.id === editingStoreTask.id ? {...updatedTask, status: t.status } : t) 
             };
         });
         toast({ title: "Task Updated", description: `Task "${updatedTask.title}" has been updated.` });
@@ -424,7 +414,7 @@ export default function StoreDetailsPage() {
         toast({title: "Permission Denied", description: "You do not have permission to update task status.", variant: "destructive"});
         return;
     }
-    setIsSubmittingStoreTask(true); // Use generic task submission loading state for now
+    setIsSubmittingStoreTask(true); 
     try {
         const updatedTask = await updateStoreTask(store.id, taskId, { status: newStatus });
         setStore(prevStore => {
@@ -474,7 +464,6 @@ export default function StoreDetailsPage() {
       toast({ title: "Cannot Send", description: "Please enter a message for your request.", variant: "destructive" });
       return;
     }
-    // Simulate sending email
     toast({
       title: "Information Request Sent (Simulated)",
       description: `Your request: "${requestInfoText.substring(0, 50)}..." has been "sent" to the store manager ${store.manager ? `(${store.manager})` : ''}.`,
@@ -503,20 +492,28 @@ export default function StoreDetailsPage() {
     );
   }
 
-  if (!store) { // This check should be after loadingStore is false
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center p-4">
-        <StoreIcon className="w-16 h-16 text-destructive mb-4" />
-        <h2 className="text-2xl font-semibold mb-2">Store Not Found</h2>
-        <p className="text-muted-foreground mb-6">
-          The store you are looking for does not exist or could not be loaded.
-        </p>
-        <Button asChild>
-          <Link href="/my-stores">Back to My Stores</Link>
-        </Button>
-      </div>
-    );
+  // If loading is complete and store is still null (e.g., after fetch resulted in notFound),
+  // notFound() would have been called during useEffect, so this component instance
+  // should effectively unmount or be replaced by the not-found UI.
+  // A direct `if (!store) return null;` here can prevent flicker if needed, but notFound() is preferred.
+  if (!store && !loadingStore) { 
+      // This case should ideally be handled by the notFound() call in useEffect
+      // if the API confirms the store doesn't exist.
+      // If notFound() was called, this part of the code won't be reached.
+      // If somehow it is (e.g., error before notFound() is called), this is a fallback.
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+            <p className="text-muted-foreground">Store data is unavailable.</p>
+        </div>
+      );
   }
+  // If store is null *during* loading, the loading spinner above handles it.
+  // If loading is finished, and store is *still* null, it means `notFound()` should have been called.
+  // For safety, if execution reaches here and `store` is null, it's an unexpected state.
+  // However, Next.js `notFound()` should prevent rendering this far.
+  if (!store) return null; // Should not be reached if notFound() works.
+
+
   const targetOwnershipType = store.type === 'COCO' ? 'FOFO' : 'COCO';
 
   const priorityBadgeVariant = (priority?: TaskPriority) => {
