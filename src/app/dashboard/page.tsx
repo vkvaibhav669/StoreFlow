@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { createProject, getAllProjects } from "@/lib/data"; // Updated import
 import type { StoreProject, Department, StoreType } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store } from "lucide-react";
+import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react"; // Added AlertTriangle
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
