@@ -7,13 +7,59 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockProjects } from "@/lib/data";
-import { ArrowUpRight } from "lucide-react";
+import { getAllProjects } from "@/lib/data"; // Changed import
+import type { StoreProject } from "@/types"; // Added StoreProject type import
+import { ArrowUpRight, Package2, AlertTriangle } from "lucide-react"; // Added Package2 and AlertTriangle
+import { useToast } from "@/hooks/use-toast"; // Added useToast
 
 export default function AllProjectsPage() {
-  // By being a client component, when it renders (e.g., due to navigation),
-  // it will use the current state of the imported `mockProjects` array.
-  const projects = mockProjects;
+  const [projects, setProjects] = React.useState<StoreProject[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const fetchedProjects = await getAllProjects();
+        setProjects(fetchedProjects);
+      } catch (err) {
+        console.error("Failed to fetch projects:", err);
+        setError("Could not load projects. Please try again later.");
+        toast({
+          title: "Error Loading Projects",
+          description: (err as Error).message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [toast]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">Loading all projects...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <p className="text-destructive font-semibold">Error</p>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <section className="all-projects-content flex flex-col gap-6" aria-labelledby="all-projects-heading">
@@ -23,48 +69,53 @@ export default function AllProjectsPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Projects Overview</CardTitle>
+          <CardTitle>Projects Overview ({projects.length})</CardTitle>
           <CardDescription>
             A list of all ongoing and completed store launch projects.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Location</TableHead>
-                <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead className="hidden md:table-cell">Launch Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell>
-                    <div className="font-medium">{project.name}</div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">{project.location}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge variant={project.status === "Launched" ? "default" : "secondary"} className={project.status === "Launched" ? "bg-accent text-accent-foreground" : ""}>
-                      {project.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">{project.projectedLaunchDate}</TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/projects/${project.id}`}>
-                        View <ArrowUpRight className="ml-1 h-3 w-3" />
-                      </Link>
-                    </Button>
-                  </TableCell>
+          {projects.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Location</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Launch Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {projects.map((project) => (
+                  <TableRow key={project.id}>
+                    <TableCell>
+                      <div className="font-medium">{project.name}</div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{project.location}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Badge variant={project.status === "Launched" ? "default" : "secondary"} className={project.status === "Launched" ? "bg-accent text-accent-foreground" : ""}>
+                        {project.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{project.projectedLaunchDate ? new Date(project.projectedLaunchDate).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/projects/${project.id}`}>
+                          View <ArrowUpRight className="ml-1 h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">No projects found.</p>
+          )}
         </CardContent>
       </Card>
     </section>
   );
 }
+

@@ -2,19 +2,20 @@
 "use client";
 
 import * as React from "react";
-import { mockProjects } from "@/lib/data";
+import { getAllProjects } from "@/lib/data"; // Changed import
 import type { Task, StoreProject, Department, TaskPriority } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Package2 } from "lucide-react";
+import { Package2, AlertTriangle } from "lucide-react"; // Added AlertTriangle
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast"; // Added useToast
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -27,10 +28,15 @@ const KANBAN_COLUMNS: TaskStatus[] = ["Pending", "In Progress", "Blocked", "Comp
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 const allPossiblePriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 
-export default function TaskTrackerPage() { // Renamed component
-  const { user, loading } = useAuth();
+export default function TaskTrackerPage() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { open: sidebarOpen } = useSidebar();
+  const { toast } = useToast(); // Initialize toast
+
+  const [projects, setProjects] = React.useState<StoreProject[]>([]);
+  const [projectsLoading, setProjectsLoading] = React.useState(true);
+  const [projectsError, setProjectsError] = React.useState<string | null>(null);
 
   const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
@@ -38,24 +44,43 @@ export default function TaskTrackerPage() { // Renamed component
   const [selectedPriority, setSelectedPriority] = React.useState<TaskPriority | "All">("All");
 
   React.useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.replace("/auth/signin");
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    const allTasks: KanbanTask[] = [];
-    mockProjects.forEach((project) => {
-      (project.tasks || []).forEach((task) => {
-        allTasks.push({
-          ...task,
-          projectName: project.name,
-          projectId: project.id,
-        });
-      });
-    });
-    setTasksWithProjectInfo(allTasks);
-  }, []);
+    if (user) {
+      const fetchProjectsData = async () => {
+        setProjectsLoading(true);
+        setProjectsError(null);
+        try {
+          const fetchedProjects = await getAllProjects();
+          setProjects(fetchedProjects);
+
+          const allTasks: KanbanTask[] = [];
+          fetchedProjects.forEach((project) => {
+            (project.tasks || []).forEach((task) => {
+              allTasks.push({
+                ...task,
+                projectName: project.name,
+                projectId: project.id,
+              });
+            });
+          });
+          setTasksWithProjectInfo(allTasks);
+
+        } catch (error) {
+          console.error("Error fetching projects for Kanban:", error);
+          setProjectsError("Failed to load project data for Kanban board.");
+          toast({ title: "Error", description: "Could not load project data.", variant: "destructive" });
+        } finally {
+          setProjectsLoading(false);
+        }
+      };
+      fetchProjectsData();
+    }
+  }, [user, toast]);
 
   const filteredTasks = React.useMemo(() => {
     return tasksWithProjectInfo.filter((task) => {
@@ -82,11 +107,29 @@ export default function TaskTrackerPage() { // Renamed component
     return grouped;
   }, [filteredTasks]);
 
-  if (loading || !user) {
+  if (authLoading || projectsLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{loading ? "Loading task tracker..." : "Please sign in."}</p>
+        <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading tasks..."}</p>
+      </div>
+    );
+  }
+
+  if (projectsError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <p className="text-destructive font-semibold">Error Loading Data</p>
+        <p className="text-muted-foreground">{projectsError}</p>
+      </div>
+    );
+  }
+
+  if (!user) { // Fallback if auth checks are somehow bypassed before redirect
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <p className="text-muted-foreground">Please sign in.</p>
       </div>
     );
   }
@@ -95,7 +138,7 @@ export default function TaskTrackerPage() { // Renamed component
   return (
     <section className="task-tracker-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="task-tracker-page-heading">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 id="task-tracker-page-heading" className="text-2xl font-semibold md:text-3xl">Task Tracker</h1> {/* Renamed title */}
+        <h1 id="task-tracker-page-heading" className="text-2xl font-semibold md:text-3xl">Task Tracker</h1>
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <div className="flex-1 min-w-[150px]">
             <Label htmlFor="project-filter" className="text-xs text-muted-foreground">Filter by Project</Label>
@@ -105,7 +148,7 @@ export default function TaskTrackerPage() { // Renamed component
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All">All Projects</SelectItem>
-                {mockProjects.map((project) => (
+                {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
                   </SelectItem>
@@ -154,14 +197,13 @@ export default function TaskTrackerPage() { // Renamed component
             <Card
               key={status}
               className={cn(
-                "h-full flex-shrink-0 flex flex-col", // Base styles
-                "w-[240px]", // Default for smallest screens (mobile)
-                "sm:w-[260px]", // Slightly wider for small tablets/landscape phones
-                // Desktop and larger tablets, considering sidebar state
+                "h-full flex-shrink-0 flex flex-col",
+                "w-[240px]", 
+                "sm:w-[260px]", 
                 sidebarOpen
-                  ? "md:w-[220px] lg:w-[240px]" // Sidebar is open
-                  : "md:w-[280px] lg:w-[300px]", // Sidebar is closed
-                "transition-all duration-300 ease-in-out" // Keep transition
+                  ? "md:w-[220px] lg:w-[240px]" 
+                  : "md:w-[280px] lg:w-[300px]", 
+                "transition-all duration-300 ease-in-out"
               )}
             >
               <CardHeader className="p-3 border-b">
