@@ -6,20 +6,26 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Store, Filter, ArrowUpRight } from "lucide-react";
+import { Store, Filter, ArrowUpRight, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Package2 } from "lucide-react";
-import { mockStores } from "@/lib/data";
+import { getAllStores } from "@/lib/data"; // Changed import
 import type { StoreItem, StoreType } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 type StoreFilterType = StoreType | "All";
 
 export default function MyStoresPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const [allStores, setAllStores] = React.useState<StoreItem[]>([]);
+  const [storesLoading, setStoresLoading] = React.useState(true);
+  const [storesError, setStoresError] = React.useState<string | null>(null);
   const [filterType, setFilterType] = React.useState<StoreFilterType>("All");
 
   React.useEffect(() => {
@@ -28,19 +34,60 @@ export default function MyStoresPage() {
     }
   }, [user, authLoading, router]);
 
+  React.useEffect(() => {
+    if (user) {
+      const fetchStores = async () => {
+        setStoresLoading(true);
+        setStoresError(null);
+        try {
+          const stores = await getAllStores();
+          setAllStores(stores);
+        } catch (error) {
+          console.error("Error fetching stores:", error);
+          setStoresError("Failed to load stores. Please try again.");
+          toast({ title: "Error", description: "Could not load stores.", variant: "destructive" });
+        } finally {
+          setStoresLoading(false);
+        }
+      };
+      fetchStores();
+    }
+  }, [user, toast]);
+
   const filteredStores = React.useMemo(() => {
-    let storesToShow = mockStores.filter(store => store.status === "Operational");
+    let storesToShow = allStores.filter(store => store.status === "Operational");
     if (filterType !== "All") {
       storesToShow = storesToShow.filter(store => store.type === filterType);
     }
     return storesToShow;
-  }, [filterType]);
+  }, [allStores, filterType]);
 
-  if (authLoading || !user) {
+  if (authLoading || storesLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{authLoading ? "Loading..." : "Please sign in."}</p>
+        <p className="text-muted-foreground">
+          {authLoading ? "Authenticating..." : "Loading stores..."}
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) { // Fallback if auth check somehow bypassed redirect
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <p className="text-muted-foreground">Please sign in to view your stores.</p>
+      </div>
+    );
+  }
+
+  if (storesError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <p className="text-destructive font-semibold">Error Loading Stores</p>
+        <p className="text-muted-foreground">{storesError}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
       </div>
     );
   }
@@ -68,7 +115,7 @@ export default function MyStoresPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-center">
-              No operational stores match the current filter.
+              {allStores.length === 0 && !storesLoading ? "No operational stores found." : "No operational stores match the current filter."}
             </p>
           </CardContent>
         </Card>
@@ -116,3 +163,4 @@ export default function MyStoresPage() {
     </section>
   );
 }
+

@@ -5,7 +5,16 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStoreById, updateMockStore } from "@/lib/data";
+import { 
+  getStoreById, 
+  updateStore,
+  addImprovementPointToStore,
+  updateImprovementPointInStore,
+  addCommentToImprovementPoint, // Assuming this can handle replies if commentData has a parentId
+  addStoreTask,
+  updateStoreTask,
+  deleteStoreTask
+} from "@/lib/data";
 import type { StoreItem, ImprovementPoint, Comment as CommentType, StoreTask, TaskPriority } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -63,6 +72,11 @@ export default function StoreDetailsPage() {
   const [improvementCommentInputs, setImprovementCommentInputs] = React.useState<Record<string, string>>({});
   const [resolvedPointDiscussionVisibility, setResolvedPointDiscussionVisibility] = React.useState<Record<string, boolean>>({});
 
+  const [isSubmittingImprovement, setIsSubmittingImprovement] = React.useState(false);
+  const [isUpdatingOwnership, setIsUpdatingOwnership] = React.useState(false);
+  const [isUpdatingImpPointStatus, setIsUpdatingImpPointStatus] = React.useState<Record<string, boolean>>({});
+  const [isSubmittingImpComment, setIsSubmittingImpComment] = React.useState<Record<string, boolean>>({});
+
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [newTaskForm, setNewTaskForm] = React.useState({
     title: "",
@@ -74,6 +88,7 @@ export default function StoreDetailsPage() {
   const [taskFilterStatus, setTaskFilterStatus] = React.useState<StoreTask['status'] | "All">("All");
   const [editingStoreTask, setEditingStoreTask] = React.useState<StoreTask | null>(null);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = React.useState(false);
+  const [isSubmittingStoreTask, setIsSubmittingStoreTask] = React.useState(false);
   const [isRequestInfoDialogOpen, setIsRequestInfoDialogOpen] = React.useState(false);
   const [requestInfoText, setRequestInfoText] = React.useState("");
 
@@ -87,17 +102,29 @@ export default function StoreDetailsPage() {
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    if (storeId) {
-      const fetchedStore = getStoreById(storeId);
-      if (fetchedStore) {
-        setStore(fetchedStore);
-      } else {
-        router.replace("/my-stores");
-        toast({title: "Store Not Found", description: "The requested store could not be found.", variant: "destructive"});
-      }
-      setLoadingStore(false);
+    if (user && storeId) { // Ensure user is loaded before fetching
+      setLoadingStore(true);
+      getStoreById(storeId)
+        .then((fetchedStore) => {
+          if (fetchedStore) {
+            setStore(fetchedStore);
+          } else {
+            router.replace("/my-stores"); // Or a specific not-found page for stores
+            toast({title: "Store Not Found", description: "The requested store could not be found.", variant: "destructive"});
+          }
+        })
+        .catch(error => {
+          console.error("Failed to fetch store:", error);
+          toast({title: "Error", description: "Could not load store details.", variant: "destructive"});
+          router.replace("/my-stores");
+        })
+        .finally(() => {
+          setLoadingStore(false);
+        });
+    } else if (!authLoading && !user) {
+        router.replace("/auth/signin"); // Redirect if user is not authenticated and auth check is done
     }
-  }, [storeId, router, toast]);
+  }, [storeId, user, authLoading, router, toast]);
 
   const currentUserRole = user?.role;
   const isUserAdmin = currentUserRole === 'Admin';
@@ -112,7 +139,7 @@ export default function StoreDetailsPage() {
   }, [store, isUserAdmin, isUserSuperAdmin, user?.name]);
 
 
-  const handleAddImprovementPoint = () => {
+  const handleAddImprovementPoint = async () => {
     if (!newImprovementPointText.trim() || !store || !user) {
       toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" });
       return;
@@ -121,8 +148,8 @@ export default function StoreDetailsPage() {
       toast({ title: "Permission Denied", description: "You do not have permission to add improvement points.", variant: "destructive" });
       return;
     }
-    const newPoint: ImprovementPoint = {
-      id: `imp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    setIsSubmittingImprovement(true);
+    const newPointPayload: Partial<ImprovementPoint> = {
       text: newImprovementPointText,
       addedBy: user.name || user.email || "System",
       addedAt: new Date().toISOString(),
@@ -130,29 +157,43 @@ export default function StoreDetailsPage() {
       comments: [],
       isResolved: false,
     };
-    const updatedStore = { ...store, improvementPoints: [...(store.improvementPoints || []), newPoint] };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    toast({ title: "Improvement Point Added", description: "The new improvement point has been saved." });
-    setNewImprovementPointText("");
-    setIsAddImprovementDialogOpen(false);
+    try {
+      const addedPoint = await addImprovementPointToStore(store.id, newPointPayload);
+      setStore(prevStore => prevStore ? { ...prevStore, improvementPoints: [addedPoint, ...(prevStore.improvementPoints || [])].sort((a,b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()) } : null);
+      toast({ title: "Improvement Point Added", description: "The new improvement point has been saved." });
+      setNewImprovementPointText("");
+      setIsAddImprovementDialogOpen(false);
+    } catch (error) {
+      console.error("Error adding improvement point:", error);
+      toast({ title: "Error", description: "Failed to add improvement point.", variant: "destructive" });
+    } finally {
+      setIsSubmittingImprovement(false);
+    }
   };
 
-  const handleToggleOwnershipChangeRequest = () => {
+  const handleToggleOwnershipChangeRequest = async () => {
     if (!store || !canRequestOwnershipChange) {
         toast({title: "Permission Denied", description: "You do not have permission to request an ownership change for this store.", variant: "destructive"});
         return;
     }
+    setIsUpdatingOwnership(true);
     const currentlyRequested = !!store.ownershipChangeRequested;
     const newRequestedState = !currentlyRequested;
     const targetType = store.type === 'COCO' ? 'FOFO' : 'COCO';
-    const updatedStore = { ...store, ownershipChangeRequested: newRequestedState };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    if (newRequestedState) {
-      toast({ title: "Ownership Change Requested", description: `A request to change ownership of "${store.name}" to ${targetType} has been sent.` });
-    } else {
-      toast({ title: "Ownership Change Request Cancelled", description: `The request to change ownership for "${store.name}" has been cancelled.` });
+    
+    try {
+        const updatedStoreData = await updateStore(store.id, { ownershipChangeRequested: newRequestedState });
+        setStore(updatedStoreData);
+        if (newRequestedState) {
+        toast({ title: "Ownership Change Requested", description: `A request to change ownership of "${store.name}" to ${targetType} has been sent.` });
+        } else {
+        toast({ title: "Ownership Change Request Cancelled", description: `The request to change ownership for "${store.name}" has been cancelled.` });
+        }
+    } catch (error) {
+        console.error("Error toggling ownership change request:", error);
+        toast({ title: "Error", description: "Could not update ownership change request.", variant: "destructive" });
+    } finally {
+        setIsUpdatingOwnership(false);
     }
   };
 
@@ -160,70 +201,134 @@ export default function StoreDetailsPage() {
     setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: !prev[pointId] }));
   };
 
-  const handleToggleImprovementResolved = (pointId: string) => {
+  const handleToggleImprovementResolved = async (pointId: string) => {
     if (!store || !user || !canManageStoreFeatures) {
         toast({title: "Permission Denied", description: "You do not have permission to update improvement points.", variant: "destructive"});
         return;
     }
-    let pointIsNowResolved = false;
-    const updatedPoints = (store.improvementPoints || []).map(p => {
-      if (p.id === pointId) {
-        const newResolvedState = !p.isResolved;
-        pointIsNowResolved = newResolvedState;
-        return {
-          ...p,
-          isResolved: newResolvedState,
-          resolvedBy: newResolvedState ? (user.name || user.email) : undefined,
-          resolvedAt: newResolvedState ? new Date().toISOString() : undefined,
-        };
-      }
-      return p;
-    });
-    const updatedStore = { ...store, improvementPoints: updatedPoints };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    if (pointIsNowResolved) {
-      setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: false }));
-    } else {
-       setResolvedPointDiscussionVisibility(prev => { const newState = {...prev}; delete newState[pointId]; return newState; });
-    }
-    toast({ title: "Improvement Point Updated", description: `Status changed for point: ${updatedPoints.find(p => p.id === pointId)?.text.substring(0,30)}...` });
-  };
+    const point = store.improvementPoints?.find(p => p.id === pointId);
+    if (!point) return;
 
-  const handleAddCommentToImprovement = (pointId: string, text: string) => {
-    if (!text.trim() || !store || !user) return;
-    const newComment: CommentType = {
-      id: `imp-comment-${Date.now()}`, author: user.name || user.email || "System", avatarUrl: `https://picsum.photos/seed/${user.id || 'commenter'}/40/40`, timestamp: new Date().toISOString(), text: text, replies: [],
+    setIsUpdatingImpPointStatus(prev => ({...prev, [pointId]: true }));
+    const newResolvedState = !point.isResolved;
+    const updatePayload: Partial<ImprovementPoint> = {
+        isResolved: newResolvedState,
+        resolvedBy: newResolvedState ? (user.name || user.email) : undefined,
+        resolvedAt: newResolvedState ? new Date().toISOString() : undefined,
     };
-    const updatedPoints = (store.improvementPoints || []).map(p => p.id === pointId ? { ...p, comments: [newComment, ...(p.comments || [])] } : p);
-    const updatedStore = { ...store, improvementPoints: updatedPoints };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    setImprovementCommentInputs(prev => ({...prev, [pointId]: ""}));
-    toast({ title: "Comment Added", description: "Your comment has been posted." });
+
+    try {
+        const updatedPoint = await updateImprovementPointInStore(store.id, pointId, updatePayload);
+        setStore(prevStore => {
+            if (!prevStore) return null;
+            return {
+                ...prevStore,
+                improvementPoints: (prevStore.improvementPoints || []).map(p => p.id === pointId ? updatedPoint : p)
+            };
+        });
+        if (newResolvedState) {
+          setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: false }));
+        } else {
+          setResolvedPointDiscussionVisibility(prev => { const newState = {...prev}; delete newState[pointId]; return newState; });
+        }
+        toast({ title: "Improvement Point Updated", description: `Status changed for point: ${updatedPoint.text.substring(0,30)}...` });
+    } catch (error) {
+        console.error("Error updating improvement point status:", error);
+        toast({ title: "Error", description: "Could not update improvement point status.", variant: "destructive" });
+    } finally {
+        setIsUpdatingImpPointStatus(prev => ({...prev, [pointId]: false }));
+    }
   };
 
-  const handleReplyToImprovementComment = (pointId: string, commentId: string, replyText: string) => {
+  const handleAddCommentToImprovement = async (pointId: string, text: string) => {
+    if (!text.trim() || !store || !user) return;
+    setIsSubmittingImpComment(prev => ({...prev, [pointId]: true}));
+    const newCommentPayload: Partial<CommentType> = { 
+      author: user.name || user.email || "System", 
+      avatarUrl: `https://picsum.photos/seed/${user.id || 'commenter'}/40/40`, 
+      timestamp: new Date().toISOString(), 
+      text: text, 
+      replies: [],
+    };
+    try {
+        const addedComment = await addCommentToImprovementPoint(store.id, pointId, newCommentPayload);
+        setStore(prevStore => {
+            if (!prevStore) return null;
+            return {
+                ...prevStore,
+                improvementPoints: (prevStore.improvementPoints || []).map(p => 
+                    p.id === pointId ? { ...p, comments: [addedComment, ...(p.comments || [])] } : p
+                )
+            };
+        });
+        setImprovementCommentInputs(prev => ({...prev, [pointId]: ""}));
+        toast({ title: "Comment Added", description: "Your comment has been posted." });
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        toast({ title: "Error", description: "Failed to post comment.", variant: "destructive" });
+    } finally {
+        setIsSubmittingImpComment(prev => ({...prev, [pointId]: false}));
+    }
+  };
+
+  const handleReplyToImprovementComment = async (pointId: string, commentId: string, replyText: string) => {
     if (!replyText.trim() || !store || !user) return;
-    const addReplyRecursively = (currentComments: CommentType[]): CommentType[] => currentComments.map(comment => {
-      if (comment.id === commentId) {
-        const newReply: CommentType = { id: `imp-reply-${Date.now()}`, author: user.name || user.email || "System", avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`, timestamp: new Date().toISOString(), text: replyText, replies: [] };
-        return { ...comment, replies: [newReply, ...(comment.replies || [])] };
-      }
-      return comment.replies && comment.replies.length > 0 ? { ...comment, replies: addReplyRecursively(comment.replies) } : comment;
-    });
-    const updatedPoints = (store.improvementPoints || []).map(p => p.id === pointId ? { ...p, comments: addReplyRecursively(p.comments || []) } : p);
-    const updatedStore = { ...store, improvementPoints: updatedPoints };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    toast({ title: "Reply Posted", description: "Your reply has been added." });
+    // For replies, we need to be more careful with optimistic updates or rely on backend to return full structure
+    // Using a generic updateStore for now as a simpler approach if a dedicated reply API isn't there.
+    // Ideally, addCommentToImprovementPoint would handle a `parentId` or we'd have a dedicated reply endpoint.
+    
+    // Let's assume `addCommentToImprovementPoint` can be used, and we add a temporary parentId to the payload
+    // that the backend understands for nesting. This is an assumption about the API.
+    setIsSubmittingImpComment(prev => ({...prev, [`${pointId}-${commentId}`]: true}));
+    const newReplyPayload: Partial<CommentType> & { parentCommentId?: string } = { 
+      author: user.name || user.email || "System", 
+      avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`, 
+      timestamp: new Date().toISOString(), 
+      text: replyText,
+      parentCommentId: commentId // Hypothetical field for backend
+    };
+
+    try {
+      // This API call might need to change if it doesn't support replies this way.
+      // If the API returns the *parent comment* updated, or the *entire point* updated, that's better.
+      // For now, assume it returns just the new reply, and we update client-side.
+      const addedReply = await addCommentToImprovementPoint(store.id, pointId, newReplyPayload);
+      
+      setStore(prevStore => {
+        if (!prevStore) return null;
+        const newPoints = (prevStore.improvementPoints || []).map(p => {
+          if (p.id === pointId) {
+            const addReplyFn = (comments: CommentType[]): CommentType[] => {
+              return comments.map(c => {
+                if (c.id === commentId) {
+                  return { ...c, replies: [addedReply, ...(c.replies || [])] };
+                }
+                if (c.replies && c.replies.length > 0) {
+                  return { ...c, replies: addReplyFn(c.replies) };
+                }
+                return c;
+              });
+            };
+            return { ...p, comments: addReplyFn(p.comments || []) };
+          }
+          return p;
+        });
+        return { ...prevStore, improvementPoints: newPoints };
+      });
+      toast({ title: "Reply Posted", description: "Your reply has been added." });
+    } catch (error) {
+        console.error("Error posting reply:", error);
+        toast({ title: "Error", description: "Failed to post reply.", variant: "destructive" });
+    } finally {
+        setIsSubmittingImpComment(prev => ({...prev, [`${pointId}-${commentId}`]: false}));
+    }
   };
 
   const handleNewTaskFormChange = (field: keyof typeof newTaskForm, value: any) => {
     setNewTaskForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveNewStoreTask = () => {
+  const handleSaveNewStoreTask = async () => {
     if (!newTaskForm.title.trim() || !store || !user) {
       toast({ title: "Error", description: "Task title is required.", variant: "destructive" });
       return;
@@ -232,8 +337,8 @@ export default function StoreDetailsPage() {
       toast({ title: "Permission Denied", description: "You do not have permission to add tasks.", variant: "destructive" });
       return;
     }
-    const newTask: StoreTask = {
-      id: `stask-${store.id}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+    setIsSubmittingStoreTask(true);
+    const newTaskPayload: Partial<StoreTask> = {
       storeId: store.id,
       title: newTaskForm.title.trim(),
       description: newTaskForm.description.trim() || undefined,
@@ -244,12 +349,18 @@ export default function StoreDetailsPage() {
       createdBy: user.name || user.email!,
       dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
-    const updatedStore = { ...store, tasks: [newTask, ...(store.tasks || [])] };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    toast({ title: "Task Added", description: `"${newTask.title}" added to store tasks.` });
-    setIsAddTaskDialogOpen(false);
-    setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
+    try {
+        const addedTask = await addStoreTask(store.id, newTaskPayload);
+        setStore(prevStore => prevStore ? { ...prevStore, tasks: [addedTask, ...(prevStore.tasks || [])] } : null);
+        toast({ title: "Task Added", description: `"${addedTask.title}" added to store tasks.` });
+        setIsAddTaskDialogOpen(false);
+        setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
+    } catch (error) {
+        console.error("Error adding store task:", error);
+        toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
+    } finally {
+        setIsSubmittingStoreTask(false);
+    }
   };
   
   const handleOpenEditTaskDialog = (task: StoreTask) => {
@@ -262,13 +373,13 @@ export default function StoreDetailsPage() {
         title: task.title,
         description: task.description || "",
         assignedTo: task.assignedTo || "",
-        dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+        dueDate: task.dueDate && isValid(new Date(task.dueDate)) ? new Date(task.dueDate) : undefined,
         priority: task.priority || "Medium",
     });
     setIsEditTaskDialogOpen(true);
   };
 
-  const handleSaveEditedStoreTask = () => {
+  const handleSaveEditedStoreTask = async () => {
     if (!editingStoreTask || !newTaskForm.title.trim() || !store || !user) {
         toast({ title: "Error", description: "Task title is required.", variant: "destructive" });
         return;
@@ -277,53 +388,85 @@ export default function StoreDetailsPage() {
       toast({ title: "Permission Denied", description: "You do not have permission to edit tasks.", variant: "destructive" });
       return;
     }
-    const updatedTask: StoreTask = {
-        ...editingStoreTask,
+    setIsSubmittingStoreTask(true);
+    const updatedTaskPayload: Partial<StoreTask> = {
         title: newTaskForm.title.trim(),
         description: newTaskForm.description.trim() || undefined,
         assignedTo: newTaskForm.assignedTo.trim() || undefined,
         priority: newTaskForm.priority,
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
-        status: editingStoreTask.status, 
+        // status will be handled by handleUpdateStoreTaskStatus
     };
-    const updatedTasks = (store.tasks || []).map(t => t.id === editingStoreTask.id ? updatedTask : t);
-    const updatedStore = { ...store, tasks: updatedTasks };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    toast({ title: "Task Updated", description: `Task "${updatedTask.title}" has been updated.` });
-    setIsEditTaskDialogOpen(false);
-    setEditingStoreTask(null);
-    setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
+    try {
+        const updatedTask = await updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload);
+        setStore(prevStore => {
+            if(!prevStore) return null;
+            return {
+                ...prevStore,
+                tasks: (prevStore.tasks || []).map(t => t.id === editingStoreTask.id ? {...updatedTask, status: t.status } : t) // Keep original status unless changed via dropdown
+            };
+        });
+        toast({ title: "Task Updated", description: `Task "${updatedTask.title}" has been updated.` });
+        setIsEditTaskDialogOpen(false);
+        setEditingStoreTask(null);
+        setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
+    } catch (error) {
+        console.error("Error updating store task:", error);
+        toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
+    } finally {
+        setIsSubmittingStoreTask(false);
+    }
   };
 
 
-  const handleUpdateStoreTaskStatus = (taskId: string, newStatus: StoreTask['status']) => {
+  const handleUpdateStoreTaskStatus = async (taskId: string, newStatus: StoreTask['status']) => {
     if (!store || !canManageStoreFeatures) { 
         toast({title: "Permission Denied", description: "You do not have permission to update task status.", variant: "destructive"});
         return;
     }
-    const updatedTasks = (store.tasks || []).map(task =>
-      task.id === taskId ? { ...task, status: newStatus } : task
-    );
-    const updatedStore = { ...store, tasks: updatedTasks };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    toast({ title: "Task Status Updated" });
+    setIsSubmittingStoreTask(true); // Use generic task submission loading state for now
+    try {
+        const updatedTask = await updateStoreTask(store.id, taskId, { status: newStatus });
+        setStore(prevStore => {
+            if (!prevStore) return null;
+            return {
+                ...prevStore,
+                tasks: (prevStore.tasks || []).map(task => task.id === taskId ? updatedTask : task)
+            };
+        });
+        toast({ title: "Task Status Updated" });
+    } catch (error) {
+        console.error("Error updating task status:", error);
+        toast({ title: "Error", description: "Could not update task status.", variant: "destructive" });
+    } finally {
+        setIsSubmittingStoreTask(false);
+    }
   };
 
-  const handleDeleteStoreTask = (taskId: string) => {
+  const handleDeleteStoreTask = async (taskId: string) => {
     if (!store || !canManageStoreFeatures) {
         toast({title: "Permission Denied", description: "You do not have permission to delete tasks.", variant: "destructive"});
         return;
     }
     const taskToDelete = store.tasks?.find(t => t.id === taskId);
     if (!taskToDelete) return;
-
-    const updatedTasks = (store.tasks || []).filter(task => task.id !== taskId);
-    const updatedStore = { ...store, tasks: updatedTasks };
-    setStore(updatedStore);
-    updateMockStore(updatedStore);
-    toast({ title: "Task Deleted", description: `Task "${taskToDelete.title}" has been removed.` });
+    setIsSubmittingStoreTask(true);
+    try {
+        await deleteStoreTask(store.id, taskId);
+        setStore(prevStore => {
+            if(!prevStore) return null;
+            return {
+                ...prevStore,
+                tasks: (prevStore.tasks || []).filter(task => task.id !== taskId)
+            };
+        });
+        toast({ title: "Task Deleted", description: `Task "${taskToDelete.title}" has been removed.` });
+    } catch (error) {
+        console.error("Error deleting task:", error);
+        toast({ title: "Error", description: "Could not delete task.", variant: "destructive" });
+    } finally {
+        setIsSubmittingStoreTask(false);
+    }
   };
 
   const handleSendRequestInfo = () => {
@@ -349,7 +492,7 @@ export default function StoreDetailsPage() {
   }, [store?.tasks, taskFilterStatus]);
 
 
-  if (authLoading || loadingStore || !user) {
+  if (authLoading || loadingStore || (!user && !authLoading)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
@@ -360,7 +503,7 @@ export default function StoreDetailsPage() {
     );
   }
 
-  if (!store) {
+  if (!store) { // This check should be after loadingStore is false
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center p-4">
         <StoreIcon className="w-16 h-16 text-destructive mb-4" />
@@ -488,12 +631,12 @@ export default function StoreDetailsPage() {
                 {canRequestOwnershipChange && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                                <Settings className="mr-2 h-4 w-4" /> Store Settings
+                            <Button variant="outline" size="sm" disabled={isUpdatingOwnership}>
+                                <Settings className="mr-2 h-4 w-4" /> {isUpdatingOwnership ? "Updating..." : "Store Settings"}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={handleToggleOwnershipChangeRequest}>
+                            <DropdownMenuItem onClick={handleToggleOwnershipChangeRequest} disabled={isUpdatingOwnership}>
                                 <ExternalLink className="mr-2 h-4 w-4" />
                                 {store.ownershipChangeRequested
                                 ? "Cancel Ownership Change Request"
@@ -507,8 +650,8 @@ export default function StoreDetailsPage() {
             <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-dashed">
                 <Dialog open={isAddImprovementDialogOpen} onOpenChange={setIsAddImprovementDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button size="sm">
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Point
+                        <Button size="sm" disabled={isSubmittingImprovement}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> {isSubmittingImprovement ? "Adding..." : "Add Point"}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[480px]">
@@ -526,18 +669,21 @@ export default function StoreDetailsPage() {
                                 onChange={(e) => setNewImprovementPointText(e.target.value)}
                                 placeholder="e.g., Enhance visual merchandising near entrance."
                                 rows={4}
+                                disabled={isSubmittingImprovement}
                             />
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
+                                <Button variant="outline" disabled={isSubmittingImprovement}>Cancel</Button>
                             </DialogClose>
-                            <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim()}>Save Point</Button>
+                            <Button onClick={handleAddImprovementPoint} disabled={!newImprovementPointText.trim() || isSubmittingImprovement}>
+                                {isSubmittingImprovement ? "Saving..." : "Save Point"}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-                 <Button size="sm" onClick={() => { setIsAddTaskDialogOpen(true); setEditingStoreTask(null); setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" }); }}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                 <Button size="sm" onClick={() => { setIsAddTaskDialogOpen(true); setEditingStoreTask(null); setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" }); }} disabled={isSubmittingStoreTask}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> {isSubmittingStoreTask ? "Processing..." : "Add Task"}
                 </Button>
             </div>
             )}
@@ -555,7 +701,7 @@ export default function StoreDetailsPage() {
                 {store.improvementPoints && store.improvementPoints.length > 0 ? (
                     <ScrollArea className="max-h-[500px] pr-3">
                         <ul className="space-y-6">
-                            {store.improvementPoints.slice().reverse().map(point => (
+                            {store.improvementPoints.slice().sort((a,b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()).map(point => (
                                 <li key={point.id} className="p-4 border rounded-lg shadow-sm bg-card">
                                     <div className="flex items-start space-x-3">
                                         <Avatar className="h-10 w-10 mt-1">
@@ -583,9 +729,10 @@ export default function StoreDetailsPage() {
                                                     checked={!!point.isResolved}
                                                     onCheckedChange={() => handleToggleImprovementResolved(point.id)}
                                                     aria-label={point.isResolved ? "Mark as unresolved" : "Mark as resolved"}
+                                                    disabled={isUpdatingImpPointStatus[point.id]}
                                                 />
                                                  <Label htmlFor={`resolve-switch-${point.id}`} className="text-xs text-muted-foreground">
-                                                    {point.isResolved ? "Resolved" : "Resolve"}
+                                                    {isUpdatingImpPointStatus[point.id] ? "Updating..." : (point.isResolved ? "Resolved" : "Resolve")}
                                                  </Label>
                                            </div>
                                         )}
@@ -631,13 +778,15 @@ export default function StoreDetailsPage() {
                                                   onChange={(e) => setImprovementCommentInputs(prev => ({...prev, [point.id]: e.target.value}))}
                                                   rows={2}
                                                   className="mb-2 text-sm"
+                                                  disabled={isSubmittingImpComment[point.id]}
                                               />
                                               <Button
                                                   size="sm"
                                                   onClick={() => handleAddCommentToImprovement(point.id, improvementCommentInputs[point.id] || "")}
-                                                  disabled={!(improvementCommentInputs[point.id] || "").trim()}
+                                                  disabled={!(improvementCommentInputs[point.id] || "").trim() || isSubmittingImpComment[point.id]}
                                               >
-                                                  <Send className="mr-2 h-3.5 w-3.5" /> Post Comment
+                                                  <Send className="mr-2 h-3.5 w-3.5" /> 
+                                                  {isSubmittingImpComment[point.id] ? "Posting..." : "Post Comment"}
                                               </Button>
                                               </div>
                                           </div>
@@ -692,23 +841,23 @@ export default function StoreDetailsPage() {
                          {canManageStoreFeatures && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isSubmittingStoreTask}>
                                         <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleOpenEditTaskDialog(task)}>
+                                    <DropdownMenuItem onClick={() => handleOpenEditTaskDialog(task)} disabled={isSubmittingStoreTask}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                      {allStoreTaskStatuses.map(status => (
-                                        <DropdownMenuItem key={status} onClick={() => handleUpdateStoreTaskStatus(task.id, status)} disabled={task.status === status}>
+                                        <DropdownMenuItem key={status} onClick={() => handleUpdateStoreTaskStatus(task.id, status)} disabled={task.status === status || isSubmittingStoreTask}>
                                             {task.status === status ? <Check className="mr-2 h-4 w-4 text-primary" /> : <div className="w-6 mr-2"/>}
                                             Mark as {status}
                                         </DropdownMenuItem>
                                      ))}
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handleDeleteStoreTask(task.id)} className="text-destructive focus:text-destructive">
+                                    <DropdownMenuItem onClick={() => handleDeleteStoreTask(task.id)} className="text-destructive focus:text-destructive" disabled={isSubmittingStoreTask}>
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -729,9 +878,9 @@ export default function StoreDetailsPage() {
                           </Badge>
                         </div>
                         {task.assignedTo && <div><span className="text-muted-foreground">Assigned: </span>{task.assignedTo}</div>}
-                        {task.dueDate && <div><span className="text-muted-foreground">Due: </span>{format(new Date(task.dueDate), "PP")}</div>}
+                        {task.dueDate && <div><span className="text-muted-foreground">Due: </span>{isValid(new Date(task.dueDate)) ? format(new Date(task.dueDate), "PP") : "Invalid Date"}</div>}
                         <div><span className="text-muted-foreground">By: </span>{task.createdBy}</div>
-                        <div><span className="text-muted-foreground">Added: </span>{formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}</div>
+                        <div><span className="text-muted-foreground">Added: </span>{isValid(new Date(task.createdAt)) ? formatDistanceToNow(new Date(task.createdAt), { addSuffix: true }) : "Invalid Date"}</div>
                       </div>
                     </li>
                   ))}
@@ -768,20 +917,20 @@ export default function StoreDetailsPage() {
           <div className="grid gap-4 py-4">
             <div className="space-y-1.5">
               <Label htmlFor="task-title">Title *</Label>
-              <Input id="task-title" value={newTaskForm.title} onChange={(e) => handleNewTaskFormChange('title', e.target.value)} placeholder="e.g., Morning Cleaning Checklist" />
+              <Input id="task-title" value={newTaskForm.title} onChange={(e) => handleNewTaskFormChange('title', e.target.value)} placeholder="e.g., Morning Cleaning Checklist" disabled={isSubmittingStoreTask}/>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="task-description">Description</Label>
-              <Textarea id="task-description" value={newTaskForm.description} onChange={(e) => handleNewTaskFormChange('description', e.target.value)} placeholder="Optional: provide more details..." rows={3}/>
+              <Textarea id="task-description" value={newTaskForm.description} onChange={(e) => handleNewTaskFormChange('description', e.target.value)} placeholder="Optional: provide more details..." rows={3} disabled={isSubmittingStoreTask}/>
             </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="task-assignedTo">Assigned To</Label>
-                  <Input id="task-assignedTo" value={newTaskForm.assignedTo} onChange={(e) => handleNewTaskFormChange('assignedTo', e.target.value)} placeholder="e.g., Store Manager, Shift Lead" />
+                  <Input id="task-assignedTo" value={newTaskForm.assignedTo} onChange={(e) => handleNewTaskFormChange('assignedTo', e.target.value)} placeholder="e.g., Store Manager, Shift Lead" disabled={isSubmittingStoreTask}/>
                 </div>
                  <div className="space-y-1.5">
                     <Label htmlFor="task-priority">Priority</Label>
-                    <Select value={newTaskForm.priority} onValueChange={(value) => handleNewTaskFormChange('priority', value as TaskPriority)}>
+                    <Select value={newTaskForm.priority} onValueChange={(value) => handleNewTaskFormChange('priority', value as TaskPriority)} disabled={isSubmittingStoreTask}>
                         <SelectTrigger id="task-priority">
                             <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
@@ -800,6 +949,7 @@ export default function StoreDetailsPage() {
                   <Button
                     variant={"outline"}
                     className={cn("w-full justify-start text-left font-normal", !newTaskForm.dueDate && "text-muted-foreground")}
+                    disabled={isSubmittingStoreTask}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {newTaskForm.dueDate ? format(newTaskForm.dueDate, "PPP") : <span>Pick a date</span>}
@@ -813,16 +963,14 @@ export default function StoreDetailsPage() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isSubmittingStoreTask}>Cancel</Button>
             </DialogClose>
-            <Button onClick={editingStoreTask ? handleSaveEditedStoreTask : handleSaveNewStoreTask} disabled={!newTaskForm.title.trim()}>
-              {editingStoreTask ? "Save Changes" : "Add Task"}
+            <Button onClick={editingStoreTask ? handleSaveEditedStoreTask : handleSaveNewStoreTask} disabled={!newTaskForm.title.trim() || isSubmittingStoreTask}>
+              {isSubmittingStoreTask ? "Saving..." : (editingStoreTask ? "Save Changes" : "Add Task")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
     </section>
   );
 }
