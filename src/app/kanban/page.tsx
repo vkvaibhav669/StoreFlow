@@ -2,20 +2,20 @@
 "use client";
 
 import * as React from "react";
-import { getAllProjects } from "@/lib/data"; // Changed import
+import { getAllProjects } from "@/lib/data";
 import type { Task, StoreProject, Department, TaskPriority } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Package2, AlertTriangle } from "lucide-react"; // Added AlertTriangle
+import { Package2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast"; // Added useToast
+import { useToast } from "@/hooks/use-toast";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -32,13 +32,24 @@ export default function TaskTrackerPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { open: sidebarOpen } = useSidebar();
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
-  const [projects, setProjects] = React.useState<StoreProject[]>([]);
-  const [projectsLoading, setProjectsLoading] = React.useState(true);
-  const [projectsError, setProjectsError] = React.useState<string | null>(null);
+  // Use direct data fetching for mock environment
+  const allFetchedProjects = getAllProjects();
+  const [projects, setProjects] = React.useState<StoreProject[]>(allFetchedProjects);
+  
+  const allTasksFromProjects: KanbanTask[] = [];
+    projects.forEach((project) => {
+    (project.tasks || []).forEach((task) => {
+      allTasksFromProjects.push({
+        ...task,
+        projectName: project.name,
+        projectId: project.id,
+      });
+    });
+  });
+  const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>(allTasksFromProjects);
 
-  const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
   const [selectedProject, setSelectedProject] = React.useState<string | "All">("All");
   const [selectedPriority, setSelectedPriority] = React.useState<TaskPriority | "All">("All");
@@ -47,47 +58,24 @@ export default function TaskTrackerPage() {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
     }
-  }, [user, authLoading, router]);
+    // Update local state if projects change (e.g. new project added on dashboard then navigating here)
+    const updatedProjects = getAllProjects();
+    setProjects(updatedProjects);
+    const updatedTasks: KanbanTask[] = [];
+    updatedProjects.forEach((project) => {
+      (project.tasks || []).forEach((task) => {
+        updatedTasks.push({ ...task, projectName: project.name, projectId: project.id });
+      });
+    });
+    setTasksWithProjectInfo(updatedTasks);
 
-  React.useEffect(() => {
-    if (user) {
-      const fetchProjectsData = async () => {
-        setProjectsLoading(true);
-        setProjectsError(null);
-        try {
-          const fetchedProjects = await getAllProjects();
-          setProjects(fetchedProjects);
-
-          const allTasks: KanbanTask[] = [];
-          fetchedProjects.forEach((project) => {
-            (project.tasks || []).forEach((task) => {
-              allTasks.push({
-                ...task,
-                projectName: project.name,
-                projectId: project.id,
-              });
-            });
-          });
-          setTasksWithProjectInfo(allTasks);
-
-        } catch (error) {
-          console.error("Error fetching projects for Kanban:", error);
-          setProjectsError("Failed to load project data for Kanban board.");
-          toast({ title: "Error", description: "Could not load project data.", variant: "destructive" });
-        } finally {
-          setProjectsLoading(false);
-        }
-      };
-      fetchProjectsData();
-    }
-  }, [user, toast]);
+  }, [user, authLoading, router]); // Removed toast as it's not used for initial fetch here
 
   const filteredTasks = React.useMemo(() => {
     return tasksWithProjectInfo.filter((task) => {
       const projectMatch = selectedProject === "All" || task.projectId === selectedProject;
       const departmentMatch = selectedDepartment === "All" || task.department === selectedDepartment;
       const priorityMatch = selectedPriority === "All" || task.priority === selectedPriority;
-
       return projectMatch && departmentMatch && priorityMatch;
     });
   }, [tasksWithProjectInfo, selectedProject, selectedDepartment, selectedPriority]);
@@ -107,25 +95,15 @@ export default function TaskTrackerPage() {
     return grouped;
   }, [filteredTasks]);
 
-  if (authLoading || projectsLoading) {
+  if (authLoading) { // Simplified loading check
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading tasks..."}</p>
+        <p className="text-muted-foreground">Authenticating...</p>
       </div>
     );
   }
-
-  if (projectsError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-destructive font-semibold">Error Loading Data</p>
-        <p className="text-muted-foreground">{projectsError}</p>
-      </div>
-    );
-  }
-
+  
   if (!user) { // Fallback if auth checks are somehow bypassed before redirect
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
@@ -133,7 +111,6 @@ export default function TaskTrackerPage() {
       </div>
     );
   }
-
 
   return (
     <section className="task-tracker-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="task-tracker-page-heading">

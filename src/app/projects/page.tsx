@@ -7,41 +7,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAllProjects } from "@/lib/data"; // Changed import
-import type { StoreProject } from "@/types"; // Added StoreProject type import
-import { ArrowUpRight, Package2, AlertTriangle } from "lucide-react"; // Added Package2 and AlertTriangle
-import { useToast } from "@/hooks/use-toast"; // Added useToast
+import { getAllProjects } from "@/lib/data";
+import type { StoreProject } from "@/types";
+import { ArrowUpRight, Package2, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function AllProjectsPage() {
-  const [projects, setProjects] = React.useState<StoreProject[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth(); // Get auth state
+  const router = useRouter(); // For redirect
+  const { toast } = useToast(); // Keep for any future messages
+
+  // For mock data, fetch directly.
+  // No need for loading/error state here as data is immediately available.
+  const [projects, setProjects] = React.useState<StoreProject[]>(getAllProjects());
 
   React.useEffect(() => {
-    const fetchProjects = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const fetchedProjects = await getAllProjects();
-        setProjects(fetchedProjects);
-      } catch (err) {
-        console.error("Failed to fetch projects:", err);
-        setError("Could not load projects. Please try again later.");
-        toast({
-          title: "Error Loading Projects",
-          description: (err as Error).message || "An unexpected error occurred.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!authLoading && !user) {
+      router.replace("/auth/signin"); // Redirect if not authenticated
+    }
+    // Optionally refresh data if it can change via other components
+    setProjects(getAllProjects());
+  }, [user, authLoading, router]);
 
-    fetchProjects();
-  }, [toast]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
@@ -50,14 +41,13 @@ export default function AllProjectsPage() {
     );
   }
 
-  if (error) {
+  // If user is null and auth is not loading, means redirect should have happened or is about to.
+  // You can show a minimal message or null.
+  if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-destructive font-semibold">Error</p>
-        <p className="text-muted-foreground">{error}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
+         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+            <p className="text-muted-foreground">Please sign in to view projects.</p>
+        </div>
     );
   }
 
@@ -118,4 +108,3 @@ export default function AllProjectsPage() {
     </section>
   );
 }
-

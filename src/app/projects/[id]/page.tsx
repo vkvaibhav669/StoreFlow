@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { notFound, useRouter, useParams as useParamsNext } from "next/navigation"; // Renamed useParams to avoid conflict
+import { notFound, useRouter, useParams as useParamsNext } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +19,9 @@ import {
   addReplyToProjectComment,
   addMemberToProject,
   removeMemberFromProject,
-  getHeadOfficeContacts // Added
+  getHeadOfficeContacts 
 } from "@/lib/data";
-import * as authService from "@/lib/auth";
+// Removed authService import as auth is handled by context
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -133,25 +133,46 @@ const projectStatuses: StoreProject['status'][] = [
 ];
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  // const resolvedParams = React.use(paramsProp); // For Server Components if `params` is a promise
-  // For Client Components, useParams is usually used, or props are passed directly.
-  // Since we are using `useParamsNext` from `next/navigation` (renamed to avoid conflict)
-  // this component is effectively a client component if that hook is used.
-  // However, Next.js App Router passes `params` as a prop to page components.
   const projectId = params.id;
-
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const navigateToNotFound = useRouter().notFound;
-
-  const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
-  const [projectLoading, setProjectLoading] = React.useState(true);
-  const [projectError, setProjectError] = React.useState<string | null>(null);
   
-  const [projectComments, setProjectComments] = React.useState<Comment[]>([]); // Kept separate for optimistic updates
+  // For mock data, fetch synchronously. Error/loading states are simplified.
+  const initialProjectData = getProjectById(projectId);
+  const [projectData, setProjectData] = React.useState<StoreProject | null>(initialProjectData || null);
+  
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/auth/signin");
+    } else if (user && !projectData) { // Project not found from initial sync load
+        notFound();
+    }
+    // Refresh project data if needed (e.g., if underlying mock data changes)
+    const currentProject = getProjectById(projectId);
+    if (currentProject) {
+        setProjectData(currentProject);
+        setProjectComments(currentProject.comments || []);
+        // Re-initialize forms if project data changes from an external source (less likely in full mock)
+        setEditingProjectForm({
+            name: currentProject.name, location: currentProject.location, status: currentProject.status,
+            startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
+            projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
+            franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
+        });
+        setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
+        setEditingTimelineForm(currentProject.projectTimeline || {});
+        setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
+        setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
+
+    } else if (!authLoading && user) { // If user exists but project not found after auth
+        notFound();
+    }
+  }, [projectId, user, authLoading, router, projectData]); // Added projectData to re-run if it becomes null
+
+  const [projectComments, setProjectComments] = React.useState<Comment[]>(initialProjectData?.comments || []);
   const [newCommentText, setNewCommentText] = React.useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = React.useState(false); // Kept for UX
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
@@ -177,7 +198,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
   const [editingSelectedTaskDepartment, setEditingSelectedTaskDepartment] = React.useState<Department | "">("");
   const [editingSelectedTaskPriority, setEditingSelectedTaskPriority] = React.useState<TaskPriority | "">("");
-  const [newTaskCommentTextForTask, setNewTaskCommentTextForTask] = React.useState(""); // Renamed
+  const [newTaskCommentTextForTask, setNewTaskCommentTextForTask] = React.useState("");
   const [isSubmittingTaskComment, setIsSubmittingTaskComment] = React.useState(false);
 
 
@@ -189,17 +210,17 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = React.useState(false);
   const [isSavingProject, setIsSavingProject] = React.useState(false);
-  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
-  const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
-  const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
+  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>(initialProjectData || {});
+  const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>(initialProjectData?.propertyDetails || {});
+  const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>(initialProjectData?.projectTimeline || {});
 
-  const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>([]);
+  const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>(initialProjectData?.milestones?.map(m=>({...m})) || []);
   const [isAddMilestoneDialogOpen, setIsAddMilestoneDialogOpen] = React.useState(false);
   const [newMilestoneName, setNewMilestoneName] = React.useState("");
   const [newMilestoneDate, setNewMilestoneDate] = React.useState(utilFormatDate(new Date()));
   const [newMilestoneDescription, setNewMilestoneDescription] = React.useState("");
 
-  const [editingBlockers, setEditingBlockers] = React.useState<Blocker[]>([]);
+  const [editingBlockers, setEditingBlockers] = React.useState<Blocker[]>(initialProjectData?.blockers?.map(b=>({...b})) || []);
   const [isAddBlockerDialogOpen, setIsAddBlockerDialogOpen] = React.useState(false);
   const [newBlockerTitle, setNewBlockerTitle] = React.useState("");
   const [newBlockerDescription, setNewBlockerDescription] = React.useState("");
@@ -208,7 +229,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = React.useState(false);
   const [isAddingMember, setIsAddingMember] = React.useState(false);
-  const [availableHOContacts, setAvailableHOContacts] = React.useState<ProjectMember[]>([]);
+  const [availableHOContacts, setAvailableHOContacts] = React.useState<ProjectMember[]>(getHeadOfficeContacts());
   const [selectedNewMemberEmail, setSelectedNewMemberEmail] = React.useState<string>("");
   const [newMemberRoleInProject, setNewMemberRoleInProject] = React.useState("");
   const [newMemberIsProjectHod, setNewMemberIsProjectHod] = React.useState(false);
@@ -236,7 +257,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const visibleFiles = React.useMemo(() => {
     if (!projectData) return [];
     if (isUserAdmin || isUserSuperAdmin) return projectData.documents;
-    if (isUserMember) return projectData.documents.filter(doc => !doc.hodOnly); // Members can upload, so they see non-HOD files
+    if (isUserMember) return projectData.documents.filter(doc => !doc.hodOnly);
     return projectData.documents.filter(doc => !doc.hodOnly);
   }, [projectData, isUserAdmin, isUserSuperAdmin, isUserMember]);
 
@@ -250,7 +271,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           task => task.department === currentUserProjectMembership.department
         );
       } else {
-        return [];
+        return []; 
       }
     }
 
@@ -268,82 +289,15 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }, [projectData, availableHOContacts]);
 
 
-  React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/auth/signin");
-    }
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (authLoading) return; // Wait for auth to complete
-    if (user && projectId) {
-      const fetchProjectDetails = async () => {
-        setProjectLoading(true);
-        setProjectError(null);
-        try {
-          const currentProject = await getProjectById(projectId);
-          if (currentProject) {
-            setProjectData(currentProject);
-            setProjectComments(currentProject.comments || []);
-            // Initialize editing forms
-            setEditingProjectForm({
-                name: currentProject.name,
-                location: currentProject.location,
-                status: currentProject.status,
-                startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
-                projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
-                franchiseType: currentProject.franchiseType,
-                threeDRenderUrl: currentProject.threeDRenderUrl,
-            });
-            setEditingPropertyDetailsForm({
-                address: currentProject.propertyDetails?.address,
-                sqft: currentProject.propertyDetails?.sqft,
-                status: currentProject.propertyDetails?.status,
-                notes: currentProject.propertyDetails?.notes,
-            });
-            setEditingTimelineForm({
-                totalDays: currentProject.projectTimeline?.totalDays,
-            });
-            setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
-            setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
-          } else {
-            setProjectError("Project not found.");
-            navigateToNotFound();
-          }
-        } catch (error) {
-          console.error("Error fetching project details:", error);
-          setProjectError("Failed to load project details.");
-          toast({ title: "Error", description: "Could not load project details.", variant: "destructive" });
-        } finally {
-          setProjectLoading(false);
-        }
-      };
-
-      const fetchContacts = async () => {
-        try {
-            const contacts = await getHeadOfficeContacts();
-            setAvailableHOContacts(contacts);
-        } catch (error) {
-            console.error("Failed to fetch head office contacts:", error);
-            toast({title: "Error", description: "Could not load contacts for member assignment.", variant: "destructive"})
-        }
-      };
-
-      fetchProjectDetails();
-      if (canEditProject) fetchContacts(); // Only fetch if user can add members
-    }
-  }, [projectId, user, authLoading, router, navigateToNotFound, toast, canEditProject]);
-
-
-  if (authLoading || projectLoading) {
+  if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading project details..."}</p>
+        <p className="text-muted-foreground">Authenticating...</p>
       </div>
     );
   }
-   if (!user) { // Should be caught by useEffect redirect, but as a fallback
+   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
           <p className="text-muted-foreground">Please sign in to view project details.</p>
@@ -352,24 +306,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     );
   }
 
-
-  if (projectError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-destructive font-semibold">Error Loading Project</p>
-        <p className="text-muted-foreground">{projectError}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
-
-  if (!projectData) { // Should be caught by projectError or loading state
-    return notFound(); // Or a more specific not found component
+  if (!projectData) { // Should be caught by useEffect -> notFound()
+    return null; // Or a minimal loading/error state before notFound kicks in
   }
 
 
-  const handleAddNewTask = async () => {
+  const handleAddNewTask = () => { // No async for mock
     if (!newTaskName || !newTaskDepartment || !newTaskAssignedTo) {
       toast({ title: "Error", description: "Task Name, Department, and Assignee are required.", variant: "destructive" });
       return;
@@ -380,7 +322,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
     if (!projectData) return;
 
-    setIsSubmittingTask(true);
+    setIsSubmittingTask(true); // Still useful for UX
     const newTaskPayload: Partial<Task> = {
       name: newTaskName,
       department: newTaskDepartment as Department,
@@ -393,15 +335,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     };
 
     try {
-      const addedTask = await addTaskToProject(projectData.id, newTaskPayload);
-      setProjectData(prev => prev ? { ...prev, tasks: [...(prev.tasks || []), addedTask], currentProgress: calculateOverallProgress([...(prev.tasks || []), addedTask]) } : null);
+      const addedTask = addTaskToProject(projectData.id, newTaskPayload);
+      setProjectData(getProjectById(projectData.id) || null); // Refresh project data
       toast({ title: "Task Added", description: `Task "${addedTask.name}" has been added.` });
-      setNewTaskName("");
-      setNewTaskDepartment("");
-      setNewTaskDescription("");
-      setNewTaskDueDate("");
-      setNewTaskAssignedTo("");
-      setNewTaskPriority("Medium");
+      setNewTaskName(""); setNewTaskDepartment(""); setNewTaskDescription("");
+      setNewTaskDueDate(""); setNewTaskAssignedTo(""); setNewTaskPriority("Medium");
       setIsAddTaskDialogOpen(false);
     } catch (error) {
       console.error("Error adding task:", error);
@@ -419,7 +357,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const handleAddNewDocument = async () => {
+  const handleAddNewDocument = () => { // No async for mock
     if (!newDocumentFile || !newDocumentName || !newDocumentType) {
       toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
       return;
@@ -427,7 +365,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     if (!projectData || !user) return;
 
     setIsSubmittingDocument(true);
-    const formData = new FormData();
+    const formData = new FormData(); // Still use FormData for consistency, even if mock handles it differently
     formData.append('file', newDocumentFile);
     formData.append('name', newDocumentName);
     formData.append('type', newDocumentType);
@@ -435,16 +373,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     formData.append('dataAiHint', newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : "");
     formData.append('hodOnly', String(newDocumentHodOnly));
 
-
     try {
-      const addedDocument = await addDocumentToProject(projectData.id, formData);
-      setProjectData(prev => prev ? { ...prev, documents: [addedDocument, ...(prev.documents || [])] } : null);
+      const addedDocument = addDocumentToProject(projectData.id, formData);
+      setProjectData(getProjectById(projectData.id) || null); // Refresh project data
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
-      setNewDocumentFile(null);
-      setNewDocumentName("");
-      setNewDocumentType("");
-      setNewDocumentDataAiHint("");
-      setNewDocumentHodOnly(false);
+      setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
+      setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
       setIsAddDocumentDialogOpen(false);
     } catch (error) {
       console.error("Error adding document:", error);
@@ -454,21 +388,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const handleAddComment = async () => {
+  const handleAddComment = () => { // No async for mock
     if (newCommentText.trim() && projectData && user) {
       setIsSubmittingComment(true);
       const commentPayload: Partial<Comment> = {
         author: user.name || user.email || "Anonymous User",
-        avatarUrl: `https://picsum.photos/seed/${user.id || 'currentUser'}/40/40`, // Placeholder
+        avatarUrl: `https://picsum.photos/seed/${user.id || 'currentUser'}/40/40`,
         timestamp: new Date().toISOString(),
         text: newCommentText,
         replies: [],
       };
       try {
-        const addedComment = await addCommentToProject(projectData.id, commentPayload);
-        setProjectComments(prevComments => [addedComment, ...prevComments]);
-        // Optionally update projectData state if comments are directly on it
-        setProjectData(prev => prev ? {...prev, comments: [addedComment, ...(prev.comments || [])]} : null)
+        addCommentToProject(projectData.id, commentPayload);
+        const updatedProject = getProjectById(projectData.id);
+        setProjectData(updatedProject || null);
+        setProjectComments(updatedProject?.comments || []);
         toast({ title: "Comment Posted", description: "Your comment has been added." });
         setNewCommentText("");
       } catch (error) {
@@ -480,9 +414,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
   
-  const handleReplyToComment = async (commentId: string, replyText: string) => {
+  const handleReplyToComment = (commentId: string, replyText: string) => { // No async for mock
       if (!projectData || !user || !replyText.trim()) return;
-      setIsSubmittingComment(true); // Consider a more specific loading state if needed
+      setIsSubmittingComment(true);
 
       const replyPayload: Partial<Comment> = {
           author: user.name || user.email || "Anonymous User",
@@ -493,21 +427,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       };
 
       try {
-          const updatedParentComment = await addReplyToProjectComment(projectData.id, commentId, replyPayload);
-          
-          const updateCommentsRecursive = (comments: Comment[]): Comment[] => {
-              return comments.map(c => {
-                  if (c.id === commentId) return updatedParentComment;
-                  if (c.replies && c.replies.length > 0) {
-                      return { ...c, replies: updateCommentsRecursive(c.replies) };
-                  }
-                  return c;
-              });
-          };
-          const updatedOverallComments = updateCommentsRecursive(projectComments);
-          setProjectComments(updatedOverallComments);
-          setProjectData(prev => prev ? {...prev, comments: updatedOverallComments } : null);
-
+          addReplyToProjectComment(projectData.id, commentId, replyPayload);
+          const updatedProject = getProjectById(projectData.id);
+          setProjectData(updatedProject || null);
+          setProjectComments(updatedProject?.comments || []);
           toast({ title: "Reply Posted", description: "Your reply has been added." });
       } catch (error) {
           console.error("Error posting reply:", error);
@@ -516,7 +439,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           setIsSubmittingComment(false);
       }
   };
-
 
   const handleViewTaskDetails = (task: Task) => {
     setSelectedTask(task);
@@ -528,65 +450,29 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleUpdateTaskDetails = async () => {
+  const handleUpdateTaskDetails = () => { // No async for mock
     if (!selectedTask || !projectData || !user) return;
-
     setIsUpdatingTask(true);
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
     const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
     const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
     const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority || "Medium";
     
-    if (isUserMember) {
+    if (isUserMember) { // Simplified permission check for mock
         if (newDepartment !== selectedTask.department || newPriority !== (selectedTask.priority || "Medium")) {
              toast({ title: "Permission Denied", description: "Members cannot change task department or priority.", variant: "destructive"});
-             setIsUpdatingTask(false);
-             return;
-        }
-        if (newAssignedTo !== selectedTask.assignedTo) {
-            const isTaskInMembersDept = currentUserProjectMembership?.department === selectedTask.department;
-            const isTaskAssignedToCurrentMember = selectedTask.assignedTo === user.email || selectedTask.assignedTo === user.name;
-            if (!isTaskInMembersDept || (selectedTask.assignedTo && !isTaskAssignedToCurrentMember)) {
-                toast({ title: "Permission Denied", description: "Members can only reassign unassigned tasks in their department or their own tasks.", variant: "destructive"});
-                setIsUpdatingTask(false);
-                return;
-            }
+             setIsUpdatingTask(false); return;
         }
     }
 
-    const taskUpdatePayload: Partial<Task> = {
-      status: newStatus,
-      assignedTo: newAssignedTo,
-      department: newDepartment,
-      priority: newPriority,
-    };
+    const taskUpdatePayload: Partial<Task> = { status: newStatus, assignedTo: newAssignedTo, department: newDepartment, priority: newPriority };
 
     try {
-      const updatedTask = await updateTaskInProject(projectData.id, selectedTask.id, taskUpdatePayload);
-      setProjectData(prev => {
-        if (!prev) return null;
-        const updatedTasks = (prev.tasks || []).map(t => t.id === updatedTask.id ? updatedTask : t);
-        // Recalculate department tasks if department changed
-        const newDepartmentsState = { ...prev.departments };
-        if (newDepartment !== selectedTask.department) {
-            const oldDeptKey = selectedTask.department.toLowerCase() as keyof StoreProject['departments'];
-            if (newDepartmentsState[oldDeptKey]?.tasks) {
-                (newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks = 
-                    ((newDepartmentsState[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== selectedTask.id);
-            }
-        }
-        const newDeptKey = newDepartment.toLowerCase() as keyof StoreProject['departments'];
-         if (!newDepartmentsState[newDeptKey]) {
-            if (newDepartment === "Marketing") newDepartmentsState[newDeptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
-            else newDepartmentsState[newDeptKey] = { tasks: [] };
-        }
-        (newDepartmentsState[newDeptKey] as DepartmentDetails).tasks = updatedTasks.filter(t => t.department === newDepartment);
-
-
-        return { ...prev, tasks: updatedTasks, currentProgress: calculateOverallProgress(updatedTasks), departments: newDepartmentsState };
-      });
-      setSelectedTask(updatedTask); // Update the selected task in dialog as well
-      toast({ title: "Task Updated", description: `Task "${updatedTask.name}" has been updated.` });
+      updateTaskInProject(projectData.id, selectedTask.id, taskUpdatePayload);
+      const updatedProject = getProjectById(projectData.id);
+      setProjectData(updatedProject || null);
+      setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
+      toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
     } catch (error) {
       console.error("Error updating task:", error);
@@ -595,10 +481,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       setIsUpdatingTask(false);
     }
   };
-
-  const handlePostNewTaskComment = async () => {
+  
+  const handlePostNewTaskComment = () => { // No async for mock
     if (!selectedTask || !newTaskCommentTextForTask.trim() || !projectData || !user) return;
-
     setIsSubmittingTaskComment(true);
     const commentPayload: Partial<Comment> = {
       author: user.name || user.email || "Anonymous User",
@@ -608,34 +493,20 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     };
 
     try {
-      // Assuming an API endpoint like /api/projects/:projectId/tasks/:taskId/comments
-      const response = await fetch(`/api/projects/${projectData.id}/tasks/${selectedTask.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(commentPayload),
-      });
-      if (!response.ok) throw new Error('Failed to post task comment');
-      const addedComment = await response.json() as Comment;
+      // Directly modify the mock data
+      const projectToUpdate = getProjectById(projectData.id);
+      if (!projectToUpdate) throw new Error("Project not found");
+      const taskToUpdate = projectToUpdate.tasks.find(t => t.id === selectedTask.id);
+      if (!taskToUpdate) throw new Error("Task not found");
 
-      const updatedTaskWithComment = { ...selectedTask, comments: [addedComment, ...(selectedTask.comments || [])] };
+      const newComment: Comment = { id: `taskcmt-${Date.now()}`, ...commentPayload } as Comment;
+      taskToUpdate.comments = [newComment, ...(taskToUpdate.comments || [])];
       
-      setProjectData(prev => {
-        if (!prev) return null;
-        const updatedTasks = (prev.tasks || []).map(t => t.id === selectedTask.id ? updatedTaskWithComment : t);
-         // Also update task in department details
-        const newDepartmentsState = JSON.parse(JSON.stringify(prev.departments || {})) as StoreProject['departments'];
-        Object.keys(newDepartmentsState).forEach(deptKeyStr => {
-            const deptKey = deptKeyStr as keyof StoreProject['departments'];
-            if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
-            (newDepartmentsState[deptKey] as DepartmentDetails).tasks =
-                ((newDepartmentsState[deptKey] as DepartmentDetails).tasks || []).map(dTask =>
-                dTask.id === selectedTask.id ? updatedTaskWithComment : dTask
-                );
-            }
-        });
-        return { ...prev, tasks: updatedTasks, departments: newDepartmentsState };
-      });
-      setSelectedTask(updatedTaskWithComment);
+      updateProject(projectData.id, projectToUpdate); // Save changes to the "database"
+      const updatedProject = getProjectById(projectData.id); // Re-fetch
+      setProjectData(updatedProject || null);
+      setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
+
       setNewTaskCommentTextForTask("");
       toast({ title: "Comment Added to Task", description: "Your comment has been posted." });
     } catch (error) {
@@ -646,9 +517,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const handleReplyToTaskComment = async (taskId: string, commentId: string, replyText: string) => {
+const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: string) => { // No async for mock
     if (!projectData || !user || !replyText.trim()) return;
-    setIsSubmittingTaskComment(true); // Use the same loading state
+    setIsSubmittingTaskComment(true);
 
     const replyPayload: Partial<Comment> = {
         author: user.name || user.email || "Anonymous User",
@@ -658,48 +529,31 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     };
 
     try {
-        // Assuming API endpoint: /api/projects/:projectId/tasks/:taskId/comments/:commentId/replies
-        const response = await fetch(`/api/projects/${projectData.id}/tasks/${taskId}/comments/${commentId}/replies`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(replyPayload),
-        });
-        if (!response.ok) throw new Error('Failed to post reply to task comment');
-        const updatedParentComment = await response.json() as Comment; // API should return the parent comment with new reply
+        const projectToUpdate = getProjectById(projectData.id);
+        if (!projectToUpdate) throw new Error("Project not found");
+        const taskToUpdate = projectToUpdate.tasks.find(t => t.id === taskId);
+        if (!taskToUpdate || !taskToUpdate.comments) throw new Error("Task or task comments not found");
 
-        let taskToUpdate = projectData.tasks.find(t => t.id === taskId);
-        if (!taskToUpdate || !taskToUpdate.comments) return;
+        const newReply: Comment = { id: `taskreply-${Date.now()}`, ...replyPayload } as Comment;
 
-        const addReplyRecursively = (currentComments: Comment[]): Comment[] => {
-            return currentComments.map(comment => {
-                if (comment.id === commentId) return updatedParentComment; // Replace parent with API response
-                if (comment.replies && comment.replies.length > 0) {
-                    return { ...comment, replies: addReplyRecursively(comment.replies) };
+        const addReplyFn = (comments: Comment[]): boolean => {
+            for (let comment of comments) {
+                if (comment.id === commentId) {
+                    comment.replies = [newReply, ...(comment.replies || [])];
+                    return true;
                 }
-                return comment;
-            });
+                if (comment.replies && addReplyFn(comment.replies)) return true;
+            }
+            return false;
         };
-        const updatedTaskComments = addReplyRecursively(taskToUpdate.comments);
-        const updatedTaskWithReply = { ...taskToUpdate, comments: updatedTaskComments };
         
-        setProjectData(prev => {
-            if (!prev) return null;
-            const updatedTasks = (prev.tasks || []).map(t => t.id === taskId ? updatedTaskWithReply : t);
-            // Also update task in department details
-            const newDepartmentsState = JSON.parse(JSON.stringify(prev.departments || {})) as StoreProject['departments'];
-            Object.keys(newDepartmentsState).forEach(deptKeyStr => {
-                const deptKey = deptKeyStr as keyof StoreProject['departments'];
-                if (newDepartmentsState[deptKey] && (newDepartmentsState[deptKey] as DepartmentDetails).tasks) {
-                (newDepartmentsState[deptKey] as DepartmentDetails).tasks =
-                    ((newDepartmentsState[deptKey] as DepartmentDetails).tasks || []).map(dTask =>
-                    dTask.id === taskId ? updatedTaskWithReply : dTask
-                    );
-                }
-            });
-            return { ...prev, tasks: updatedTasks, departments: newDepartmentsState };
-        });
+        if (!addReplyFn(taskToUpdate.comments)) throw new Error("Parent comment for reply not found");
+
+        updateProject(projectData.id, projectToUpdate); // Save changes
+        const updatedProject = getProjectById(projectData.id); // Re-fetch
+        setProjectData(updatedProject || null);
         if (selectedTask && selectedTask.id === taskId) {
-            setSelectedTask(updatedTaskWithReply);
+            setSelectedTask(updatedProject?.tasks.find(t => t.id === taskId) || null);
         }
         toast({ title: "Reply Posted", description: "Your reply has been added." });
     } catch (error) {
@@ -710,14 +564,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
 };
 
-
   const handleOpenDepartmentDialog = (title: string, departmentKey: Department | undefined, tasks: Task[] = []) => {
     if (isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== departmentKey)) {
         toast({ title: "Access Restricted", description: "You do not have permission to view details for this department.", variant: "default"});
         return;
     }
     setDepartmentDialogTitle(`${title} - Tasks`);
-    setDepartmentDialogTasks(tasks); // tasks from projectData.departments[deptKey].tasks
+    setDepartmentDialogTasks(tasks);
     setIsDepartmentTasksDialogOpen(true);
   };
 
@@ -735,7 +588,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setEditingTimelineForm(prev => ({...prev, [field]: value}));
   };
 
-  const handleSaveProjectChanges = async () => {
+  const handleSaveProjectChanges = () => { // No async for mock
     if (!projectData || !editingProjectForm.status || !canEditProject) {
       toast({ title: "Permission Denied or Error", description: "You do not have permission to edit this project, or there was an error.", variant: "destructive"});
       return;
@@ -743,7 +596,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setIsSavingProject(true);
     const projectUpdatePayload: Partial<StoreProject> = {
         ...editingProjectForm,
-        status: editingProjectForm.status, // Ensure status is correctly typed
+        status: editingProjectForm.status as StoreProject['status'],
         propertyDetails: {
             ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
             ...editingPropertyDetailsForm,
@@ -761,15 +614,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     };
 
     try {
-      const updatedProject = await updateProject(projectData.id, projectUpdatePayload);
-      setProjectData(updatedProject); // API should return the full updated project
-      // Re-initialize forms with updated data
-      setEditingProjectForm({ name: updatedProject.name, location: updatedProject.location, /* ...other fields */ });
-      setEditingPropertyDetailsForm(updatedProject.propertyDetails || {});
-      setEditingTimelineForm(updatedProject.projectTimeline || {});
-      setEditingMilestones(updatedProject.milestones || []);
-      setEditingBlockers(updatedProject.blockers || []);
-
+      const updatedProject = updateProject(projectData.id, projectUpdatePayload);
+      setProjectData(updatedProject); 
       toast({ title: "Project Updated", description: `${updatedProject.name} has been successfully updated.` });
       setIsEditProjectDialogOpen(false);
     } catch (error) {
@@ -792,108 +638,89 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       return;
     }
     const newMilestone: Milestone = {
-      id: `ms-${Date.now()}-${Math.random().toString(36).substring(2,7)}`, // Temp ID, backend should generate real one
-      name: newMilestoneName,
-      date: newMilestoneDate,
-      completed: false,
+      id: `ms-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+      name: newMilestoneName, date: newMilestoneDate, completed: false,
       description: newMilestoneDescription.trim() || undefined,
     };
     setEditingMilestones(prev => [...prev, newMilestone].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
-    setNewMilestoneName("");
-    setNewMilestoneDate(utilFormatDate(new Date()));
-    setNewMilestoneDescription("");
+    setNewMilestoneName(""); setNewMilestoneDate(utilFormatDate(new Date())); setNewMilestoneDescription("");
     setIsAddMilestoneDialogOpen(false);
     toast({ title: "Milestone Ready", description: `"${newMilestone.name}" added to edit form. Save project to persist.` });
   };
 
   const handleSaveNewBlocker = () => {
     if (!newBlockerTitle.trim() || !user) {
-      toast({ title: "Missing Information", description: "Blocker title is required.", variant: "destructive" });
-      return;
+      toast({ title: "Missing Information", description: "Blocker title is required.", variant: "destructive" }); return;
     }
     const newBlocker: Blocker = {
-      id: `blk-${Date.now()}-${Math.random().toString(36).substring(2,7)}`, // Temp ID
-      title: newBlockerTitle,
-      description: newBlockerDescription.trim(),
-      dateReported: utilFormatDate(new Date()),
-      isResolved: false,
-      reportedBy: user.name || user.email || "System",
+      id: `blk-${Date.now()}-${Math.random().toString(36).substring(2,7)}`, title: newBlockerTitle,
+      description: newBlockerDescription.trim(), dateReported: utilFormatDate(new Date()),
+      isResolved: false, reportedBy: user.name || user.email || "System",
     };
     setEditingBlockers(prev => [...prev, newBlocker].sort((a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()));
-    setNewBlockerTitle("");
-    setNewBlockerDescription("");
-    setIsAddBlockerDialogOpen(false);
+    setNewBlockerTitle(""); setNewBlockerDescription(""); setIsAddBlockerDialogOpen(false);
     toast({ title: "Blocker Ready", description: `"${newBlocker.title}" added to edit form. Save project to persist.` });
   };
 
-
-  const handleToggleTimelineBlockerResolution = async (blockerId: string) => {
+  const handleToggleTimelineBlockerResolution = (blockerId: string) => { // No async
     if (!projectData || !canEditProject) return;
-    const blocker = projectData.blockers?.find(b => b.id === blockerId);
-    if (!blocker) return;
+    const currentProject = getProjectById(projectData.id);
+    if (!currentProject || !currentProject.blockers) return;
 
-    const updatedBlockerData = {
-        ...blocker,
-        isResolved: !blocker.isResolved,
-        dateResolved: !blocker.isResolved ? utilFormatDate(new Date()) : undefined
+    const blockerIndex = currentProject.blockers.findIndex(b => b.id === blockerId);
+    if (blockerIndex === -1) return;
+
+    const updatedBlocker = {
+        ...currentProject.blockers[blockerIndex],
+        isResolved: !currentProject.blockers[blockerIndex].isResolved,
+        dateResolved: !currentProject.blockers[blockerIndex].isResolved ? utilFormatDate(new Date()) : undefined
     };
+    currentProject.blockers[blockerIndex] = updatedBlocker;
     
-    // Optimistic UI update
-    const originalBlockers = projectData.blockers;
-    setProjectData(prev => prev ? { ...prev, blockers: prev.blockers?.map(b => b.id === blockerId ? updatedBlockerData : b) } : null);
-
     try {
-        await updateProject(projectData.id, { blockers: projectData.blockers?.map(b => b.id === blockerId ? updatedBlockerData : b) });
+        updateProject(currentProject.id, { blockers: currentProject.blockers });
+        setProjectData(getProjectById(currentProject.id) || null); // Refresh data
         toast({ title: "Blocker Status Updated", description: `Blocker resolution status has been changed.` });
     } catch (error) {
-        setProjectData(prev => prev ? { ...prev, blockers: originalBlockers } : null); // Revert on error
         toast({ title: "Error", description: "Failed to update blocker status.", variant: "destructive" });
     }
   };
 
-  const handleRemoveTimelineBlocker = async (blockerId: string) => {
+  const handleRemoveTimelineBlocker = (blockerId: string) => { // No async
     if (!projectData || !canEditProject) return;
-    
-    const originalBlockers = projectData.blockers;
-    const updatedBlockers = (projectData.blockers || []).filter(b => b.id !== blockerId);
-    setProjectData(prev => prev ? { ...prev, blockers: updatedBlockers } : null); // Optimistic UI update
+    const currentProject = getProjectById(projectData.id);
+    if (!currentProject || !currentProject.blockers) return;
 
+    const updatedBlockers = (currentProject.blockers || []).filter(b => b.id !== blockerId);
     try {
-        await updateProject(projectData.id, { blockers: updatedBlockers });
+        updateProject(currentProject.id, { blockers: updatedBlockers });
+        setProjectData(getProjectById(currentProject.id) || null); // Refresh data
         toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
     } catch (error) {
-        setProjectData(prev => prev ? { ...prev, blockers: originalBlockers } : null); // Revert on error
         toast({ title: "Error", description: "Failed to remove blocker.", variant: "destructive" });
     }
   };
 
-  const handleAddProjectMember = async () => {
+  const handleAddProjectMember = () => { // No async for mock
     if (!selectedNewMemberEmail || !projectData || !canEditProject || !user) {
       toast({ title: "Error or Permission Denied", description: "Please select a person to add, or you may not have permission.", variant: "destructive" });
       return;
     }
     const personToAdd = availableHOContacts.find(p => p.email === selectedNewMemberEmail);
     if (!personToAdd) {
-      toast({ title: "Error", description: "Selected person not found in available contacts.", variant: "destructive" });
-      return;
+      toast({ title: "Error", description: "Selected person not found in available contacts.", variant: "destructive" }); return;
     }
-
     setIsAddingMember(true);
     const memberPayload = {
-      email: personToAdd.email,
-      name: personToAdd.name, // Name will be fetched by API based on email or use provided from contacts
-      department: personToAdd.department, // Can be overridden by API if user has a primary dept.
-      roleInProject: newMemberRoleInProject.trim() || "Team Member",
-      isProjectHod: newMemberIsProjectHod,
+      email: personToAdd.email, name: personToAdd.name, department: personToAdd.department,
+      roleInProject: newMemberRoleInProject.trim() || "Team Member", isProjectHod: newMemberIsProjectHod,
+      avatarSeed: personToAdd.avatarSeed || personToAdd.name.split(' ').map(n=>n[0]).join('').toLowerCase(),
     };
-
     try {
-      const addedMember = await addMemberToProject(projectData.id, memberPayload);
-      setProjectData(prev => prev ? { ...prev, members: [...(prev.members || []), addedMember] } : null);
-      toast({ title: "Member Added", description: `${addedMember.name} has been added to the project.` });
-      setSelectedNewMemberEmail("");
-      setNewMemberRoleInProject("");
-      setNewMemberIsProjectHod(false);
+      addMemberToProject(projectData.id, memberPayload);
+      setProjectData(getProjectById(projectData.id) || null); // Refresh
+      toast({ title: "Member Added", description: `${memberPayload.name} has been added to the project.` });
+      setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false);
       setIsAddMemberDialogOpen(false);
     } catch (error) {
       console.error("Error adding member:", error);
@@ -903,24 +730,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const confirmRemoveMember = async () => {
-    if (!memberToRemoveInfo || !projectData || !user?.role) {
-        setIsConfirmRemoveMemberDialogOpen(false);
-        return;
-    }
-    
-    // Permission checks are done before opening dialog, but can re-verify if needed.
-    // const allUsers = await authService.getAllMockUsers(); // This needs to be API call now
-    // const targetUser = allUsers.find(u => u.email === memberToRemoveInfo.email);
-    // For now, rely on the initial check for opening dialog
-
+  const confirmRemoveMember = () => { // No async for mock
+    if (!memberToRemoveInfo || !projectData || !user?.role) { setIsConfirmRemoveMemberDialogOpen(false); return; }
     setIsRemovingMember(true);
     try {
-      await removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
-      setProjectData(prev => prev ? { ...prev, members: (prev.members || []).filter(m => m.email !== memberToRemoveInfo.email) } : null);
+      removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
+      setProjectData(getProjectById(projectData.id) || null); // Refresh
       toast({ title: "Member Removed", description: `${memberToRemoveInfo.name} has been removed from the project.` });
-      setMemberToRemoveInfo(null); 
-      setIsConfirmRemoveMemberDialogOpen(false); 
+      setMemberToRemoveInfo(null); setIsConfirmRemoveMemberDialogOpen(false); 
     } catch (error) {
       console.error("Error removing member:", error);
       toast({ title: "Error", description: "Failed to remove member.", variant: "destructive" });
@@ -929,33 +746,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const openRemoveMemberDialog = async (member: ProjectMember) => {
-    if (!user?.role) return;
-    // Simplified: In a real app, you might fetch user roles if not already available
-    // For mock, we assume we know the role of the member to be removed.
-    // This part might need to be enhanced with an API call to get the target user's global role.
-    // For now, the backend API for removeMemberFromProject should enforce the hierarchy.
-    if (canManageAnyMember) { // SuperAdmin/Admin can attempt removal
-        // A more robust check on roles would happen on the backend.
-        // Client-side can only make an educated guess or disable based on simple knowns.
-        // SuperAdmin can remove Admin/Member. Admin can remove Member.
-        const targetUserGlobalRole = member.role as UserRole | undefined; // Assuming 'role' field exists and holds global role
-        let canAttemptRemove = false;
-        if (user.role === 'SuperAdmin' && targetUserGlobalRole !== 'SuperAdmin') {
-            canAttemptRemove = true;
-        } else if (user.role === 'Admin' && targetUserGlobalRole === 'Member') {
-            canAttemptRemove = true;
-        }
-
-        if(canAttemptRemove || (user.role === 'SuperAdmin' && !targetUserGlobalRole) || (user.role === 'Admin' && !targetUserGlobalRole)) { // Allow if target role is unknown for privileged users
-            setMemberToRemoveInfo({ email: member.email, name: member.name, role: targetUserGlobalRole });
-            setIsConfirmRemoveMemberDialogOpen(true);
-        } else {
-            toast({ title: "Permission Denied", description: "You do not have permission to remove this type of member.", variant: "destructive"});
-        }
-    } else {
-       toast({ title: "Permission Denied", description: "You do not have permission to remove members.", variant: "destructive"});
+  const openRemoveMemberDialog = (member: ProjectMember) => { // Simplified permission
+    if (!user?.role || !canManageAnyMember) { 
+       toast({ title: "Permission Denied", description: "You do not have permission to remove members.", variant: "destructive"}); return;
     }
+    setMemberToRemoveInfo({ email: member.email, name: member.name, role: member.role as UserRole | undefined });
+    setIsConfirmRemoveMemberDialogOpen(true);
   };
 
   const calculateOverallProgress = (tasks: Task[]): number => {
@@ -963,7 +759,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     return Math.round((completedTasks / tasks.length) * 100);
   };
-
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
@@ -979,7 +774,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           {canEditProject && (
             <Dialog open={isEditProjectDialogOpen} onOpenChange={(isOpen) => {
               setIsEditProjectDialogOpen(isOpen);
-              if (isOpen && projectData) { // Re-initialize form on open
+              if (isOpen && projectData) { 
                   setEditingProjectForm({
                       name: projectData.name, location: projectData.location, status: projectData.status,
                       startDate: projectData.startDate ? utilFormatDate(new Date(projectData.startDate)) : "",
@@ -1187,7 +982,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskAssignedTo" className="sm:text-right">Assign To</Label>
-                  <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="sm:col-span-3" placeholder="e.g. John Doe" disabled={isSubmittingTask}/>
+                  <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="sm:col-span-3" placeholder="e.g. Priya Sharma" disabled={isSubmittingTask}/>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskPriority" className="sm:text-right">Priority</Label>
@@ -1629,4 +1424,3 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     </section>
   );
 }
-    

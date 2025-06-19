@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { getAllProjects, getHeadOfficeContacts, addTaskToProject } from "@/lib/data"; // Updated imports
+import { getAllProjects, getHeadOfficeContacts, addTaskToProject, getTasksForUser } from "@/lib/data"; 
 import type { Task, StoreProject, Department, TaskPriority, ProjectMember as HeadOfficeContactType, UserTask } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,37 +22,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpRight, CalendarIcon, Users, Mail, Package2 } from "lucide-react"; // Added Package2
+import { ArrowUpRight, CalendarIcon, Users, Mail, Package2 } from "lucide-react"; 
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup } from "@/components/ui/command";
-import { getTasksForUser } from "@/lib/data";
-
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
-
-const calculateOverallProgress = (tasks: Task[]): number => {
-  if (tasks.length === 0) return 0;
-  const completedTasks = tasks.filter(t => t.status === 'Completed').length;
-  return Math.round((completedTasks / tasks.length) * 100);
-};
 
 const isValidEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
-
 export default function MyTasksPage() {
-  const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>([]);
-  const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>([]);
-  const [dataLoading, setDataLoading] = React.useState(true);
-
+  // Synchronous data fetching for mock environment
+  const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
+  const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>(getAllProjects());
+  const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(getHeadOfficeContacts());
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
@@ -71,25 +61,14 @@ export default function MyTasksPage() {
 
   React.useEffect(() => {
     if (user && !authLoading) {
-      setDataLoading(true);
-      Promise.all([
-        getTasksForUser(user.email), 
-        canAssignTasks ? getAllProjects() : Promise.resolve([]), // Changed here
-        canAssignTasks ? getHeadOfficeContacts() : Promise.resolve([])
-      ]).then(([tasks, projects, contacts]) => {
-        setUserTasks(tasks as UserTask[]); 
-        setProjectsForAssignment(projects);
-        setHeadOfficeContacts(contacts);
-      }).catch(error => {
-        console.error("Error fetching initial data for MyTasksPage:", error);
-        toast({ title: "Error", description: "Could not load tasks or project data.", variant: "destructive" });
-      }).finally(() => {
-        setDataLoading(false);
-      });
+      setUserTasks(getTasksForUser(user.email) as UserTask[]);
+      // Refresh other data if it could change (though for mock, it's mostly static unless edited elsewhere)
+      setProjectsForAssignment(getAllProjects());
+      setHeadOfficeContacts(getHeadOfficeContacts());
     } else if (!authLoading && !user) {
-        setDataLoading(false); 
+      // router.replace("/auth/signin"); // This is handled by AppLayout
     }
-  }, [user, authLoading, canAssignTasks, toast]);
+  }, [user, authLoading]);
 
 
   React.useEffect(() => {
@@ -146,7 +125,7 @@ export default function MyTasksPage() {
     setTaskPriority("Medium");
   };
 
-  const handleAssignTaskSubmit = async (e: React.FormEvent) => {
+  const handleAssignTaskSubmit = (e: React.FormEvent) => { // No async for mock
     e.preventDefault();
     setIsSubmittingTask(true);
 
@@ -189,19 +168,18 @@ export default function MyTasksPage() {
     };
 
     try {
-        const assignedTask = await addTaskToProject(selectedProjectId, newTaskPayload); // Using addTaskToProject
+        const assignedTask = addTaskToProject(selectedProjectId, newTaskPayload); // Synchronous call
         toast({
             title: "Success!",
             description: `Task "${assignedTask.name}" assigned to ${selectedAssigneeInfo.name} for project "${targetProject.name}".`,
         });
-        // Optionally, re-fetch user tasks or optimistically update userTasks state if this new task might be assigned to the current user
         if (assignedTask.assignedTo === user?.email) {
           const userTask: UserTask = {
             ...assignedTask,
             projectId: selectedProjectId,
             projectName: targetProject.name
           };
-          setUserTasks(prev => [userTask, ...prev]);
+          setUserTasks(prev => [userTask, ...prev].sort((a, b) => new Date(b.dueDate || 0).getTime() - new Date(a.dueDate || 0).getTime()));
         }
         resetAssignTaskForm();
     } catch (error) {
@@ -212,11 +190,11 @@ export default function MyTasksPage() {
     }
   };
 
-  if (authLoading || dataLoading) {
+  if (authLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
             <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-            <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading tasks..."}</p>
+            <p className="text-muted-foreground">Authenticating...</p>
         </div>
     );
   }
@@ -487,4 +465,3 @@ export default function MyTasksPage() {
     </section>
   );
 }
-

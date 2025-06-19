@@ -6,9 +6,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { createProject, getAllProjects } from "@/lib/data"; // Updated import
+import { getAllProjects, createProject } from "@/lib/data";
 import type { StoreProject, Department, StoreType } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react"; // Added AlertTriangle
+import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -81,12 +81,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
-  const [projectsLoading, setProjectsLoading] = React.useState(true);
-  const [projectsError, setProjectsError] = React.useState<string | null>(null);
+  // Use direct data fetching for mock environment
+  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(getAllProjects());
 
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
-  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false);
+  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false); // Keep for dialog submission UX
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
@@ -114,28 +113,13 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  React.useEffect(() => {
-    if (user) {
-      const fetchProjects = async () => {
-        setProjectsLoading(true);
-        setProjectsError(null);
-        try {
-          const projects = await getAllProjects();
-          setDashboardProjects(projects);
-        } catch (error) {
-          setProjectsError("Failed to load projects. Please try again.");
-          console.error("Error fetching projects:", error);
-          toast({ title: "Error", description: "Could not load projects.", variant: "destructive" });
-        } finally {
-          setProjectsLoading(false);
-        }
-      };
-      fetchProjects();
-    }
-  }, [user, toast]);
+  // Refresh projects from mock data if needed (e.g., after adding one)
+  // This could also be done by directly updating the state after createProject
+  const refreshProjects = () => {
+    setDashboardProjects(getAllProjects());
+  };
 
-
-  if (authLoading || (!user && !authLoading)) { // Show loading if auth is loading or if user is null and auth is done
+  if (authLoading || (!user && !authLoading)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
@@ -153,7 +137,7 @@ export default function DashboardPage() {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
   };
 
-  const handleAddProject = async () => {
+  const handleAddProject = () => { // No async needed for mock
     if (!newProjectName.trim() || !newProjectLocation.trim()) {
       toast({ title: "Validation Error", description: "Project Name and Location are required.", variant: "destructive" });
       return;
@@ -206,8 +190,9 @@ export default function DashboardPage() {
     };
 
     try {
-      const createdProject = await createProject(newProjectPayload);
-      setDashboardProjects(prevProjects => [createdProject, ...prevProjects]);
+      const createdProject = createProject(newProjectPayload); // Synchronous call
+      // setDashboardProjects(prevProjects => [createdProject, ...prevProjects]); // Optimistic update
+      refreshProjects(); // Re-fetch all to include new one
       toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
 
       setNewProjectName("");
@@ -253,26 +238,6 @@ export default function DashboardPage() {
     }
     return projects;
   }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
-
-  if (projectsLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">Loading projects...</p>
-      </div>
-    );
-  }
-
-  if (projectsError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-destructive font-semibold">Error Loading Projects</p>
-        <p className="text-muted-foreground">{projectsError}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
 
 
   return (
@@ -514,4 +479,3 @@ export default function DashboardPage() {
     </section>
   );
 }
-    

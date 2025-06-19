@@ -6,30 +6,15 @@
 import type { User, UserRole } from '@/types';
 
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
-const API_BASE_URL = '/api'; // Assuming API routes are in the same Next.js app
 
-// Helper function for API requests (specific to auth if needed, or use a global one)
-async function fetchAuthAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(errorData.message || `API request failed: ${response.status}`);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json() as T;
-  } catch (error) {
-    console.error(`Auth API call to ${endpoint} failed:`, error);
-    throw error;
-  }
-}
-
+// Mock users with Indian names and roles
+const mockUsers: User[] = [
+  { id: 'user-001', name: 'Priya Sharma', email: 'priya.sharma@example.com', role: 'Admin' },
+  { id: 'user-002', name: 'Rohan Mehra', email: 'rohan.mehra@example.com', role: 'Member' },
+  { id: 'user-003', name: 'Aisha Khan', email: 'aisha.khan@example.com', role: 'SuperAdmin' },
+  { id: 'user-004', name: 'Vikram Singh', email: 'vikram.singh@example.com', role: 'Member' },
+  { id: 'user-005', name: 'Neha Patel', email: 'neha.patel@example.com', role: 'Admin' },
+];
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
@@ -57,47 +42,36 @@ function setCurrentUser(user: User | null): void {
 
 export async function signUp(name: string, email: string, password: string): Promise<User> {
   const lowerEmail = email.toLowerCase();
-  // In a real app, the API would handle user creation and password hashing.
-  // The API would return the new user object (without passwordHash).
-  const newUser = await fetchAuthAPI<User>('/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify({ name, email: lowerEmail, password }),
-  });
+  if (mockUsers.find(u => u.email === lowerEmail)) {
+    throw new Error("User with this email already exists.");
+  }
+  const newUser: User = {
+    id: `user-${Date.now()}`,
+    name,
+    email: lowerEmail,
+    role: 'Member', // Default role for new sign-ups
+  };
+  mockUsers.push(newUser);
   setCurrentUser(newUser);
-  return newUser;
+  return Promise.resolve(newUser);
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
   const lowerEmail = email.toLowerCase();
-  // The API would validate credentials and return the user object or an error.
-  const user = await fetchAuthAPI<User>('/auth/signin', {
-    method: 'POST',
-    body: JSON.stringify({ email: lowerEmail, password }),
-  });
-  setCurrentUser(user);
-  return user;
+  const user = mockUsers.find(u => u.email === lowerEmail);
+  // Mock password check - in a real app, this would be a hashed password comparison
+  if (user && password) { // For mock, any non-empty password for a known email works
+    setCurrentUser(user);
+    return Promise.resolve(user);
+  }
+  throw new Error("Invalid email or password.");
 }
 
 export async function signOut(): Promise<void> {
-  // Inform the backend about sign-out if necessary (e.g., to invalidate a session/token)
-  // For a simple mock, just clearing local state is enough.
-  // await fetchAuthAPI<void>('/auth/signout', { method: 'POST' }); // Example
   setCurrentUser(null);
   return Promise.resolve();
 }
 
-// This function would now fetch from your /api/users endpoint
-export async function getAllMockUsers(): Promise<User[]> {
-  // This function is less relevant if users are managed by a proper auth system + DB.
-  // If you need a list of users for assignment, your API should provide an endpoint for that.
-  // For now, it can return an empty array or be removed if not used by UI directly.
-  // Example: return await fetchAuthAPI<User[]>('/users/list-for-assignment');
-  console.warn("getAllMockUsers is a mock function and should be replaced with an API call if user listing is needed.");
-  return Promise.resolve([]);
+export function getAllMockUsers(): User[] {
+  return [...mockUsers];
 }
-
-// The hardcoded test users from the previous `auth.ts` would now typically be
-// created via your application's sign-up flow or seeded directly into your MongoDB
-// database by your backend setup scripts.
-// The frontend no longer manages the user list directly.
-    

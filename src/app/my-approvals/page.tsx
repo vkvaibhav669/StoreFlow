@@ -39,12 +39,9 @@ export default function MyApprovalsPage() {
 
   const [requestsAwaitingMyAction, setRequestsAwaitingMyAction] = React.useState<ApprovalRequest[]>([]);
   const [mySubmittedRequests, setMySubmittedRequests] = React.useState<ApprovalRequest[]>([]);
-  const [dataLoading, setDataLoading] = React.useState(true);
-  const [dataError, setDataError] = React.useState<string | null>(null);
-
-  const [allProjects, setAllProjects] = React.useState<StoreProject[]>([]);
-  const [allHeadOfficeContacts, setAllHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>([]);
-
+  
+  const [allProjects, setAllProjects] = React.useState<StoreProject[]>(getAllProjects());
+  const [allHeadOfficeContacts, setAllHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(getHeadOfficeContacts());
 
   const [requestTitle, setRequestTitle] = React.useState("");
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | undefined>(undefined);
@@ -54,31 +51,23 @@ export default function MyApprovalsPage() {
   const [approverEmail, setApproverEmail] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  const refreshApprovalData = () => {
+    if (user) {
+      const approvalData = getApprovalRequestsForUser(user.email);
+      setRequestsAwaitingMyAction(approvalData.awaiting);
+      setMySubmittedRequests(approvalData.submitted);
+    }
+  };
+
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
-      setDataLoading(false);
     } else if (user) {
-      setDataLoading(true);
-      setDataError(null);
-      Promise.all([
-        getApprovalRequestsForUser(user.email),
-        getAllProjects(),
-        getHeadOfficeContacts()
-      ]).then(([approvalData, projects, contacts]) => {
-        setRequestsAwaitingMyAction(approvalData.awaiting);
-        setMySubmittedRequests(approvalData.submitted);
-        setAllProjects(projects);
-        setAllHeadOfficeContacts(contacts);
-      }).catch(error => {
-        console.error("Error fetching data for approvals page:", error);
-        setDataError("Failed to load necessary data. Please try refreshing.");
-        toast({ title: "Error Loading Data", description: "Could not fetch approvals or related project information.", variant: "destructive" });
-      }).finally(() => {
-        setDataLoading(false);
-      });
+      refreshApprovalData();
+      setAllProjects(getAllProjects()); // Refresh projects for dropdown
+      setAllHeadOfficeContacts(getHeadOfficeContacts()); // Refresh contacts for approver logic
     }
-  }, [user, authLoading, router, toast]);
+  }, [user, authLoading, router]);
 
   React.useEffect(() => {
     if (requestingDepartment && requestingDepartment !== "" && allHeadOfficeContacts.length > 0) {
@@ -90,7 +79,7 @@ export default function MyApprovalsPage() {
         setApproverEmail(hod.email);
       } else {
         setApproverName(`Head of ${requestingDepartment}`);
-        setApproverEmail(`${requestingDepartment.toLowerCase().replace(/\s+/g, '')}.hod@storeflow.corp`); // Default placeholder email
+        setApproverEmail(`${requestingDepartment.toLowerCase().replace(/\s+/g, '')}.hod@storeflow.corp`);
       }
     } else if (!requestingDepartment) {
       setApproverName("");
@@ -98,21 +87,18 @@ export default function MyApprovalsPage() {
     }
   }, [requestingDepartment, allHeadOfficeContacts]);
 
-  const handleApprovalAction = async (requestId: string, newStatus: ApprovalStatus) => {
+  const handleApprovalAction = (requestId: string, newStatus: ApprovalStatus) => { // No async needed for mock
     if (!user) return;
     try {
-      const updatedRequest = await updateApprovalRequestStatus(requestId, { 
+      updateApprovalRequestStatus(requestId, { 
         newStatus, 
         actorName: user.name || user.email! 
-      });
+      }); // Synchronous call
       toast({
         title: `Request ${newStatus}`,
         description: `The request has been successfully ${newStatus.toLowerCase()}.`,
       });
-      setRequestsAwaitingMyAction(prev => prev.filter(req => req.id !== requestId));
-      setMySubmittedRequests(prev =>
-        prev.map(req => req.id === requestId ? updatedRequest : req)
-      );
+      refreshApprovalData(); // Re-fetch to update lists
     } catch (error) {
       console.error("Error updating approval status:", error);
       toast({
@@ -123,7 +109,7 @@ export default function MyApprovalsPage() {
     }
   };
 
-  const handleNewRequestSubmit = async (e: React.FormEvent) => {
+  const handleNewRequestSubmit = (e: React.FormEvent) => { // No async needed for mock
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -159,8 +145,8 @@ export default function MyApprovalsPage() {
     };
 
     try {
-      const newRequest = await submitApprovalRequest(newRequestPayload);
-      setMySubmittedRequests(prev => [newRequest, ...prev]);
+      submitApprovalRequest(newRequestPayload); // Synchronous call
+      refreshApprovalData(); // Re-fetch to update list
 
       toast({
         title: "Approval Request Submitted",
@@ -171,7 +157,6 @@ export default function MyApprovalsPage() {
       setSelectedProjectId(undefined);
       setRequestingDepartment("");
       setDetails("");
-      // Approver name/email will reset based on department change or if department is cleared
     } catch (error) {
       console.error("Error submitting approval request:", error);
       toast({ title: "Error Submitting Request", description: (error as Error).message || "Failed to submit approval request.", variant: "destructive"});
@@ -197,26 +182,14 @@ export default function MyApprovalsPage() {
     }
   };
 
-  if (authLoading || dataLoading) {
+  if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading approvals..."}</p>
+        <p className="text-muted-foreground">Authenticating...</p>
       </div>
     );
   }
-
-  if (dataError) {
-     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <p className="text-destructive font-semibold">Error Loading Data</p>
-        <p className="text-muted-foreground">{dataError}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">Try Again</Button>
-      </div>
-    );
-  }
-
 
   return (
     <section className="my-approvals-content flex flex-col gap-6" aria-labelledby="my-approvals-heading">
@@ -304,7 +277,7 @@ export default function MyApprovalsPage() {
                         onChange={(e) => {
                             setApproverName(e.target.value);
                             const matchedContact = allHeadOfficeContacts.find(c => c.name === e.target.value);
-                            setApproverEmail(matchedContact ? matchedContact.email : ''); // Clear email if name is manually changed and doesn't match
+                            setApproverEmail(matchedContact ? matchedContact.email : ''); 
                         }}
                         placeholder="Approver's full name"
                         required
@@ -331,7 +304,7 @@ export default function MyApprovalsPage() {
                 )}
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isSubmitting || dataLoading}>
+                <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
                   {isSubmitting ? "Submitting..." : "Submit Request"} <Send className="ml-2 h-4 w-4" />
                 </Button>
               </CardFooter>
@@ -427,4 +400,3 @@ export default function MyApprovalsPage() {
     </section>
   );
 }
-    

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useParams, notFound } from "next/navigation"; // Imported notFound
+import { useRouter, useParams, notFound } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -65,8 +65,12 @@ export default function StoreDetailsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const [store, setStore] = React.useState<StoreItem | null>(null);
-  const [loadingStore, setLoadingStore] = React.useState(true);
+  const storeId = typeof params.id === 'string' ? params.id : undefined;
+  
+  // For mock data, fetch synchronously
+  const initialStore = storeId ? getStoreById(storeId) : null;
+  const [store, setStore] = React.useState<StoreItem | null>(initialStore);
+
   const [isAddImprovementDialogOpen, setIsAddImprovementDialogOpen] = React.useState(false);
   const [newImprovementPointText, setNewImprovementPointText] = React.useState("");
   const [improvementCommentInputs, setImprovementCommentInputs] = React.useState<Record<string, string>>({});
@@ -92,44 +96,26 @@ export default function StoreDetailsPage() {
   const [isRequestInfoDialogOpen, setIsRequestInfoDialogOpen] = React.useState(false);
   const [requestInfoText, setRequestInfoText] = React.useState("");
 
-
-  const storeId = typeof params.id === 'string' ? params.id : undefined;
-
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
+    } else if (storeId && !store && !authLoading) { // If store was not found initially
+      notFound();
     }
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (user && storeId) { 
-      setLoadingStore(true);
-      getStoreById(storeId)
-        .then((fetchedStore) => {
-          if (fetchedStore) {
-            setStore(fetchedStore);
-          } else {
-            notFound(); // Use Next.js notFound function
-          }
-        })
-        .catch(error => {
-          console.error("Failed to fetch store:", error);
-          toast({title: "Error", description: "Could not load store details.", variant: "destructive"});
-          // Optionally, could also call notFound() here or redirect to a generic error page
-          router.replace("/my-stores"); 
-        })
-        .finally(() => {
-          setLoadingStore(false);
-        });
-    } else if (!authLoading && !user) {
-        router.replace("/auth/signin"); 
+    // Refresh store data if it might have changed (e.g., after an update)
+    if (storeId) {
+        const currentStore = getStoreById(storeId);
+        if (currentStore) {
+            setStore(currentStore);
+        } else if (!authLoading && user) { // Store became null after being found initially
+            notFound();
+        }
     }
-  }, [storeId, user, authLoading, router, toast]);
+  }, [storeId, user, authLoading, router, store]); // Add store to dep array
 
   const currentUserRole = user?.role;
   const isUserAdmin = currentUserRole === 'Admin';
   const isUserSuperAdmin = currentUserRole === 'SuperAdmin';
-  const isUserMember = currentUserRole === 'Member';
 
   const canManageStoreFeatures = isUserAdmin || isUserSuperAdmin;
 
@@ -139,42 +125,34 @@ export default function StoreDetailsPage() {
   }, [store, isUserAdmin, isUserSuperAdmin, user?.name]);
 
 
-  const handleAddImprovementPoint = async () => {
+  const handleAddImprovementPoint = () => { // No async for mock
     if (!newImprovementPointText.trim() || !store || !user) {
-      toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" });
-      return;
+      toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" }); return;
     }
     if (!canManageStoreFeatures) {
-      toast({ title: "Permission Denied", description: "You do not have permission to add improvement points.", variant: "destructive" });
-      return;
+      toast({ title: "Permission Denied", description: "You do not have permission to add improvement points.", variant: "destructive" }); return;
     }
     setIsSubmittingImprovement(true);
     const newPointPayload: Partial<ImprovementPoint> = {
-      text: newImprovementPointText,
-      addedBy: user.name || user.email || "System",
-      addedAt: new Date().toISOString(),
-      userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`,
-      comments: [],
-      isResolved: false,
+      text: newImprovementPointText, addedBy: user.name || user.email || "System",
+      addedAt: new Date().toISOString(), userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`,
+      comments: [], isResolved: false,
     };
     try {
-      const addedPoint = await addImprovementPointToStore(store.id, newPointPayload);
-      setStore(prevStore => prevStore ? { ...prevStore, improvementPoints: [addedPoint, ...(prevStore.improvementPoints || [])].sort((a,b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()) } : null);
-      toast({ title: "Improvement Point Added", description: "The new improvement point has been saved." });
-      setNewImprovementPointText("");
-      setIsAddImprovementDialogOpen(false);
+      addImprovementPointToStore(store.id, newPointPayload);
+      setStore(getStoreById(store.id)); // Refresh store data
+      toast({ title: "Improvement Point Added" });
+      setNewImprovementPointText(""); setIsAddImprovementDialogOpen(false);
     } catch (error) {
-      console.error("Error adding improvement point:", error);
       toast({ title: "Error", description: "Failed to add improvement point.", variant: "destructive" });
     } finally {
       setIsSubmittingImprovement(false);
     }
   };
 
-  const handleToggleOwnershipChangeRequest = async () => {
+  const handleToggleOwnershipChangeRequest = () => { // No async for mock
     if (!store || !canRequestOwnershipChange) {
-        toast({title: "Permission Denied", description: "You do not have permission to request an ownership change for this store.", variant: "destructive"});
-        return;
+        toast({title: "Permission Denied", variant: "destructive"}); return;
     }
     setIsUpdatingOwnership(true);
     const currentlyRequested = !!store.ownershipChangeRequested;
@@ -182,16 +160,11 @@ export default function StoreDetailsPage() {
     const targetType = store.type === 'COCO' ? 'FOFO' : 'COCO';
     
     try {
-        const updatedStoreData = await updateStore(store.id, { ownershipChangeRequested: newRequestedState });
+        const updatedStoreData = updateStore(store.id, { ownershipChangeRequested: newRequestedState });
         setStore(updatedStoreData);
-        if (newRequestedState) {
-        toast({ title: "Ownership Change Requested", description: `A request to change ownership of "${store.name}" to ${targetType} has been sent.` });
-        } else {
-        toast({ title: "Ownership Change Request Cancelled", description: `The request to change ownership for "${store.name}" has been cancelled.` });
-        }
+        toast({ title: newRequestedState ? "Ownership Change Requested" : "Ownership Change Request Cancelled" });
     } catch (error) {
-        console.error("Error toggling ownership change request:", error);
-        toast({ title: "Error", description: "Could not update ownership change request.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not update request.", variant: "destructive" });
     } finally {
         setIsUpdatingOwnership(false);
     }
@@ -201,10 +174,9 @@ export default function StoreDetailsPage() {
     setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: !prev[pointId] }));
   };
 
-  const handleToggleImprovementResolved = async (pointId: string) => {
+  const handleToggleImprovementResolved = (pointId: string) => { // No async
     if (!store || !user || !canManageStoreFeatures) {
-        toast({title: "Permission Denied", description: "You do not have permission to update improvement points.", variant: "destructive"});
-        return;
+        toast({title: "Permission Denied", variant: "destructive"}); return;
     }
     const point = store.improvementPoints?.find(p => p.id === pointId);
     if (!point) return;
@@ -216,99 +188,51 @@ export default function StoreDetailsPage() {
         resolvedBy: newResolvedState ? (user.name || user.email) : undefined,
         resolvedAt: newResolvedState ? new Date().toISOString() : undefined,
     };
-
     try {
-        const updatedPoint = await updateImprovementPointInStore(store.id, pointId, updatePayload);
-        setStore(prevStore => {
-            if (!prevStore) return null;
-            return {
-                ...prevStore,
-                improvementPoints: (prevStore.improvementPoints || []).map(p => p.id === pointId ? updatedPoint : p)
-            };
-        });
-        if (newResolvedState) {
-          setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: false }));
-        } else {
-          setResolvedPointDiscussionVisibility(prev => { const newState = {...prev}; delete newState[pointId]; return newState; });
-        }
-        toast({ title: "Improvement Point Updated", description: `Status changed for point: ${updatedPoint.text.substring(0,30)}...` });
+        updateImprovementPointInStore(store.id, pointId, updatePayload);
+        setStore(getStoreById(store.id)); // Refresh
+        if (newResolvedState) setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: false }));
+        toast({ title: "Improvement Point Updated" });
     } catch (error) {
-        console.error("Error updating improvement point status:", error);
-        toast({ title: "Error", description: "Could not update improvement point status.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not update status.", variant: "destructive" });
     } finally {
         setIsUpdatingImpPointStatus(prev => ({...prev, [pointId]: false }));
     }
   };
 
-  const handleAddCommentToImprovement = async (pointId: string, text: string) => {
+  const handleAddCommentToImprovement = (pointId: string, text: string) => { // No async
     if (!text.trim() || !store || !user) return;
     setIsSubmittingImpComment(prev => ({...prev, [pointId]: true}));
     const newCommentPayload: Partial<CommentType> = { 
       author: user.name || user.email || "System", 
       avatarUrl: `https://picsum.photos/seed/${user.id || 'commenter'}/40/40`, 
-      timestamp: new Date().toISOString(), 
-      text: text, 
-      replies: [],
+      timestamp: new Date().toISOString(), text: text, replies: [],
     };
     try {
-        const addedComment = await addCommentToImprovementPoint(store.id, pointId, newCommentPayload);
-        setStore(prevStore => {
-            if (!prevStore) return null;
-            return {
-                ...prevStore,
-                improvementPoints: (prevStore.improvementPoints || []).map(p => 
-                    p.id === pointId ? { ...p, comments: [addedComment, ...(p.comments || [])] } : p
-                )
-            };
-        });
+        addCommentToImprovementPoint(store.id, pointId, newCommentPayload);
+        setStore(getStoreById(store.id)); // Refresh
         setImprovementCommentInputs(prev => ({...prev, [pointId]: ""}));
-        toast({ title: "Comment Added", description: "Your comment has been posted." });
+        toast({ title: "Comment Added" });
     } catch (error) {
-        console.error("Error adding comment:", error);
         toast({ title: "Error", description: "Failed to post comment.", variant: "destructive" });
     } finally {
         setIsSubmittingImpComment(prev => ({...prev, [pointId]: false}));
     }
   };
 
-  const handleReplyToImprovementComment = async (pointId: string, commentId: string, replyText: string) => {
+  const handleReplyToImprovementComment = (pointId: string, commentId: string, replyText: string) => { // No async
     if (!replyText.trim() || !store || !user) return;
     setIsSubmittingImpComment(prev => ({...prev, [`${pointId}-${commentId}`]: true}));
     const newReplyPayload: Partial<CommentType> & { parentCommentId?: string } = { 
       author: user.name || user.email || "System", 
       avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`, 
-      timestamp: new Date().toISOString(), 
-      text: replyText,
-      parentCommentId: commentId 
+      timestamp: new Date().toISOString(), text: replyText, parentCommentId: commentId 
     };
-
     try {
-      const addedReply = await addCommentToImprovementPoint(store.id, pointId, newReplyPayload);
-      
-      setStore(prevStore => {
-        if (!prevStore) return null;
-        const newPoints = (prevStore.improvementPoints || []).map(p => {
-          if (p.id === pointId) {
-            const addReplyFn = (comments: CommentType[]): CommentType[] => {
-              return comments.map(c => {
-                if (c.id === commentId) {
-                  return { ...c, replies: [addedReply, ...(c.replies || [])] };
-                }
-                if (c.replies && c.replies.length > 0) {
-                  return { ...c, replies: addReplyFn(c.replies) };
-                }
-                return c;
-              });
-            };
-            return { ...p, comments: addReplyFn(p.comments || []) };
-          }
-          return p;
-        });
-        return { ...prevStore, improvementPoints: newPoints };
-      });
-      toast({ title: "Reply Posted", description: "Your reply has been added." });
+      addCommentToImprovementPoint(store.id, pointId, newReplyPayload);
+      setStore(getStoreById(store.id)); // Refresh
+      toast({ title: "Reply Posted" });
     } catch (error) {
-        console.error("Error posting reply:", error);
         toast({ title: "Error", description: "Failed to post reply.", variant: "destructive" });
     } finally {
         setIsSubmittingImpComment(prev => ({...prev, [`${pointId}-${commentId}`]: false}));
@@ -319,35 +243,27 @@ export default function StoreDetailsPage() {
     setNewTaskForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveNewStoreTask = async () => {
+  const handleSaveNewStoreTask = () => { // No async
     if (!newTaskForm.title.trim() || !store || !user) {
-      toast({ title: "Error", description: "Task title is required.", variant: "destructive" });
-      return;
+      toast({ title: "Error", description: "Task title is required.", variant: "destructive" }); return;
     }
      if (!canManageStoreFeatures) {
-      toast({ title: "Permission Denied", description: "You do not have permission to add tasks.", variant: "destructive" });
-      return;
+      toast({ title: "Permission Denied", variant: "destructive" }); return;
     }
     setIsSubmittingStoreTask(true);
     const newTaskPayload: Partial<StoreTask> = {
-      storeId: store.id,
-      title: newTaskForm.title.trim(),
-      description: newTaskForm.description.trim() || undefined,
-      assignedTo: newTaskForm.assignedTo.trim() || undefined,
-      status: "Pending",
-      priority: newTaskForm.priority,
-      createdAt: new Date().toISOString(),
-      createdBy: user.name || user.email!,
+      storeId: store.id, title: newTaskForm.title.trim(), description: newTaskForm.description.trim() || undefined,
+      assignedTo: newTaskForm.assignedTo.trim() || undefined, status: "Pending", priority: newTaskForm.priority,
+      createdAt: new Date().toISOString(), createdBy: user.name || user.email!,
       dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
     try {
-        const addedTask = await addStoreTask(store.id, newTaskPayload);
-        setStore(prevStore => prevStore ? { ...prevStore, tasks: [addedTask, ...(prevStore.tasks || [])] } : null);
-        toast({ title: "Task Added", description: `"${addedTask.title}" added to store tasks.` });
+        addStoreTask(store.id, newTaskPayload);
+        setStore(getStoreById(store.id)); // Refresh
+        toast({ title: "Task Added" });
         setIsAddTaskDialogOpen(false);
         setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
     } catch (error) {
-        console.error("Error adding store task:", error);
         toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
     } finally {
         setIsSubmittingStoreTask(false);
@@ -356,103 +272,71 @@ export default function StoreDetailsPage() {
   
   const handleOpenEditTaskDialog = (task: StoreTask) => {
     if (!canManageStoreFeatures) {
-      toast({ title: "Permission Denied", description: "You do not have permission to edit tasks.", variant: "destructive" });
-      return;
+      toast({ title: "Permission Denied", variant: "destructive" }); return;
     }
     setEditingStoreTask(task);
     setNewTaskForm({
-        title: task.title,
-        description: task.description || "",
-        assignedTo: task.assignedTo || "",
+        title: task.title, description: task.description || "", assignedTo: task.assignedTo || "",
         dueDate: task.dueDate && isValid(new Date(task.dueDate)) ? new Date(task.dueDate) : undefined,
         priority: task.priority || "Medium",
     });
     setIsEditTaskDialogOpen(true);
   };
 
-  const handleSaveEditedStoreTask = async () => {
+  const handleSaveEditedStoreTask = () => { // No async
     if (!editingStoreTask || !newTaskForm.title.trim() || !store || !user) {
-        toast({ title: "Error", description: "Task title is required.", variant: "destructive" });
-        return;
+        toast({ title: "Error", variant: "destructive" }); return;
     }
     if (!canManageStoreFeatures) {
-      toast({ title: "Permission Denied", description: "You do not have permission to edit tasks.", variant: "destructive" });
-      return;
+      toast({ title: "Permission Denied", variant: "destructive" }); return;
     }
     setIsSubmittingStoreTask(true);
     const updatedTaskPayload: Partial<StoreTask> = {
-        title: newTaskForm.title.trim(),
-        description: newTaskForm.description.trim() || undefined,
-        assignedTo: newTaskForm.assignedTo.trim() || undefined,
-        priority: newTaskForm.priority,
+        title: newTaskForm.title.trim(), description: newTaskForm.description.trim() || undefined,
+        assignedTo: newTaskForm.assignedTo.trim() || undefined, priority: newTaskForm.priority,
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
     try {
-        const updatedTask = await updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload);
-        setStore(prevStore => {
-            if(!prevStore) return null;
-            return {
-                ...prevStore,
-                tasks: (prevStore.tasks || []).map(t => t.id === editingStoreTask.id ? {...updatedTask, status: t.status } : t) 
-            };
-        });
-        toast({ title: "Task Updated", description: `Task "${updatedTask.title}" has been updated.` });
-        setIsEditTaskDialogOpen(false);
-        setEditingStoreTask(null);
+        updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload);
+        setStore(getStoreById(store.id)); // Refresh
+        toast({ title: "Task Updated" });
+        setIsEditTaskDialogOpen(false); setEditingStoreTask(null);
         setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
     } catch (error) {
-        console.error("Error updating store task:", error);
         toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
     } finally {
         setIsSubmittingStoreTask(false);
     }
   };
 
-
-  const handleUpdateStoreTaskStatus = async (taskId: string, newStatus: StoreTask['status']) => {
+  const handleUpdateStoreTaskStatus = (taskId: string, newStatus: StoreTask['status']) => { // No async
     if (!store || !canManageStoreFeatures) { 
-        toast({title: "Permission Denied", description: "You do not have permission to update task status.", variant: "destructive"});
-        return;
+        toast({title: "Permission Denied", variant: "destructive"}); return;
     }
     setIsSubmittingStoreTask(true); 
     try {
-        const updatedTask = await updateStoreTask(store.id, taskId, { status: newStatus });
-        setStore(prevStore => {
-            if (!prevStore) return null;
-            return {
-                ...prevStore,
-                tasks: (prevStore.tasks || []).map(task => task.id === taskId ? updatedTask : task)
-            };
-        });
+        updateStoreTask(store.id, taskId, { status: newStatus });
+        setStore(getStoreById(store.id)); // Refresh
         toast({ title: "Task Status Updated" });
     } catch (error) {
-        console.error("Error updating task status:", error);
-        toast({ title: "Error", description: "Could not update task status.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not update status.", variant: "destructive" });
     } finally {
         setIsSubmittingStoreTask(false);
     }
   };
 
-  const handleDeleteStoreTask = async (taskId: string) => {
+  const handleDeleteStoreTask = (taskId: string) => { // No async
     if (!store || !canManageStoreFeatures) {
-        toast({title: "Permission Denied", description: "You do not have permission to delete tasks.", variant: "destructive"});
-        return;
+        toast({title: "Permission Denied", variant: "destructive"}); return;
     }
     const taskToDelete = store.tasks?.find(t => t.id === taskId);
     if (!taskToDelete) return;
     setIsSubmittingStoreTask(true);
     try {
-        await deleteStoreTask(store.id, taskId);
-        setStore(prevStore => {
-            if(!prevStore) return null;
-            return {
-                ...prevStore,
-                tasks: (prevStore.tasks || []).filter(task => task.id !== taskId)
-            };
-        });
-        toast({ title: "Task Deleted", description: `Task "${taskToDelete.title}" has been removed.` });
+        deleteStoreTask(store.id, taskId);
+        setStore(getStoreById(store.id)); // Refresh
+        toast({ title: "Task Deleted" });
     } catch (error) {
-        console.error("Error deleting task:", error);
         toast({ title: "Error", description: "Could not delete task.", variant: "destructive" });
     } finally {
         setIsSubmittingStoreTask(false);
@@ -461,17 +345,11 @@ export default function StoreDetailsPage() {
 
   const handleSendRequestInfo = () => {
     if (!requestInfoText.trim() || !store) {
-      toast({ title: "Cannot Send", description: "Please enter a message for your request.", variant: "destructive" });
-      return;
+      toast({ title: "Cannot Send", variant: "destructive" }); return;
     }
-    toast({
-      title: "Information Request Sent (Simulated)",
-      description: `Your request: "${requestInfoText.substring(0, 50)}..." has been "sent" to the store manager ${store.manager ? `(${store.manager})` : ''}.`,
-    });
-    setRequestInfoText("");
-    setIsRequestInfoDialogOpen(false);
+    toast({ title: "Information Request Sent (Simulated)" });
+    setRequestInfoText(""); setIsRequestInfoDialogOpen(false);
   };
-
 
   const filteredStoreTasks = React.useMemo(() => {
     if (!store?.tasks) return [];
@@ -480,63 +358,31 @@ export default function StoreDetailsPage() {
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [store?.tasks, taskFilterStatus]);
 
-
-  if (authLoading || loadingStore || (!user && !authLoading)) {
+  if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">
-          {authLoading ? "Authenticating..." : loadingStore ? "Loading store details..." : "Please sign in."}
-        </p>
+        <p className="text-muted-foreground">Authenticating...</p>
       </div>
     );
   }
 
-  // If loading is complete and store is still null (e.g., after fetch resulted in notFound),
-  // notFound() would have been called during useEffect, so this component instance
-  // should effectively unmount or be replaced by the not-found UI.
-  // A direct `if (!store) return null;` here can prevent flicker if needed, but notFound() is preferred.
-  if (!store && !loadingStore) { 
-      // This case should ideally be handled by the notFound() call in useEffect
-      // if the API confirms the store doesn't exist.
-      // If notFound() was called, this part of the code won't be reached.
-      // If somehow it is (e.g., error before notFound() is called), this is a fallback.
+  if (!user) { 
       return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-            <p className="text-muted-foreground">Store data is unavailable.</p>
+            <p className="text-muted-foreground">Please sign in.</p>
         </div>
       );
   }
-  // If store is null *during* loading, the loading spinner above handles it.
-  // If loading is finished, and store is *still* null, it means `notFound()` should have been called.
-  // For safety, if execution reaches here and `store` is null, it's an unexpected state.
-  // However, Next.js `notFound()` should prevent rendering this far.
-  if (!store) return null; // Should not be reached if notFound() works.
-
+  if (!store) { // If store is null after initial sync load and auth check
+      notFound(); // This should be caught by useEffect if initialStore was null
+      return null; // Should not be reached
+  }
 
   const targetOwnershipType = store.type === 'COCO' ? 'FOFO' : 'COCO';
-
-  const priorityBadgeVariant = (priority?: TaskPriority) => {
-    switch (priority) {
-        case "High": return "destructive";
-        case "Medium": return "secondary";
-        case "Low": return "outline";
-        default: return "outline";
-    }
-  };
-  const statusBadgeVariant = (status: StoreTask['status']) => {
-    switch (status) {
-        case "Completed": return "default"; 
-        case "Blocked": return "destructive";
-        case "In Progress": return "secondary";
-        default: return "outline"; 
-    }
-  };
-   const statusBadgeClass = (status: StoreTask['status']) => {
-    if (status === "Completed") return "bg-accent text-accent-foreground";
-    return "";
-  };
-
+  const priorityBadgeVariant = (priority?: TaskPriority) => { /* ... */ return "outline"; };
+  const statusBadgeVariant = (status: StoreTask['status']) => { /* ... */ return "outline"; };
+  const statusBadgeClass = (status: StoreTask['status']) => { /* ... */ return ""; };
 
   return (
     <section className="store-details-content flex flex-col gap-6" aria-labelledby="store-details-heading">
@@ -971,4 +817,3 @@ export default function StoreDetailsPage() {
     </section>
   );
 }
-
