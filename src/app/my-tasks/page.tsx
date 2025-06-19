@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { getAllProjects, getHeadOfficeContacts, addTaskToProject, getTasksForUser } from "@/lib/data"; 
+import { getAllProjects, mockHeadOfficeContacts, addTaskToProject, getTasksForUser } from "@/lib/data"; 
 import type { Task, StoreProject, Department, TaskPriority, ProjectMember as HeadOfficeContactType, UserTask } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default function MyTasksPage() {
   // Synchronous data fetching for mock environment
   const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
   const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>(getAllProjects());
-  const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(getHeadOfficeContacts());
+  const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(mockHeadOfficeContacts);
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
@@ -64,7 +64,7 @@ export default function MyTasksPage() {
       setUserTasks(getTasksForUser(user.email) as UserTask[]);
       // Refresh other data if it could change (though for mock, it's mostly static unless edited elsewhere)
       setProjectsForAssignment(getAllProjects());
-      setHeadOfficeContacts(getHeadOfficeContacts());
+      setHeadOfficeContacts(mockHeadOfficeContacts);
     } else if (!authLoading && !user) {
       // router.replace("/auth/signin"); // This is handled by AppLayout
     }
