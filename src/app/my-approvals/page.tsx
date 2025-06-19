@@ -13,7 +13,7 @@ import {
   updateApprovalRequestStatus, 
   getAllProjects, 
   submitApprovalRequest, 
-  getHeadOfficeContacts 
+  mockHeadOfficeContacts // Changed from getHeadOfficeContacts
 } from "@/lib/data";
 import type { ApprovalRequest, ApprovalStatus, Department, StoreProject, ProjectMember as HeadOfficeContactType } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -40,8 +40,9 @@ export default function MyApprovalsPage() {
   const [requestsAwaitingMyAction, setRequestsAwaitingMyAction] = React.useState<ApprovalRequest[]>([]);
   const [mySubmittedRequests, setMySubmittedRequests] = React.useState<ApprovalRequest[]>([]);
   
+  // Use direct data for mock environment
   const [allProjects, setAllProjects] = React.useState<StoreProject[]>(getAllProjects());
-  const [allHeadOfficeContacts, setAllHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(getHeadOfficeContacts());
+  const [allHeadOfficeContacts, setAllHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(mockHeadOfficeContacts); // Directly use imported mock data
 
   const [requestTitle, setRequestTitle] = React.useState("");
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | undefined>(undefined);
@@ -64,8 +65,8 @@ export default function MyApprovalsPage() {
       router.replace("/auth/signin");
     } else if (user) {
       refreshApprovalData();
-      setAllProjects(getAllProjects()); // Refresh projects for dropdown
-      setAllHeadOfficeContacts(getHeadOfficeContacts()); // Refresh contacts for approver logic
+      setAllProjects(getAllProjects()); // Refresh projects for dropdown, already synchronous
+      setAllHeadOfficeContacts(mockHeadOfficeContacts); // Ensure it's set, though it's static mock
     }
   }, [user, authLoading, router]);
 
@@ -157,6 +158,7 @@ export default function MyApprovalsPage() {
       setSelectedProjectId(undefined);
       setRequestingDepartment("");
       setDetails("");
+      // Approver name/email will reset via useEffect on requestingDepartment change
     } catch (error) {
       console.error("Error submitting approval request:", error);
       toast({ title: "Error Submitting Request", description: (error as Error).message || "Failed to submit approval request.", variant: "destructive"});
