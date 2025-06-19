@@ -19,7 +19,7 @@ import {
   addReplyToProjectComment,
   addMemberToProject,
   removeMemberFromProject,
-  getHeadOfficeContacts 
+  mockHeadOfficeContacts // Changed from getHeadOfficeContacts
 } from "@/lib/data";
 // Removed authService import as auth is handled by context
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
@@ -229,7 +229,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = React.useState(false);
   const [isAddingMember, setIsAddingMember] = React.useState(false);
-  const [availableHOContacts, setAvailableHOContacts] = React.useState<ProjectMember[]>(getHeadOfficeContacts());
+  const [availableHOContacts] = React.useState<ProjectMember[]>(mockHeadOfficeContacts); // Use mock data directly
   const [selectedNewMemberEmail, setSelectedNewMemberEmail] = React.useState<string>("");
   const [newMemberRoleInProject, setNewMemberRoleInProject] = React.useState("");
   const [newMemberIsProjectHod, setNewMemberIsProjectHod] = React.useState(false);
