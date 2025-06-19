@@ -19,9 +19,8 @@ import {
   addReplyToProjectComment,
   addMemberToProject,
   removeMemberFromProject,
-  mockHeadOfficeContacts // Changed from getHeadOfficeContacts
+  mockHeadOfficeContacts
 } from "@/lib/data";
-// Removed authService import as auth is handled by context
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -132,47 +131,18 @@ const projectStatuses: StoreProject['status'][] = [
   "Merchandising", "Recruitment", "Pre-Launch Marketing", "Launched", "Post-Launch Marketing"
 ];
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  const projectId = params.id;
+export default function ProjectDetailsPage() {
+  const paramsHook = useParamsNext();
+  const projectId = typeof paramsHook.id === 'string' ? paramsHook.id : undefined;
+  
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   
-  // For mock data, fetch synchronously. Error/loading states are simplified.
-  const initialProjectData = getProjectById(projectId);
-  const [projectData, setProjectData] = React.useState<StoreProject | null>(initialProjectData || null);
-  
-  React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/auth/signin");
-    } else if (user && !projectData) { // Project not found from initial sync load
-        notFound();
-    }
-    // Refresh project data if needed (e.g., if underlying mock data changes)
-    const currentProject = getProjectById(projectId);
-    if (currentProject) {
-        setProjectData(currentProject);
-        setProjectComments(currentProject.comments || []);
-        // Re-initialize forms if project data changes from an external source (less likely in full mock)
-        setEditingProjectForm({
-            name: currentProject.name, location: currentProject.location, status: currentProject.status,
-            startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
-            projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
-            franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
-        });
-        setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
-        setEditingTimelineForm(currentProject.projectTimeline || {});
-        setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
-        setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
-
-    } else if (!authLoading && user) { // If user exists but project not found after auth
-        notFound();
-    }
-  }, [projectId, user, authLoading, router, projectData]); // Added projectData to re-run if it becomes null
-
-  const [projectComments, setProjectComments] = React.useState<Comment[]>(initialProjectData?.comments || []);
+  const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
+  const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = React.useState(false); // Kept for UX
+  const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
@@ -201,7 +171,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [newTaskCommentTextForTask, setNewTaskCommentTextForTask] = React.useState("");
   const [isSubmittingTaskComment, setIsSubmittingTaskComment] = React.useState(false);
 
-
   const [isDepartmentTasksDialogOpen, setIsDepartmentTasksDialogOpen] = React.useState(false);
   const [departmentDialogTitle, setDepartmentDialogTitle] = React.useState("");
   const [departmentDialogTasks, setDepartmentDialogTasks] = React.useState<Task[]>([]);
@@ -210,17 +179,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = React.useState(false);
   const [isSavingProject, setIsSavingProject] = React.useState(false);
-  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>(initialProjectData || {});
-  const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>(initialProjectData?.propertyDetails || {});
-  const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>(initialProjectData?.projectTimeline || {});
-
-  const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>(initialProjectData?.milestones?.map(m=>({...m})) || []);
+  
+  const [editingProjectForm, setEditingProjectForm] = React.useState<Partial<StoreProject>>({});
+  const [editingPropertyDetailsForm, setEditingPropertyDetailsForm] = React.useState<Partial<StoreProject['propertyDetails']>>({});
+  const [editingTimelineForm, setEditingTimelineForm] = React.useState<Partial<StoreProject['projectTimeline']>>({});
+  const [editingMilestones, setEditingMilestones] = React.useState<Milestone[]>([]);
+  const [editingBlockers, setEditingBlockers] = React.useState<Blocker[]>([]);
+  
   const [isAddMilestoneDialogOpen, setIsAddMilestoneDialogOpen] = React.useState(false);
   const [newMilestoneName, setNewMilestoneName] = React.useState("");
   const [newMilestoneDate, setNewMilestoneDate] = React.useState(utilFormatDate(new Date()));
   const [newMilestoneDescription, setNewMilestoneDescription] = React.useState("");
 
-  const [editingBlockers, setEditingBlockers] = React.useState<Blocker[]>(initialProjectData?.blockers?.map(b=>({...b})) || []);
   const [isAddBlockerDialogOpen, setIsAddBlockerDialogOpen] = React.useState(false);
   const [newBlockerTitle, setNewBlockerTitle] = React.useState("");
   const [newBlockerDescription, setNewBlockerDescription] = React.useState("");
@@ -229,7 +199,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = React.useState(false);
   const [isAddingMember, setIsAddingMember] = React.useState(false);
-  const [availableHOContacts] = React.useState<ProjectMember[]>(mockHeadOfficeContacts); // Use mock data directly
+  const [availableHOContacts] = React.useState<ProjectMember[]>(mockHeadOfficeContacts);
   const [selectedNewMemberEmail, setSelectedNewMemberEmail] = React.useState<string>("");
   const [newMemberRoleInProject, setNewMemberRoleInProject] = React.useState("");
   const [newMemberIsProjectHod, setNewMemberIsProjectHod] = React.useState(false);
@@ -237,6 +207,39 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [isConfirmRemoveMemberDialogOpen, setIsConfirmRemoveMemberDialogOpen] = React.useState(false);
   const [isRemovingMember, setIsRemovingMember] = React.useState(false);
   const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string, role?: UserRole } | null>(null);
+
+  React.useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      router.replace("/auth/signin");
+      return;
+    }
+
+    if (!projectId) {
+      // This might happen if the URL is malformed or ID is not a string
+      notFound();
+      return;
+    }
+
+    const currentProject = getProjectById(projectId);
+    if (currentProject) {
+        setProjectData(currentProject);
+        setProjectComments(currentProject.comments || []);
+        setEditingProjectForm({
+            name: currentProject.name, location: currentProject.location, status: currentProject.status,
+            startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
+            projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
+            franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
+        });
+        setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
+        setEditingTimelineForm(currentProject.projectTimeline || {});
+        setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
+        setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
+    } else {
+        notFound(); // Project with this ID not found in mock data
+    }
+  }, [projectId, user, authLoading, router]);
 
 
   const currentUserRole = user?.role;
@@ -247,12 +250,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const canEditProject = isUserSuperAdmin || isUserAdmin;
   const canManageAnyMember = isUserSuperAdmin || isUserAdmin;
 
-
   const currentUserProjectMembership = React.useMemo(() => {
     if (!user || !projectData?.members) return undefined;
     return projectData.members.find(m => m.email === user.email);
   }, [user, projectData?.members]);
-
 
   const visibleFiles = React.useMemo(() => {
     if (!projectData) return [];
@@ -281,23 +282,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     return tasksToFilter.filter(task => task.priority === taskFilterPriority);
   }, [projectData, taskFilterPriority, isUserMember, currentUserProjectMembership]);
 
-
   const availableMembersToAdd = React.useMemo(() => {
     if (!projectData || !availableHOContacts.length) return [];
     const currentMemberEmails = (projectData.members || []).map(m => m.email);
     return availableHOContacts.filter(contact => !currentMemberEmails.includes(contact.email));
   }, [projectData, availableHOContacts]);
 
-
-  if (authLoading) {
+  if (authLoading || (user && !projectData && projectId)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">Authenticating...</p>
+        <p className="text-muted-foreground">{authLoading ? "Authenticating..." : "Loading project details..."}</p>
       </div>
     );
   }
-   if (!user) {
+
+   if (!user && !authLoading) { // If not loading and no user, redirect should have happened
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
           <p className="text-muted-foreground">Please sign in to view project details.</p>
@@ -305,13 +305,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       </div>
     );
   }
-
-  if (!projectData) { // Should be caught by useEffect -> notFound()
-    return null; // Or a minimal loading/error state before notFound kicks in
+  
+  if (!projectData) {
+    // This case should be covered by the useEffect calling notFound() if projectId is valid but project not found.
+    // Or if projectId itself was invalid from the start.
+    return (
+         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+           <AlertTriangle className="w-16 h-16 text-destructive mb-4" />
+           <h2 className="text-2xl font-semibold mb-2">Project Not Found</h2>
+           <p className="text-muted-foreground mb-6">Loading project data or project does not exist.</p>
+           <Button asChild><Link href="/dashboard">Go to Dashboard</Link></Button>
+        </div>
+    );
   }
 
-
-  const handleAddNewTask = () => { // No async for mock
+  const handleAddNewTask = () => {
     if (!newTaskName || !newTaskDepartment || !newTaskAssignedTo) {
       toast({ title: "Error", description: "Task Name, Department, and Assignee are required.", variant: "destructive" });
       return;
@@ -322,7 +330,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
     if (!projectData) return;
 
-    setIsSubmittingTask(true); // Still useful for UX
+    setIsSubmittingTask(true);
     const newTaskPayload: Partial<Task> = {
       name: newTaskName,
       department: newTaskDepartment as Department,
@@ -336,7 +344,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
     try {
       const addedTask = addTaskToProject(projectData.id, newTaskPayload);
-      setProjectData(getProjectById(projectData.id) || null); // Refresh project data
+      setProjectData(getProjectById(projectData.id) || null);
       toast({ title: "Task Added", description: `Task "${addedTask.name}" has been added.` });
       setNewTaskName(""); setNewTaskDepartment(""); setNewTaskDescription("");
       setNewTaskDueDate(""); setNewTaskAssignedTo(""); setNewTaskPriority("Medium");
@@ -357,7 +365,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const handleAddNewDocument = () => { // No async for mock
+  const handleAddNewDocument = () => {
     if (!newDocumentFile || !newDocumentName || !newDocumentType) {
       toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
       return;
@@ -365,7 +373,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     if (!projectData || !user) return;
 
     setIsSubmittingDocument(true);
-    const formData = new FormData(); // Still use FormData for consistency, even if mock handles it differently
+    const formData = new FormData(); 
     formData.append('file', newDocumentFile);
     formData.append('name', newDocumentName);
     formData.append('type', newDocumentType);
@@ -375,7 +383,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
     try {
       const addedDocument = addDocumentToProject(projectData.id, formData);
-      setProjectData(getProjectById(projectData.id) || null); // Refresh project data
+      setProjectData(getProjectById(projectData.id) || null);
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
       setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
       setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
@@ -388,7 +396,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-  const handleAddComment = () => { // No async for mock
+  const handleAddComment = () => {
     if (newCommentText.trim() && projectData && user) {
       setIsSubmittingComment(true);
       const commentPayload: Partial<Comment> = {
@@ -414,7 +422,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
   
-  const handleReplyToComment = (commentId: string, replyText: string) => { // No async for mock
+  const handleReplyToComment = (commentId: string, replyText: string) => {
       if (!projectData || !user || !replyText.trim()) return;
       setIsSubmittingComment(true);
 
@@ -450,7 +458,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleUpdateTaskDetails = () => { // No async for mock
+  const handleUpdateTaskDetails = () => {
     if (!selectedTask || !projectData || !user) return;
     setIsUpdatingTask(true);
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
@@ -458,7 +466,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
     const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority || "Medium";
     
-    if (isUserMember) { // Simplified permission check for mock
+    if (isUserMember) {
         if (newDepartment !== selectedTask.department || newPriority !== (selectedTask.priority || "Medium")) {
              toast({ title: "Permission Denied", description: "Members cannot change task department or priority.", variant: "destructive"});
              setIsUpdatingTask(false); return;
@@ -482,7 +490,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
   
-  const handlePostNewTaskComment = () => { // No async for mock
+  const handlePostNewTaskComment = () => {
     if (!selectedTask || !newTaskCommentTextForTask.trim() || !projectData || !user) return;
     setIsSubmittingTaskComment(true);
     const commentPayload: Partial<Comment> = {
@@ -493,7 +501,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     };
 
     try {
-      // Directly modify the mock data
       const projectToUpdate = getProjectById(projectData.id);
       if (!projectToUpdate) throw new Error("Project not found");
       const taskToUpdate = projectToUpdate.tasks.find(t => t.id === selectedTask.id);
@@ -502,8 +509,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       const newComment: Comment = { id: `taskcmt-${Date.now()}`, ...commentPayload } as Comment;
       taskToUpdate.comments = [newComment, ...(taskToUpdate.comments || [])];
       
-      updateProject(projectData.id, projectToUpdate); // Save changes to the "database"
-      const updatedProject = getProjectById(projectData.id); // Re-fetch
+      updateProject(projectData.id, projectToUpdate);
+      const updatedProject = getProjectById(projectData.id);
       setProjectData(updatedProject || null);
       setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
 
@@ -517,7 +524,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   };
 
-const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: string) => { // No async for mock
+const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: string) => {
     if (!projectData || !user || !replyText.trim()) return;
     setIsSubmittingTaskComment(true);
 
@@ -549,8 +556,8 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
         
         if (!addReplyFn(taskToUpdate.comments)) throw new Error("Parent comment for reply not found");
 
-        updateProject(projectData.id, projectToUpdate); // Save changes
-        const updatedProject = getProjectById(projectData.id); // Re-fetch
+        updateProject(projectData.id, projectToUpdate);
+        const updatedProject = getProjectById(projectData.id);
         setProjectData(updatedProject || null);
         if (selectedTask && selectedTask.id === taskId) {
             setSelectedTask(updatedProject?.tasks.find(t => t.id === taskId) || null);
@@ -588,7 +595,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     setEditingTimelineForm(prev => ({...prev, [field]: value}));
   };
 
-  const handleSaveProjectChanges = () => { // No async for mock
+  const handleSaveProjectChanges = () => {
     if (!projectData || !editingProjectForm.status || !canEditProject) {
       toast({ title: "Permission Denied or Error", description: "You do not have permission to edit this project, or there was an error.", variant: "destructive"});
       return;
@@ -662,7 +669,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     toast({ title: "Blocker Ready", description: `"${newBlocker.title}" added to edit form. Save project to persist.` });
   };
 
-  const handleToggleTimelineBlockerResolution = (blockerId: string) => { // No async
+  const handleToggleTimelineBlockerResolution = (blockerId: string) => {
     if (!projectData || !canEditProject) return;
     const currentProject = getProjectById(projectData.id);
     if (!currentProject || !currentProject.blockers) return;
@@ -679,14 +686,14 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     
     try {
         updateProject(currentProject.id, { blockers: currentProject.blockers });
-        setProjectData(getProjectById(currentProject.id) || null); // Refresh data
+        setProjectData(getProjectById(currentProject.id) || null);
         toast({ title: "Blocker Status Updated", description: `Blocker resolution status has been changed.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to update blocker status.", variant: "destructive" });
     }
   };
 
-  const handleRemoveTimelineBlocker = (blockerId: string) => { // No async
+  const handleRemoveTimelineBlocker = (blockerId: string) => {
     if (!projectData || !canEditProject) return;
     const currentProject = getProjectById(projectData.id);
     if (!currentProject || !currentProject.blockers) return;
@@ -694,14 +701,14 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     const updatedBlockers = (currentProject.blockers || []).filter(b => b.id !== blockerId);
     try {
         updateProject(currentProject.id, { blockers: updatedBlockers });
-        setProjectData(getProjectById(currentProject.id) || null); // Refresh data
+        setProjectData(getProjectById(currentProject.id) || null);
         toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to remove blocker.", variant: "destructive" });
     }
   };
 
-  const handleAddProjectMember = () => { // No async for mock
+  const handleAddProjectMember = () => {
     if (!selectedNewMemberEmail || !projectData || !canEditProject || !user) {
       toast({ title: "Error or Permission Denied", description: "Please select a person to add, or you may not have permission.", variant: "destructive" });
       return;
@@ -718,7 +725,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     };
     try {
       addMemberToProject(projectData.id, memberPayload);
-      setProjectData(getProjectById(projectData.id) || null); // Refresh
+      setProjectData(getProjectById(projectData.id) || null);
       toast({ title: "Member Added", description: `${memberPayload.name} has been added to the project.` });
       setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false);
       setIsAddMemberDialogOpen(false);
@@ -730,12 +737,12 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     }
   };
 
-  const confirmRemoveMember = () => { // No async for mock
+  const confirmRemoveMember = () => {
     if (!memberToRemoveInfo || !projectData || !user?.role) { setIsConfirmRemoveMemberDialogOpen(false); return; }
     setIsRemovingMember(true);
     try {
       removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
-      setProjectData(getProjectById(projectData.id) || null); // Refresh
+      setProjectData(getProjectById(projectData.id) || null);
       toast({ title: "Member Removed", description: `${memberToRemoveInfo.name} has been removed from the project.` });
       setMemberToRemoveInfo(null); setIsConfirmRemoveMemberDialogOpen(false); 
     } catch (error) {
@@ -746,7 +753,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     }
   };
 
-  const openRemoveMemberDialog = (member: ProjectMember) => { // Simplified permission
+  const openRemoveMemberDialog = (member: ProjectMember) => {
     if (!user?.role || !canManageAnyMember) { 
        toast({ title: "Permission Denied", description: "You do not have permission to remove members.", variant: "destructive"}); return;
     }
@@ -1424,3 +1431,4 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     </section>
   );
 }
+
