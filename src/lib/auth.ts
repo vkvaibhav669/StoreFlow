@@ -8,12 +8,17 @@ import type { User, UserRole } from '@/types';
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
 
 // Mock users with Indian names and roles
+// Password "TestAdmin@123" will work for the specified dummy accounts in this mock setup.
 const mockUsers: User[] = [
   { id: 'user-001', name: 'Priya Sharma', email: 'priya.sharma@example.com', role: 'Admin' },
   { id: 'user-002', name: 'Rohan Mehra', email: 'rohan.mehra@example.com', role: 'Member' },
   { id: 'user-003', name: 'Aisha Khan', email: 'aisha.khan@example.com', role: 'SuperAdmin' },
   { id: 'user-004', name: 'Vikram Singh', email: 'vikram.singh@example.com', role: 'Member' },
   { id: 'user-005', name: 'Neha Patel', email: 'neha.patel@example.com', role: 'Admin' },
+  // Added dummy logins as per request:
+  { id: 'user-vrk-sa', name: 'Vaibhhav Rajkumar (SA)', email: 'vaibhhavrajkumar@gmail.com', role: 'SuperAdmin' },
+  { id: 'user-vrkv-a', name: 'Vaibhav V. Rajkumar (Admin)', email: 'vaibhavvrajkumar@gmail.com', role: 'Admin' },
+  { id: 'user-vkv-m', name: 'VK Vaibhav (Member)', email: 'vkvaibhav36@gmail.com', role: 'Member' },
 ];
 
 export function getCurrentUser(): User | null {
@@ -60,7 +65,8 @@ export async function signIn(email: string, password: string): Promise<User> {
   const lowerEmail = email.toLowerCase();
   const user = mockUsers.find(u => u.email === lowerEmail);
   // Mock password check - in a real app, this would be a hashed password comparison
-  if (user && password) { // For mock, any non-empty password for a known email works
+  // For these mock users, any non-empty password will work with the specified emails.
+  if (user && password) { 
     setCurrentUser(user);
     return Promise.resolve(user);
   }
@@ -75,3 +81,4 @@ export async function signOut(): Promise<void> {
 export function getAllMockUsers(): User[] {
   return [...mockUsers];
 }
+
