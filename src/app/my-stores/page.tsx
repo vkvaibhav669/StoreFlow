@@ -6,43 +6,112 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Store, Filter, ArrowUpRight, AlertTriangle } from "lucide-react";
+import { Store, Filter, ArrowUpRight, PlusCircle, CalendarIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Package2 } from "lucide-react";
-import { getAllStores } from "@/lib/data";
+import { getAllStores, createStore } from "@/lib/data";
 import type { StoreItem, StoreType } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type StoreFilterType = StoreType | "All";
 
 export default function MyStoresPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { toast } = useToast(); // Kept for potential future use even with mock data
+  const { toast } = useToast();
 
-  // For mock data, fetch directly.
   const [allStores, setAllStores] = React.useState<StoreItem[]>(getAllStores());
   const [filterType, setFilterType] = React.useState<StoreFilterType>("All");
+
+  const [isAddStoreDialogOpen, setIsAddStoreDialogOpen] = React.useState(false);
+  const [isSubmittingStore, setIsSubmittingStore] = React.useState(false);
+  const [newStoreName, setNewStoreName] = React.useState("");
+  const [newStoreLocation, setNewStoreLocation] = React.useState("");
+  const [newStoreType, setNewStoreType] = React.useState<StoreType>("COCO");
+  const [newStoreManager, setNewStoreManager] = React.useState("");
+  const [newStoreSqft, setNewStoreSqft] = React.useState<number | "">("");
+  const [newStoreOpeningDate, setNewStoreOpeningDate] = React.useState<Date | undefined>(new Date());
+
+  const canAddStore = user?.role === 'Admin' || user?.role === 'SuperAdmin';
+
+  const refreshStores = () => {
+    setAllStores(getAllStores());
+  };
 
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
     }
-    // Refresh stores from mock data if needed (e.g., if underlying mock data changes)
-    // For this setup, it's mostly static after initial load.
-    setAllStores(getAllStores());
+    refreshStores();
   }, [user, authLoading, router]);
 
   const filteredStores = React.useMemo(() => {
-    let storesToShow = allStores.filter(store => store.status === "Operational");
+    let storesToShow = allStores;
     if (filterType !== "All") {
       storesToShow = storesToShow.filter(store => store.type === filterType);
     }
     return storesToShow;
   }, [allStores, filterType]);
+
+  const handleAddNewStore = () => {
+    if (!newStoreName.trim() || !newStoreLocation.trim() || !newStoreOpeningDate) {
+      toast({ title: "Validation Error", description: "Store Name, Location, and Opening Date are required.", variant: "destructive" });
+      return;
+    }
+    if (!canAddStore) {
+        toast({ title: "Permission Denied", description: "You do not have permission to add stores.", variant: "destructive" });
+        return;
+    }
+
+    setIsSubmittingStore(true);
+    const newStorePayload: Partial<StoreItem> = {
+        name: newStoreName,
+        location: newStoreLocation,
+        type: newStoreType,
+        status: "Planned",
+        openingDate: format(newStoreOpeningDate, "yyyy-MM-dd"),
+        manager: newStoreManager.trim() || undefined,
+        sqft: newStoreSqft ? Number(newStoreSqft) : undefined,
+    };
+
+    try {
+        const createdStore = createStore(newStorePayload);
+        refreshStores();
+        toast({ title: "Store Created", description: `Store "${createdStore.name}" has been added.`});
+        
+        setIsAddStoreDialogOpen(false);
+        setNewStoreName("");
+        setNewStoreLocation("");
+        setNewStoreType("COCO");
+        setNewStoreManager("");
+        setNewStoreSqft("");
+        setNewStoreOpeningDate(new Date());
+
+    } catch (error) {
+        console.error("Error creating store:", error);
+        toast({ title: "Error", description: "Failed to create store. Please try again.", variant: "destructive" });
+    } finally {
+        setIsSubmittingStore(false);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -64,7 +133,7 @@ export default function MyStoresPage() {
   return (
     <section className="my-stores-content flex flex-col gap-6" aria-labelledby="my-stores-heading">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 id="my-stores-heading" className="text-2xl font-semibold md:text-3xl">My Operational Stores</h1>
+        <h1 id="my-stores-heading" className="text-2xl font-semibold md:text-3xl">All Company Stores</h1>
         <div className="flex items-center gap-2">
           <Filter className="h-5 w-5 text-muted-foreground" />
           <Select value={filterType} onValueChange={(value) => setFilterType(value as StoreFilterType)}>
@@ -77,6 +146,82 @@ export default function MyStoresPage() {
               <SelectItem value="FOFO">FOFO (Franchise Owned)</SelectItem>
             </SelectContent>
           </Select>
+          {canAddStore && (
+            <Dialog open={isAddStoreDialogOpen} onOpenChange={(isOpen) => {
+                setIsAddStoreDialogOpen(isOpen);
+                if (!isOpen) {
+                    setNewStoreName(""); setNewStoreLocation(""); setNewStoreType("COCO");
+                    setNewStoreManager(""); setNewStoreSqft(""); setNewStoreOpeningDate(new Date());
+                }
+            }}>
+                <DialogTrigger asChild>
+                    <Button size="sm" disabled={isSubmittingStore}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Store
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add New Store</DialogTitle>
+                        <DialogDescription>
+                            Enter the details for a new store location.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="store-name" className="text-right">Name *</Label>
+                            <Input id="store-name" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="col-span-3" placeholder="e.g., Jayanagar High Street" disabled={isSubmittingStore} />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="store-location" className="text-right">Location *</Label>
+                            <Input id="store-location" value={newStoreLocation} onChange={(e) => setNewStoreLocation(e.target.value)} className="col-span-3" placeholder="e.g., Bangalore, Karnataka" disabled={isSubmittingStore} />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="store-type" className="text-right">Type</Label>
+                             <Select value={newStoreType} onValueChange={(value) => setNewStoreType(value as StoreType)} disabled={isSubmittingStore}>
+                                <SelectTrigger id="store-type" className="col-span-3"><SelectValue placeholder="Select type" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="COCO">COCO</SelectItem>
+                                    <SelectItem value="FOFO">FOFO</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="store-manager" className="text-right">Manager</Label>
+                            <Input id="store-manager" value={newStoreManager} onChange={(e) => setNewStoreManager(e.target.value)} className="col-span-3" placeholder="Manager's Name" disabled={isSubmittingStore} />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="store-sqft" className="text-right">Sqft</Label>
+                            <Input id="store-sqft" type="number" value={newStoreSqft} onChange={(e) => setNewStoreSqft(e.target.value === '' ? '' : Number(e.target.value))} className="col-span-3" placeholder="e.g., 3500" disabled={isSubmittingStore} />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="store-opening-date" className="text-right">Opening *</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    id="store-opening-date"
+                                    variant={"outline"}
+                                    className={cn("col-span-3 justify-start text-left font-normal", !newStoreOpeningDate && "text-muted-foreground")}
+                                    disabled={isSubmittingStore}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {newStoreOpeningDate ? format(newStoreOpeningDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={newStoreOpeningDate} onSelect={setNewStoreOpeningDate} initialFocus />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="outline" disabled={isSubmittingStore}>Cancel</Button></DialogClose>
+                        <Button type="submit" onClick={handleAddNewStore} disabled={isSubmittingStore}>
+                            {isSubmittingStore ? "Adding..." : "Add Store"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+           )}
         </div>
       </div>
 
@@ -84,7 +229,7 @@ export default function MyStoresPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-center">
-              {allStores.length === 0 ? "No operational stores found." : "No operational stores match the current filter."}
+              No stores found.
             </p>
           </CardContent>
         </Card>
@@ -106,13 +251,18 @@ export default function MyStoresPage() {
                   <strong className="mr-1">Status:</strong> 
                   <Badge 
                     variant={store.status === "Operational" ? "default" : "outline"} 
-                    className={store.status === "Operational" ? "bg-accent text-accent-foreground" : ""}
+                    className={cn(
+                        "font-semibold",
+                        store.status === "Operational" && "bg-accent text-accent-foreground",
+                        store.status === "Under Construction" && "bg-yellow-100 text-yellow-800 border-yellow-300",
+                        store.status === "Planned" && "bg-blue-100 text-blue-800 border-blue-300"
+                    )}
                   >
                     {store.status}
                   </Badge>
                 </div>
                 <p>
-                  <strong>Opening Date:</strong> {format(new Date(store.openingDate), "PPP")}
+                  <strong>Target Opening:</strong> {format(new Date(store.openingDate), "PPP")}
                 </p>
                 {store.manager && <p><strong>Manager:</strong> {store.manager}</p>}
                 {store.sqft && <p><strong>Size:</strong> {store.sqft.toLocaleString()} sqft</p>}

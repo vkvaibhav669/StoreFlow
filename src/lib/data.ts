@@ -382,6 +382,24 @@ export function updateStore(id: string, storeData: Partial<StoreItem>): StoreIte
   return mockStores[storeIndex];
 }
 
+export function createStore(storeData: Partial<StoreItem>): StoreItem {
+    const newStore: StoreItem = {
+        id: `store-${Date.now()}`,
+        name: storeData.name || "New Store",
+        location: storeData.location || "TBD",
+        type: storeData.type || "COCO",
+        status: storeData.status || "Planned",
+        openingDate: storeData.openingDate || formatDate(new Date()),
+        manager: storeData.manager,
+        sqft: storeData.sqft,
+        ownershipChangeRequested: false,
+        improvementPoints: [],
+        tasks: [],
+    };
+    mockStores.unshift(newStore);
+    return newStore;
+}
+
 export function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): ImprovementPoint {
     const store = getStoreById(storeId);
     if (!store) throw new Error("Store not found");
