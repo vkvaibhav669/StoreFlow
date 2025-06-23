@@ -1,122 +1,67 @@
 
+// This file defines the TypeScript types that reflect the MongoDB schema design.
+// It serves as the single source of truth for data structures across the application.
+
+// --- Core Enums & Types ---
+
 export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
-
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
-
-export interface Comment {
-  id: string;
-  author: string;
-  avatarUrl?: string;
-  timestamp: string; // ISO string
-  text: string;
-  replies?: Comment[];
-}
-
-export interface Task {
-  id: string;
-  name: string;
-  department: Department;
-  status: "Pending" | "In Progress" | "Completed" | "Blocked";
-  priority?: TaskPriority;
-  assignedTo?: string; // Can be an email or a name/ID
-  dueDate?: string;
-  description?: string;
-  comments?: Comment[];
-}
-
-export interface DocumentFile {
-  id: string;
-  name:string;
-  type: "3D Render" | "Property Document" | "Marketing Collateral" | "Other";
-  url: string;
-  uploadedAt: string;
-  uploadedBy?: string;
-  size: string;
-  dataAiHint?: string;
-  hodOnly?: boolean;
-}
-
-export interface Milestone {
-  id: string;
-  name: string;
-  date: string;
-  completed: boolean;
-  description?: string;
-}
-
-export interface Blocker {
-  id: string;
-  title: string;
-  description: string;
-  dateReported: string; // ISO Date string
-  isResolved: boolean;
-  dateResolved?: string; // ISO Date string
-  reportedBy?: string;
-}
-
-export interface MarketingCampaign {
-  id: string;
-  name: string;
-  type: "Digital" | "Offline" | "Influencer" | "Hyperlocal";
-  status: "Planned" | "Ongoing" | "Completed" | "Cancelled";
-  startDate: string;
-  endDate: string;
-  budget?: number;
-}
-
-export interface DepartmentDetails {
-    notes?: string;
-    tasks: Task[];
-    virtualPlanUrl?: string;
-    recruitmentStatus?: string;
-    staffHired?: number;
-    totalNeeded?: number;
-    preLaunchCampaigns?: MarketingCampaign[];
-    postLaunchCampaigns?: MarketingCampaign[];
-}
-
+export type UserRole = "Member" | "Admin" | "SuperAdmin";
 export type StoreType = "COCO" | "FOFO";
 
-export interface ProjectMember { // This type is used for defining project team members.
-                               // For general HO contacts, we might use a similar structure or a simplified one.
-  id?: string; // Adding id from mockHeadOfficeContacts for consistency if used
-  email: string;
+// --- Main Document Schemas (Collections) ---
+
+/**
+ * Represents a user in the `users` collection.
+ * The single source of truth for user identity and authentication.
+ */
+export interface User {
+  id: string; // Corresponds to MongoDB's _id
   name: string;
-  roleInProject?: string;
-  department?: Department; // Department they belong to in general
-  avatarSeed?: string;
-  isProjectHod?: boolean;
-  role?: string; // General role in company from mockHeadOfficeContacts - This might refer to their global role in the future
-  phone?: string; // from mockHeadOfficeContacts
+  email: string; // This should be unique
+  role: UserRole;
+  // Note: Password hash is never sent to the client.
 }
 
+/**
+ * Represents a project in the `projects` collection.
+ * This is a complex document that embeds most of its related data.
+ */
 export interface StoreProject {
-  id: string;
+  id: string; // Corresponds to MongoDB's _id
   name: string;
   location: string;
   status: "Planning" | "Property Finalized" | "Project Kickoff" | "Execution" | "Merchandising" | "Recruitment" | "Pre-Launch Marketing" | "Launched" | "Post-Launch Marketing";
-  startDate: string;
-  projectedLaunchDate: string;
+  startDate: string; // ISO String
+  projectedLaunchDate: string; // ISO String
   currentProgress: number;
   isUpcoming?: boolean;
   franchiseType?: StoreType;
+  
   propertyDetails?: {
     address: string;
     sqft: number;
     status: "Identified" | "Negotiating" | "Finalized";
     notes?: string;
   };
+
   projectTimeline: {
-    totalDays: 45;
+    totalDays: number;
     currentDay: number;
-    kickoffDate: string;
+    kickoffDate: string; // ISO String
   };
+
   threeDRenderUrl?: string;
+
+  // --- Embedded Arrays ---
+  members: ProjectMember[];
   tasks: Task[];
   documents: DocumentFile[];
   milestones: Milestone[];
-  blockers?: Blocker[];
-  departments?: {
+  blockers: Blocker[];
+  discussion: Comment[]; // Main discussion thread for the project
+  
+  departments: {
     property?: DepartmentDetails;
     project?: DepartmentDetails;
     merchandising?: DepartmentDetails;
@@ -124,78 +69,196 @@ export interface StoreProject {
     marketing?: DepartmentDetails;
     it?: DepartmentDetails;
   };
-  comments?: Comment[];
-  members?: ProjectMember[];
-}
 
-export type UserRole = "Member" | "Admin" | "SuperAdmin";
-
-export interface User {
-  id: string;
-  name?: string;
-  email: string;
-  role: UserRole;
-}
-
-export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Withdrawn";
-
-export interface ApprovalRequest {
-  id: string;
-  title: string;
-  projectId?: string;
-  projectName?: string;
-  requestingDepartment: Department;
-  requestorName: string;
-  requestorEmail: string;
-  details: string;
-  approverName: string;
-  approverEmail: string;
-  status: ApprovalStatus;
-  submissionDate: string;
-  lastUpdateDate?: string;
-  approvalComments?: Comment[];
+  createdAt: string; // ISO String
+  updatedAt: string; // ISO String
 }
 
 
-export interface ImprovementPoint {
-  id: string;
-  text: string;
-  addedBy: string;
-  addedAt: string;
-  userAvatar?: string;
-  comments?: Comment[];
-  isResolved?: boolean;
-  resolvedBy?: string; // Name/email of user who resolved it
-  resolvedAt?: string; // ISO timestamp
-}
-
-export interface StoreTask {
-  id: string;
-  storeId: string; // To link back to the store
-  title: string;
-  description?: string;
-  assignedTo?: string; // e.g., "Store Manager", "Morning Staff"
-  status: "Pending" | "In Progress" | "Completed" | "Blocked";
-  priority?: TaskPriority; // Reusing existing TaskPriority type
-  createdAt: string; // ISO string
-  createdBy: string; // User's name or email
-  dueDate?: string; // ISO string
-}
-
+/**
+ * Represents an operational or planned store in the `stores` collection.
+ */
 export interface StoreItem {
-  id: string;
+  id: string; // Corresponds to MongoDB's _id
   name: string;
   location: string;
   type: StoreType;
   status: "Operational" | "Under Construction" | "Planned";
-  openingDate: string;
-  manager?: string;
+  openingDate: string; // ISO String
+  managerId?: string; // Ref: users
+  manager?: string; // Denormalized name
   sqft?: number;
-  dailySales?: number;
-  customerSatisfaction?: number;
-  inventoryLevels?: Record<string, number>;
-  currentPromotions?: string[];
-  improvementPoints?: ImprovementPoint[];
-  tasks?: StoreTask[]; // Added store-specific tasks
   ownershipChangeRequested?: boolean;
+  fromProjectId?: string; // Optional Ref: projects
+
+  // --- Embedded Arrays ---
+  improvementPoints: ImprovementPoint[];
+  tasks: StoreTask[];
+}
+
+
+/**
+ * Represents an approval request in the `approvalRequests` collection.
+ */
+export interface ApprovalRequest {
+  id: string; // Corresponds to MongoDB's _id
+  title: string;
+  details: string;
+  status: "Pending" | "Approved" | "Rejected" | "Withdrawn";
+  
+  requestorId: string; // Ref: users
+  requestorName: string; // Denormalized name
+  approverId: string; // Ref: users
+  approverName: string; // Denormalized name
+  
+  projectId?: string; // Optional Ref: projects
+  projectName?: string; // Denormalized name
+  
+  requestingDepartment: Department;
+  
+  // --- Embedded Array ---
+  approvalComments?: Comment[];
+
+  submissionDate: string; // ISO String
+  lastUpdateDate?: string; // ISO String
+}
+
+
+// --- Embedded Document Sub-types ---
+
+/** Represents a single member within a project's `members` array. */
+export interface ProjectMember {
+  userId: string; // Ref: users
+  name: string;   // Denormalized from User document
+  email: string;  // Denormalized from User document
+  roleInProject?: string;
+  department?: Department;
+  isProjectHod?: boolean;
+  avatarSeed?: string; // For mock UI only
+}
+
+/** Represents a single task within a project's `tasks` array. */
+export interface Task {
+  id: string; // Embedded documents can have their own IDs
+  name: string;
+  department: Department;
+  status: "Pending" | "In Progress" | "Completed" | "Blocked";
+  priority: TaskPriority;
+  assignedToId?: string; // Ref: users
+  assignedToName?: string; // Denormalized user name
+  dueDate?: string; // ISO String
+  description?: string;
+  comments: Comment[]; // Task-specific comments
+  createdAt: string; // ISO String
+}
+
+/** Represents a single comment or reply, can be nested. */
+export interface Comment {
+  id: string;
+  authorId: string; // Ref: users
+  author: string;   // Denormalized user name
+  avatarUrl?: string; // For mock UI
+  timestamp: string;  // ISO String
+  text: string;
+  replies?: Comment[];
+}
+
+/** Represents a document within a project's `documents` array. */
+export interface DocumentFile {
+  id: string;
+  name: string;
+  type: "3D Render" | "Property Document" | "Marketing Collateral" | "Other";
+  url: string;
+  size: string;
+  uploadedById: string; // Ref: users
+  uploadedBy: string;   // Denormalized name
+  uploadedAt: string; // ISO String
+  hodOnly?: boolean;
+  dataAiHint?: string;
+}
+
+/** Represents a milestone within a project's `milestones` array. */
+export interface Milestone {
+  id: string;
+  name: string;
+  description?: string;
+  date: string; // ISO String
+  completed: boolean;
+}
+
+/** Represents a blocker within a project's `blockers` array. */
+export interface Blocker {
+  id: string;
+  title: string;
+  description: string;
+  reportedById: string; // Ref: users
+  reportedBy: string;   // Denormalized name
+  dateReported: string; // ISO String
+  isResolved: boolean;
+  dateResolved?: string; // ISO String
+}
+
+/** Represents department-specific details within a project. */
+export interface DepartmentDetails {
+    notes?: string;
+    tasks: Task[]; // Note: These tasks are a subset of the main project tasks array, filtered by department.
+    // Marketing-specific
+    preLaunchCampaigns?: MarketingCampaign[];
+    postLaunchCampaigns?: MarketingCampaign[];
+    // Merchandising-specific
+    virtualPlanUrl?: string;
+    // HR-specific
+    recruitmentStatus?: string;
+    staffHired?: number;
+    totalNeeded?: number;
+}
+
+/** Represents a marketing campaign within a department's details. */
+export interface MarketingCampaign {
+  id: string;
+  name: string;
+  type: "Digital" | "Offline" | "Influencer" | "Hyperlocal";
+  status: "Planned" | "Ongoing" | "Completed" | "Cancelled";
+  startDate: string; // ISO String
+  endDate: string; // ISO String
+  budget?: number;
+}
+
+
+// --- Store-specific Sub-types ---
+
+/** Represents an improvement point within a store's `improvementPoints` array. */
+export interface ImprovementPoint {
+  id: string;
+  text: string;
+  addedById: string; // Ref: users
+  addedBy: string;   // Denormalized user name
+  addedAt: string;   // ISO String
+  userAvatar?: string;
+  isResolved: boolean;
+  resolvedById?: string; // Ref: users
+  resolvedBy?: string;
+  resolvedAt?: string; // ISO String
+  comments: Comment[]; // Discussion specific to this point
+}
+
+/** Represents an operational task within a store's `tasks` array. */
+export interface StoreTask {
+  id: string;
+  storeId: string; // Ref: stores
+  title: string;
+  description?: string;
+  assignedTo?: string; // e.g., "Store Manager", not a direct user ref
+  status: "Pending" | "In Progress" | "Completed" | "Blocked";
+  priority: TaskPriority;
+  createdById: string; // Ref: users
+  createdBy: string;   // Denormalized user name
+  createdAt: string;   // ISO String
+  dueDate?: string;     // ISO String
+}
+
+/** A utility type for tasks aggregated from all projects for a user. */
+export interface UserTask extends Task {
+  projectId: string;
+  projectName: string;
 }
