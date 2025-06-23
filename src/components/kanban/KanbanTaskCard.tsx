@@ -4,9 +4,7 @@
 import type { Task } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
 import { Button } from "../ui/button";
-import { ArrowUpRight } from "lucide-react";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -15,9 +13,10 @@ interface KanbanTask extends Task {
 
 interface KanbanTaskCardProps {
   task: KanbanTask;
+  onViewTask: (task: KanbanTask) => void;
 }
 
-export function KanbanTaskCard({ task }: KanbanTaskCardProps) {
+export function KanbanTaskCard({ task, onViewTask }: KanbanTaskCardProps) {
   const priorityColors: Record<string, string> = {
     High: "bg-red-500/20 text-red-700 border-red-500/50",
     Medium: "bg-yellow-500/20 text-yellow-700 border-yellow-500/50",
@@ -50,10 +49,8 @@ export function KanbanTaskCard({ task }: KanbanTaskCardProps) {
         {task.dueDate && (
           <p className="text-xs text-muted-foreground">Due: {task.dueDate}</p>
         )}
-         <Button asChild variant="link" size="sm" className="p-0 h-auto text-xs mt-1">
-            <Link href={`/projects/${task.projectId}`}>
-                View Project <ArrowUpRight className="ml-1 h-3 w-3" />
-            </Link>
+         <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1" onClick={() => onViewTask(task)}>
+            View Task
         </Button>
       </CardContent>
     </Card>

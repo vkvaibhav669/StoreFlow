@@ -2,20 +2,24 @@
 "use client";
 
 import * as React from "react";
-import { getAllProjects } from "@/lib/data";
+import { getAllProjects, updateTaskInProject } from "@/lib/data";
 import type { Task, StoreProject, Department, TaskPriority } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Package2, AlertTriangle } from "lucide-react";
+import { Package2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -24,6 +28,7 @@ interface KanbanTask extends Task {
 
 type TaskStatus = Task["status"];
 const KANBAN_COLUMNS: TaskStatus[] = ["Pending", "In Progress", "Blocked", "Completed"];
+const ALL_TASK_STATUSES: TaskStatus[] = ["Pending", "In Progress", "Completed", "Blocked"];
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 const allPossiblePriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
@@ -34,31 +39,20 @@ export default function TaskTrackerPage() {
   const { open: sidebarOpen } = useSidebar();
   const { toast } = useToast();
 
-  // Use direct data fetching for mock environment
-  const allFetchedProjects = getAllProjects();
-  const [projects, setProjects] = React.useState<StoreProject[]>(allFetchedProjects);
-  
-  const allTasksFromProjects: KanbanTask[] = [];
-    projects.forEach((project) => {
-    (project.tasks || []).forEach((task) => {
-      allTasksFromProjects.push({
-        ...task,
-        projectName: project.name,
-        projectId: project.id,
-      });
-    });
-  });
-  const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>(allTasksFromProjects);
+  const [projects, setProjects] = React.useState<StoreProject[]>([]);
+  const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
 
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
   const [selectedProject, setSelectedProject] = React.useState<string | "All">("All");
   const [selectedPriority, setSelectedPriority] = React.useState<TaskPriority | "All">("All");
 
-  React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/auth/signin");
-    }
-    // Update local state if projects change (e.g. new project added on dashboard then navigating here)
+  const [selectedTask, setSelectedTask] = React.useState<KanbanTask | null>(null);
+  const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
+  const [isUpdatingTask, setIsUpdatingTask] = React.useState(false);
+  const [editingTaskStatus, setEditingTaskStatus] = React.useState<TaskStatus | "">("");
+  const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
+
+  const refreshTasks = () => {
     const updatedProjects = getAllProjects();
     setProjects(updatedProjects);
     const updatedTasks: KanbanTask[] = [];
@@ -68,8 +62,50 @@ export default function TaskTrackerPage() {
       });
     });
     setTasksWithProjectInfo(updatedTasks);
+  };
 
-  }, [user, authLoading, router]); // Removed toast as it's not used for initial fetch here
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/auth/signin");
+    } else if (user) {
+      refreshTasks();
+    }
+  }, [user, authLoading, router]);
+
+  const handleViewTaskDetails = (task: KanbanTask) => {
+    setSelectedTask(task);
+    setEditingTaskStatus(task.status);
+    setEditingTaskAssignedTo(task.assignedTo || "");
+    setIsViewTaskDialogOpen(true);
+  };
+
+  const handleUpdateTask = () => {
+    if (!selectedTask || !user) return;
+    
+    const canChangeAssignee = user.role === 'Admin' || user.role === 'SuperAdmin';
+    if (editingTaskAssignedTo !== (selectedTask.assignedTo || "") && !canChangeAssignee) {
+        toast({ title: "Permission Denied", description: "You cannot change the task assignee.", variant: "destructive" });
+        return;
+    }
+    
+    setIsUpdatingTask(true);
+    const taskUpdatePayload: Partial<Task> = {
+      status: editingTaskStatus as TaskStatus,
+      assignedTo: editingTaskAssignedTo
+    };
+
+    try {
+      updateTaskInProject(selectedTask.projectId, selectedTask.id, taskUpdatePayload);
+      refreshTasks();
+      toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
+      setIsViewTaskDialogOpen(false);
+      setSelectedTask(null);
+    } catch(error) {
+      toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
+    } finally {
+      setIsUpdatingTask(false);
+    }
+  };
 
   const filteredTasks = React.useMemo(() => {
     return tasksWithProjectInfo.filter((task) => {
@@ -95,7 +131,7 @@ export default function TaskTrackerPage() {
     return grouped;
   }, [filteredTasks]);
 
-  if (authLoading) { // Simplified loading check
+  if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
@@ -104,7 +140,7 @@ export default function TaskTrackerPage() {
     );
   }
   
-  if (!user) { // Fallback if auth checks are somehow bypassed before redirect
+  if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <p className="text-muted-foreground">Please sign in.</p>
@@ -112,101 +148,172 @@ export default function TaskTrackerPage() {
     );
   }
 
-  return (
-    <section className="task-tracker-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="task-tracker-page-heading">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 id="task-tracker-page-heading" className="text-2xl font-semibold md:text-3xl">Task Tracker</h1>
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <div className="flex-1 min-w-[150px]">
-            <Label htmlFor="project-filter" className="text-xs text-muted-foreground">Filter by Project</Label>
-            <Select value={selectedProject} onValueChange={(value) => setSelectedProject(value)}>
-              <SelectTrigger id="project-filter" className="h-9">
-                <SelectValue placeholder="Select Project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Projects</SelectItem>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <Label htmlFor="department-filter" className="text-xs text-muted-foreground">Filter by Department</Label>
-            <Select value={selectedDepartment} onValueChange={(value) => setSelectedDepartment(value as Department | "All")}>
-              <SelectTrigger id="department-filter" className="h-9">
-                <SelectValue placeholder="Select Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Departments</SelectItem>
-                {allPossibleDepartments.map((dept) => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <Label htmlFor="priority-filter" className="text-xs text-muted-foreground">Filter by Priority</Label>
-            <Select value={selectedPriority} onValueChange={(value) => setSelectedPriority(value as TaskPriority | "All")}>
-              <SelectTrigger id="priority-filter" className="h-9">
-                <SelectValue placeholder="Select Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Priorities</SelectItem>
-                {allPossiblePriorities.map((priority) => (
-                  <SelectItem key={priority} value={priority}>
-                    {priority}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
+  const canEditAssignee = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
-      <ScrollArea className="flex-grow">
-        <div className="flex gap-4 pb-4 min-w-max">
-          {KANBAN_COLUMNS.map((status) => (
-            <Card
-              key={status}
-              className={cn(
-                "h-full flex-shrink-0 flex flex-col",
-                "w-[240px]", 
-                "sm:w-[260px]", 
-                sidebarOpen
-                  ? "md:w-[220px] lg:w-[240px]" 
-                  : "md:w-[280px] lg:w-[300px]", 
-                "transition-all duration-300 ease-in-out"
-              )}
-            >
-              <CardHeader className="p-3 border-b">
-                <CardTitle className="text-base font-medium flex justify-between items-center">
-                  {status}
-                  <Badge variant="secondary" className="ml-2">
-                    {tasksByStatus[status]?.length || 0}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <ScrollArea className="flex-grow">
-                <CardContent className="p-3 h-full">
-                  {tasksByStatus[status] && tasksByStatus[status].length > 0 ? (
-                    tasksByStatus[status].map((task) => (
-                      <KanbanTaskCard key={task.id} task={task} />
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No tasks in this status.</p>
-                  )}
-                </CardContent>
-              </ScrollArea>
-            </Card>
-          ))}
+  return (
+    <>
+      <section className="task-tracker-container flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 sm:p-6" aria-labelledby="task-tracker-page-heading">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <h1 id="task-tracker-page-heading" className="text-2xl font-semibold md:text-3xl">Task Tracker</h1>
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <div className="flex-1 min-w-[150px]">
+              <Label htmlFor="project-filter" className="text-xs text-muted-foreground">Filter by Project</Label>
+              <Select value={selectedProject} onValueChange={(value) => setSelectedProject(value)}>
+                <SelectTrigger id="project-filter" className="h-9">
+                  <SelectValue placeholder="Select Project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Projects</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <Label htmlFor="department-filter" className="text-xs text-muted-foreground">Filter by Department</Label>
+              <Select value={selectedDepartment} onValueChange={(value) => setSelectedDepartment(value as Department | "All")}>
+                <SelectTrigger id="department-filter" className="h-9">
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Departments</SelectItem>
+                  {allPossibleDepartments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <Label htmlFor="priority-filter" className="text-xs text-muted-foreground">Filter by Priority</Label>
+              <Select value={selectedPriority} onValueChange={(value) => setSelectedPriority(value as TaskPriority | "All")}>
+                <SelectTrigger id="priority-filter" className="h-9">
+                  <SelectValue placeholder="Select Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Priorities</SelectItem>
+                  {allPossiblePriorities.map((priority) => (
+                    <SelectItem key={priority} value={priority}>
+                      {priority}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-    </section>
+
+        <ScrollArea className="flex-grow">
+          <div className="flex gap-4 pb-4 min-w-max">
+            {KANBAN_COLUMNS.map((status) => (
+              <Card
+                key={status}
+                className={cn(
+                  "h-full flex-shrink-0 flex flex-col",
+                  "w-[240px]", 
+                  "sm:w-[260px]", 
+                  sidebarOpen
+                    ? "md:w-[220px] lg:w-[240px]" 
+                    : "md:w-[280px] lg:w-[300px]", 
+                  "transition-all duration-300 ease-in-out"
+                )}
+              >
+                <CardHeader className="p-3 border-b">
+                  <CardTitle className="text-base font-medium flex justify-between items-center">
+                    {status}
+                    <Badge variant="secondary" className="ml-2">
+                      {tasksByStatus[status]?.length || 0}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <ScrollArea className="flex-grow">
+                  <CardContent className="p-3 h-full">
+                    {tasksByStatus[status] && tasksByStatus[status].length > 0 ? (
+                      tasksByStatus[status].map((task) => (
+                        <KanbanTaskCard key={task.id} task={task} onViewTask={handleViewTaskDetails} />
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">No tasks in this status.</p>
+                    )}
+                  </CardContent>
+                </ScrollArea>
+              </Card>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </section>
+
+      {selectedTask && (
+        <Dialog open={isViewTaskDialogOpen} onOpenChange={setIsViewTaskDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{selectedTask.name}</DialogTitle>
+              <DialogDescription>
+                From project: {selectedTask.projectName}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 text-sm">
+              {selectedTask.description && (
+                  <div className="space-y-1">
+                      <Label className="text-muted-foreground">Description</Label>
+                      <p className="whitespace-pre-wrap p-2 bg-muted/50 rounded-md">{selectedTask.description}</p>
+                  </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                      <Label className="text-muted-foreground">Department</Label>
+                      <p>{selectedTask.department}</p>
+                  </div>
+                  <div className="space-y-1">
+                      <Label className="text-muted-foreground">Priority</Label>
+                      <p>{selectedTask.priority || 'None'}</p>
+                  </div>
+                  {selectedTask.dueDate && (
+                      <div className="space-y-1">
+                          <Label className="text-muted-foreground">Due Date</Label>
+                          <p>{format(new Date(selectedTask.dueDate), "PPP")}</p>
+                      </div>
+                  )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="taskStatusEdit">Status</Label>
+                      <Select value={editingTaskStatus} onValueChange={(value) => setEditingTaskStatus(value as TaskStatus | "")} disabled={isUpdatingTask}>
+                        <SelectTrigger id="taskStatusEdit"><SelectValue placeholder="Select status" /></SelectTrigger>
+                        <SelectContent>
+                          {ALL_TASK_STATUSES.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="taskAssignedToEdit">Assigned To</Label>
+                      <Input 
+                        id="taskAssignedToEdit" 
+                        value={editingTaskAssignedTo} 
+                        onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
+                        disabled={isUpdatingTask || !canEditAssignee}
+                      />
+                      {!canEditAssignee && <p className="text-xs text-muted-foreground">Only Admins can change assignee.</p>}
+                  </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" disabled={isUpdatingTask}>Cancel</Button>
+              </DialogClose>
+              <Button onClick={handleUpdateTask} disabled={isUpdatingTask}>
+                {isUpdatingTask ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
