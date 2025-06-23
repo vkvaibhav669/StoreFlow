@@ -1132,7 +1132,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
           {!isUserMember && <TabsTrigger value="files">Files</TabsTrigger>}
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="comments">Comments</TabsTrigger>
+          <TabsTrigger value="comments">Discussion</TabsTrigger>
         </TabsList>
 
         <TabsContent value="departments" className="mt-4">
