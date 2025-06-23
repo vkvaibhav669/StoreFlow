@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Package2 } from "lucide-react";
+import { Package2, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { CommentCard } from "@/components/comments/CommentCard";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -51,6 +52,7 @@ export default function TaskTrackerPage() {
   const [isUpdatingTask, setIsUpdatingTask] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<TaskStatus | "">("");
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
+  const [showTaskComments, setShowTaskComments] = React.useState(false);
 
   const refreshTasks = () => {
     const updatedProjects = getAllProjects();
@@ -76,6 +78,7 @@ export default function TaskTrackerPage() {
     setSelectedTask(task);
     setEditingTaskStatus(task.status);
     setEditingTaskAssignedTo(task.assignedTo || "");
+    setShowTaskComments(false); // Reset comments visibility on opening
     setIsViewTaskDialogOpen(true);
   };
 
@@ -257,53 +260,80 @@ export default function TaskTrackerPage() {
                 From project: {selectedTask.projectName}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 text-sm">
-              {selectedTask.description && (
-                  <div className="space-y-1">
-                      <Label className="text-muted-foreground">Description</Label>
-                      <p className="whitespace-pre-wrap p-2 bg-muted/50 rounded-md">{selectedTask.description}</p>
-                  </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                      <Label className="text-muted-foreground">Department</Label>
-                      <p>{selectedTask.department}</p>
-                  </div>
-                  <div className="space-y-1">
-                      <Label className="text-muted-foreground">Priority</Label>
-                      <p>{selectedTask.priority || 'None'}</p>
-                  </div>
-                  {selectedTask.dueDate && (
-                      <div className="space-y-1">
-                          <Label className="text-muted-foreground">Due Date</Label>
-                          <p>{format(new Date(selectedTask.dueDate), "PPP")}</p>
-                      </div>
-                  )}
-              </div>
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="grid gap-4 py-4 text-sm">
+                {selectedTask.description && (
+                    <div className="space-y-1">
+                        <Label className="text-muted-foreground">Description</Label>
+                        <p className="whitespace-pre-wrap p-2 bg-muted/50 rounded-md">{selectedTask.description}</p>
+                    </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <Label className="text-muted-foreground">Department</Label>
+                        <p>{selectedTask.department}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-muted-foreground">Priority</Label>
+                        <p>{selectedTask.priority || 'None'}</p>
+                    </div>
+                    {selectedTask.dueDate && (
+                        <div className="space-y-1">
+                            <Label className="text-muted-foreground">Due Date</Label>
+                            <p>{format(new Date(selectedTask.dueDate), "PPP")}</p>
+                        </div>
+                    )}
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="taskStatusEdit">Status</Label>
-                      <Select value={editingTaskStatus} onValueChange={(value) => setEditingTaskStatus(value as TaskStatus | "")} disabled={isUpdatingTask}>
-                        <SelectTrigger id="taskStatusEdit"><SelectValue placeholder="Select status" /></SelectTrigger>
-                        <SelectContent>
-                          {ALL_TASK_STATUSES.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="taskAssignedToEdit">Assigned To</Label>
-                      <Input 
-                        id="taskAssignedToEdit" 
-                        value={editingTaskAssignedTo} 
-                        onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
-                        disabled={isUpdatingTask || !canEditAssignee}
-                      />
-                      {!canEditAssignee && <p className="text-xs text-muted-foreground">Only Admins can change assignee.</p>}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="taskStatusEdit">Status</Label>
+                        <Select value={editingTaskStatus} onValueChange={(value) => setEditingTaskStatus(value as TaskStatus | "")} disabled={isUpdatingTask}>
+                          <SelectTrigger id="taskStatusEdit"><SelectValue placeholder="Select status" /></SelectTrigger>
+                          <SelectContent>
+                            {ALL_TASK_STATUSES.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="taskAssignedToEdit">Assigned To</Label>
+                        <Input 
+                          id="taskAssignedToEdit" 
+                          value={editingTaskAssignedTo} 
+                          onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
+                          disabled={isUpdatingTask || !canEditAssignee}
+                        />
+                        {!canEditAssignee && <p className="text-xs text-muted-foreground">Only Admins can change assignee.</p>}
+                    </div>
+                </div>
               </div>
-            </div>
-            <DialogFooter>
+              <div className="mt-4 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTaskComments(!showTaskComments)}
+                  className="w-full"
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  {showTaskComments ? 'Hide' : 'Show'} Comments ({(selectedTask.comments || []).length})
+                </Button>
+
+                {showTaskComments && (
+                  <div className="mt-4 space-y-4">
+                    {(selectedTask.comments && selectedTask.comments.length > 0) ? (
+                      selectedTask.comments.map(comment => (
+                        <CommentCard key={comment.id} comment={comment} />
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No comments on this task yet.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+            <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button variant="outline" disabled={isUpdatingTask}>Cancel</Button>
               </DialogClose>

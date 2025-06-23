@@ -47,7 +47,12 @@ export let mockProjects: StoreProject[] = [
     threeDRenderUrl: 'https://placehold.co/600x400.png',
     tasks: [
       { id: 'task-001', name: 'Finalize Lease Agreement', department: 'Property', status: 'Completed', assignedTo: 'Suresh Menon', dueDate: formatDate(addDays(new Date(), -25)), priority: 'High' },
-      { id: 'task-002', name: 'Interior Design Sign-off', department: 'Project', status: 'In Progress', assignedTo: 'Deepika Iyer', dueDate: formatDate(addDays(new Date(), 5)), priority: 'High' },
+      { id: 'task-002', name: 'Interior Design Sign-off', department: 'Project', status: 'In Progress', assignedTo: 'Deepika Iyer', dueDate: formatDate(addDays(new Date(), 5)), priority: 'High',
+        comments: [
+          { id: 'task-cmt-001', author: 'Priya Sharma', text: 'Deepika, can we get a status update on this? The deadline is approaching.', timestamp: addDays(new Date(), -1).toISOString(), avatarUrl: 'https://placehold.co/40x40.png?text=PS' },
+          { id: 'task-cmt-002', author: 'Deepika Iyer', text: 'Working on it, Priya. Should have the final designs ready by EOD tomorrow.', timestamp: new Date().toISOString(), avatarUrl: 'https://placehold.co/40x40.png?text=DI' }
+        ]
+      },
       { id: 'task-003', name: 'Recruit Store Manager', department: 'HR', status: 'In Progress', assignedTo: 'Sunita Joshi', dueDate: formatDate(addDays(new Date(), 15)), priority: 'Medium' },
       { id: 'task-004', name: 'Plan Launch Campaign', department: 'Marketing', status: 'Pending', assignedTo: 'Amit Varma', dueDate: formatDate(addDays(new Date(), 30)), priority: 'High' },
     ],
