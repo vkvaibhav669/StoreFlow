@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApprovalRequest",
+  "description": "Represents an approval request document in the 'approvalRequests' collection.",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "description": "MongoDB's unique document identifier.",
+      "bsonType": "objectId"
+    },
+    "title": {
+      "bsonType": "string"
+    },
+    "details": {
+      "bsonType": "string"
+    },
+    "status": {
+      "bsonType": "string",
+      "enum": ["Pending", "Approved", "Rejected", "Withdrawn"]
+    },
+    "requestorId": {
+      "bsonType": "objectId",
+      "description": "Reference to the 'users' collection _id of the requestor."
+    },
+    "requestorName": {
+      "bsonType": "string",
+      "description": "Denormalized name of the requestor for display."
+    },
+    "approverId": {
+      "bsonType": "objectId",
+      "description": "Reference to the 'users' collection _id of the designated approver."
+    },
+    "approverName": {
+      "bsonType": "string",
+      "description": "Denormalized name of the approver for display."
+    },
+    "projectId": {
+      "bsonType": "objectId",
+      "description": "Optional reference to the 'projects' collection _id."
+    },
+    "projectName": {
+      "bsonType": "string",
+      "description": "Denormalized name of the associated project."
+    },
+    "requestingDepartment": {
+      "bsonType": "string",
+      "description": "The department from which the request originated.",
+      "enum": ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Executive Office", "Operations"]
+    },
+    "approvalComments": {
+      "bsonType": "array",
+      "description": "A thread of comments related to this approval request.",
+      "items": {
+        "$ref": "#/definitions/Comment"
+      }
+    },
+    "submissionDate": {
+      "bsonType": "date"
+    },
+    "lastUpdateDate": {
+      "bsonType": "date"
+    }
+  },
+  "required": [
+    "title",
+    "details",
+    "status",
+    "requestorId",
+    "requestorName",
+    "approverId",
+    "approverName",
+    "requestingDepartment",
+    "submissionDate"
+  ],
+  "definitions": {
+    "Comment": {
+      "bsonType": "object",
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "authorId": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+        "authorName": { "bsonType": "string" },
+        "text": { "bsonType": "string" },
+        "timestamp": { "bsonType": "date" },
+        "replies": { "bsonType": "array", "items": { "$ref": "#/definitions/Comment" } }
+      },
+      "required": ["_id", "authorId", "authorName", "text", "timestamp"]
+    }
+  }
+}
