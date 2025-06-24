@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Store",
+  "description": "Represents a store document in the 'stores' collection.",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "description": "MongoDB's unique document identifier.",
+      "bsonType": "objectId"
+    },
+    "name": {
+      "bsonType": "string",
+      "description": "The name of the store."
+    },
+    "location": {
+      "bsonType": "string",
+      "description": "The physical location of the store."
+    },
+    "type": {
+      "bsonType": "string",
+      "description": "The ownership type of the store.",
+      "enum": ["COCO", "FOFO"]
+    },
+    "status": {
+      "bsonType": "string",
+      "description": "The current operational status of the store.",
+      "enum": ["Operational", "Under Construction", "Planned"]
+    },
+    "openingDate": {
+      "bsonType": "date",
+      "description": "The date the store became or is planned to become operational."
+    },
+    "managerId": {
+      "bsonType": "objectId",
+      "description": "Optional reference to the store manager in the 'users' collection."
+    },
+    "manager": {
+      "bsonType": "string",
+      "description": "Denormalized name of the store manager."
+    },
+    "sqft": {
+      "bsonType": "int",
+      "description": "The square footage of the store."
+    },
+    "ownershipChangeRequested": {
+      "bsonType": "bool",
+      "description": "Flag indicating if a change in ownership type is requested."
+    },
+    "fromProjectId": {
+      "bsonType": "objectId",
+      "description": "Optional reference to the project that resulted in this store."
+    },
+    "createdAt": { "bsonType": "date" },
+    "updatedAt": { "bsonType": "date" },
+    "improvementPoints": {
+      "bsonType": "array",
+      "description": "A list of improvement points or issues for the store.",
+      "items": { "$ref": "#/definitions/ImprovementPoint" }
+    },
+    "tasks": {
+      "bsonType": "array",
+      "description": "A list of operational tasks for the store.",
+      "items": { "$ref": "#/definitions/StoreTask" }
+    }
+  },
+  "required": [
+    "name",
+    "location",
+    "type",
+    "status",
+    "openingDate",
+    "createdAt",
+    "updatedAt"
+  ],
+  "definitions": {
+    "Comment": {
+      "bsonType": "object",
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "authorId": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+        "authorName": { "bsonType": "string" },
+        "text": { "bsonType": "string" },
+        "timestamp": { "bsonType": "date" },
+        "replies": { "bsonType": "array", "items": { "$ref": "#/definitions/Comment" } }
+      },
+      "required": ["_id", "authorId", "authorName", "text", "timestamp"]
+    },
+    "ImprovementPoint": {
+      "bsonType": "object",
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "text": { "bsonType": "string" },
+        "addedById": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+        "addedByName": { "bsonType": "string" },
+        "addedAt": { "bsonType": "date" },
+        "isResolved": { "bsonType": "bool" },
+        "resolvedById": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+        "resolvedBy": { "bsonType": "string" },
+        "resolvedAt": { "bsonType": "date" },
+        "comments": { "bsonType": "array", "items": { "$ref": "#/definitions/Comment" } }
+      },
+      "required": ["_id", "text", "addedById", "addedByName", "addedAt", "isResolved"]
+    },
+    "StoreTask": {
+      "bsonType": "object",
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "title": { "bsonType": "string" },
+        "description": { "bsonType": "string" },
+        "assignedTo": { "bsonType": "string", "description": "Can be a role name like 'Store Manager' or a specific person's name." },
+        "status": { "bsonType": "string", "enum": ["Pending", "In Progress", "Completed", "Blocked"] },
+        "priority": { "bsonType": "string", "enum": ["High", "Medium", "Low", "None"] },
+        "createdById": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+        "createdBy": { "bsonType": "string" },
+        "createdAt": { "bsonType": "date" },
+        "dueDate": { "bsonType": "date" }
+      },
+      "required": ["_id", "title", "status", "priority", "createdById", "createdBy", "createdAt"]
+    }
+  }
+}
