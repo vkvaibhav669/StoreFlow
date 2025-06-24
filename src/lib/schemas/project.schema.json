@@ -1,0 +1,213 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoreProject",
+  "description": "Represents a project document in the 'projects' collection.",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "description": "MongoDB's unique document identifier.",
+      "bsonType": "objectId"
+    },
+    "name": {
+      "bsonType": "string",
+      "description": "The name of the store project."
+    },
+    "location": {
+      "bsonType": "string",
+      "description": "The city and state of the project."
+    },
+    "status": {
+      "bsonType": "string",
+      "enum": [
+        "Planning",
+        "Property Finalized",
+        "Project Kickoff",
+        "Execution",
+        "Merchandising",
+        "Recruitment",
+        "Pre-Launch Marketing",
+        "Launched",
+        "Post-Launch Marketing"
+      ]
+    },
+    "startDate": { "bsonType": "date" },
+    "projectedLaunchDate": { "bsonType": "date" },
+    "currentProgress": { "bsonType": "int" },
+    "isUpcoming": { "bsonType": "bool" },
+    "franchiseType": { "bsonType": "string", "enum": ["COCO", "FOFO"] },
+    "threeDRenderUrl": { "bsonType": "string" },
+    "createdAt": { "bsonType": "date" },
+    "updatedAt": { "bsonType": "date" },
+    "propertyDetails": {
+      "bsonType": "object",
+      "properties": {
+        "address": { "bsonType": "string" },
+        "sqft": { "bsonType": "int" },
+        "status": { "bsonType": "string", "enum": ["Identified", "Negotiating", "Finalized"] },
+        "notes": { "bsonType": "string" }
+      }
+    },
+    "projectTimeline": {
+      "bsonType": "object",
+      "properties": {
+        "totalDays": { "bsonType": "int" },
+        "currentDay": { "bsonType": "int" },
+        "kickoffDate": { "bsonType": "date" }
+      }
+    },
+    "members": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": ["userId", "name", "email"],
+        "properties": {
+          "userId": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+          "name": { "bsonType": "string" },
+          "email": { "bsonType": "string" },
+          "roleInProject": { "bsonType": "string" },
+          "department": { "bsonType": "string" },
+          "isProjectHod": { "bsonType": "bool" }
+        }
+      }
+    },
+    "tasks": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": ["_id", "name", "department", "status", "createdAt"],
+        "properties": {
+          "_id": { "bsonType": "objectId" },
+          "name": { "bsonType": "string" },
+          "department": { "bsonType": "string" },
+          "status": { "bsonType": "string", "enum": ["Pending", "In Progress", "Completed", "Blocked"] },
+          "priority": { "bsonType": "string", "enum": ["High", "Medium", "Low", "None"] },
+          "assignedToId": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+          "assignedToName": { "bsonType": "string" },
+          "dueDate": { "bsonType": "date" },
+          "description": { "bsonType": "string" },
+          "comments": { "bsonType": "array", "description": "Recursive comment structure" },
+          "createdAt": { "bsonType": "date" }
+        }
+      }
+    },
+    "documents": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "_id": { "bsonType": "objectId" },
+          "name": { "bsonType": "string" },
+          "type": { "bsonType": "string", "enum": ["3D Render", "Property Document", "Marketing Collateral", "Other"] },
+          "url": { "bsonType": "string" },
+          "size": { "bsonType": "string" },
+          "uploadedById": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+          "uploadedBy": { "bsonType": "string" },
+          "uploadedAt": { "bsonType": "date" },
+          "hodOnly": { "bsonType": "bool" },
+          "dataAiHint": { "bsonType": "string" }
+        }
+      }
+    },
+    "milestones": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "_id": { "bsonType": "objectId" },
+          "name": { "bsonType": "string" },
+          "description": { "bsonType": "string" },
+          "date": { "bsonType": "date" },
+          "completed": { "bsonType": "bool" }
+        }
+      }
+    },
+    "blockers": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "_id": { "bsonType": "objectId" },
+          "title": { "bsonType": "string" },
+          "description": { "bsonType": "string" },
+          "reportedById": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+          "reportedBy": { "bsonType": "string" },
+          "dateReported": { "bsonType": "date" },
+          "isResolved": { "bsonType": "bool" },
+          "dateResolved": { "bsonType": "date" }
+        }
+      }
+    },
+    "discussion": {
+      "bsonType": "array",
+      "description": "Main project discussion thread, recursive comment structure",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "_id": { "bsonType": "objectId" },
+          "authorId": { "bsonType": "objectId", "description": "Ref to 'users' collection" },
+          "author": { "bsonType": "string" },
+          "timestamp": { "bsonType": "date" },
+          "text": { "bsonType": "string" },
+          "replies": { "bsonType": "array" }
+        }
+      }
+    },
+    "departments": {
+      "bsonType": "object",
+      "properties": {
+        "property": { "$ref": "#/definitions/DepartmentDetails" },
+        "project": { "$ref": "#/definitions/DepartmentDetails" },
+        "merchandising": { "$ref": "#/definitions/DepartmentDetails" },
+        "hr": { "$ref": "#/definitions/DepartmentDetails" },
+        "marketing": { "$ref": "#/definitions/DepartmentDetails" },
+        "it": { "$ref": "#/definitions/DepartmentDetails" }
+      }
+    }
+  },
+  "required": [
+    "name",
+    "location",
+    "status",
+    "startDate",
+    "projectedLaunchDate",
+    "createdAt",
+    "updatedAt"
+  ],
+  "definitions": {
+    "DepartmentDetails": {
+      "bsonType": "object",
+      "properties": {
+        "notes": { "bsonType": "string" },
+        "tasks": {
+          "bsonType": "array",
+          "description": "A subset of tasks from the main project tasks array, filtered by department."
+        },
+        "preLaunchCampaigns": {
+          "bsonType": "array",
+          "items": { "$ref": "#/definitions/MarketingCampaign" }
+        },
+        "postLaunchCampaigns": {
+          "bsonType": "array",
+          "items": { "$ref": "#/definitions/MarketingCampaign" }
+        },
+        "virtualPlanUrl": { "bsonType": "string" },
+        "recruitmentStatus": { "bsonType": "string" },
+        "staffHired": { "bsonType": "int" },
+        "totalNeeded": { "bsonType": "int" }
+      }
+    },
+    "MarketingCampaign": {
+      "bsonType": "object",
+      "properties": {
+        "id": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "type": { "bsonType": "string", "enum": ["Digital", "Offline", "Influencer", "Hyperlocal"] },
+        "status": { "bsonType": "string", "enum": ["Planned", "Ongoing", "Completed", "Cancelled"] },
+        "startDate": { "bsonType": "date" },
+        "endDate": { "bsonType": "date" },
+        "budget": { "bsonType": "int" }
+      }
+    }
+  }
+}
