@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User",
+  "description": "Represents a user document in the 'users' collection.",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "description": "MongoDB's unique document identifier.",
+      "bsonType": "objectId"
+    },
+    "name": {
+      "bsonType": "string",
+      "description": "The user's full name."
+    },
+    "email": {
+      "bsonType": "string",
+      "description": "The user's email address. Should be unique.",
+      "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    },
+    "password": {
+      "bsonType": "string",
+      "description": "The user's hashed password. This should never be returned in API responses."
+    },
+    "role": {
+      "bsonType": "string",
+      "description": "The user's role in the application.",
+      "enum": ["Member", "Admin", "SuperAdmin"]
+    },
+    "createdAt": {
+      "bsonType": "date",
+      "description": "Timestamp when the user document was created."
+    },
+    "updatedAt": {
+      "bsonType": "date",
+      "description": "Timestamp when the user document was last updated."
+    }
+  },
+  "required": [
+    "name",
+    "email",
+    "password",
+    "role",
+    "createdAt",
+    "updatedAt"
+  ]
+}
