@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getAllProjects, createProject } from "@/lib/data";
+//import { getAllProjects, createProject } from "@/lib/data";
 import type { StoreProject, Department, StoreType } from "@/types";
 import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -82,8 +82,30 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   // Use direct data fetching for mock environment
-  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(getAllProjects());
-
+  //const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(getAllProjects());
+  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
+  React.useEffect(() => {
+  if (!authLoading && user) {
+    const fetchProjects = async () => {
+      try {
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjAzNTYyMywiZXhwIjoxNzUyMDYwODIzfQ.cQWAPQA2P0fNlmbNbiNS6EWiHUeeV7P9ciXLWJew4_I"
+        //user.token || localStorage.getItem("token"); // adjust as needed
+        const res = await fetch("http://localhost:8000/api/projects", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to fetch projects");
+        const data = await res.json();
+        setDashboardProjects(data);
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to load projects.", variant: "destructive" });
+      }
+    };
+    fetchProjects();
+  }
+}, [authLoading, user, toast]);
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
   const [isSubmittingProject, setIsSubmittingProject] = React.useState(false); // Keep for dialog submission UX
   const [newProjectName, setNewProjectName] = React.useState("");
@@ -190,8 +212,34 @@ export default function DashboardPage() {
     };
 
     try {
-      const createdProject = createProject(newProjectPayload); // Synchronous call
+      //const createdProject = createProject(newProjectPayload); // Synchronous call
       // setDashboardProjects(prevProjects => [createdProject, ...prevProjects]); // Optimistic update
+      // ...existing code...
+const handleAddProject = async () => {
+  // ...validation...
+  setIsSubmittingProject(true);
+  try {
+     const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjAzNTYyMywiZXhwIjoxNzUyMDYwODIzfQ.cQWAPQA2P0fNlmbNbiNS6EWiHUeeV7P9ciXLWJew4_I"
+     //user?.token || localStorage.getItem("token"); // adjust as needed
+    const res = await fetch("http://localhost:8000/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+
+      },
+      credentials: "include",
+      body: JSON.stringify(newProjectPayload),
+    });
+    if (!res.ok) throw new Error("Failed to create project");
+    const createdProject = await res.json();
+    // Refresh or update state as needed
+  } catch (error) {
+    // Handle error
+  } finally {
+    setIsSubmittingProject(false);
+  }
+};
+// ...existing code...
       refreshProjects(); // Re-fetch all to include new one
       toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
 

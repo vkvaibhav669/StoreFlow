@@ -1,8 +1,6 @@
-
 "use client";
 
 import * as React from "react";
-import { getAllProjects, updateTaskInProject } from "@/lib/data";
 import type { Task, StoreProject, Department, TaskPriority } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,25 +52,34 @@ export default function TaskTrackerPage() {
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
   const [showTaskComments, setShowTaskComments] = React.useState(false);
 
-  const refreshTasks = () => {
-    const updatedProjects = getAllProjects();
-    setProjects(updatedProjects);
-    const updatedTasks: KanbanTask[] = [];
-    updatedProjects.forEach((project) => {
-      (project.tasks || []).forEach((task) => {
-        updatedTasks.push({ ...task, projectName: project.name, projectId: project.id });
+  // Fetch projects and tasks from API
+  const fetchProjectsAndTasks = React.useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/projects", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch projects");
+      const projectsData: StoreProject[] = await res.json();
+      setProjects(projectsData);
+
+      // Flatten tasks and add project info
+      const allTasks: KanbanTask[] = [];
+      projectsData.forEach((project) => {
+        (project.tasks || []).forEach((task) => {
+          allTasks.push({ ...task, projectName: project.name, projectId: project.id });
+        });
       });
-    });
-    setTasksWithProjectInfo(updatedTasks);
-  };
+      setTasksWithProjectInfo(allTasks);
+    } catch (error) {
+      toast({ title: "Error", description: "Could not load projects.", variant: "destructive" });
+    }
+  }, [toast]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
     } else if (user) {
-      refreshTasks();
+      fetchProjectsAndTasks();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, fetchProjectsAndTasks]);
 
   const handleViewTaskDetails = (task: KanbanTask) => {
     setSelectedTask(task);
@@ -82,15 +89,16 @@ export default function TaskTrackerPage() {
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleUpdateTask = () => {
+  // Update task using API
+  const handleUpdateTask = async () => {
     if (!selectedTask || !user) return;
-    
+
     const canChangeAssignee = user.role === 'Admin' || user.role === 'SuperAdmin';
     if (editingTaskAssignedTo !== (selectedTask.assignedTo || "") && !canChangeAssignee) {
-        toast({ title: "Permission Denied", description: "You cannot change the task assignee.", variant: "destructive" });
-        return;
+      toast({ title: "Permission Denied", description: "You cannot change the task assignee.", variant: "destructive" });
+      return;
     }
-    
+
     setIsUpdatingTask(true);
     const taskUpdatePayload: Partial<Task> = {
       status: editingTaskStatus as TaskStatus,
@@ -98,12 +106,18 @@ export default function TaskTrackerPage() {
     };
 
     try {
-      updateTaskInProject(selectedTask.projectId, selectedTask.id, taskUpdatePayload);
-      refreshTasks();
+      const res = await fetch(`/api/projects/${selectedTask.projectId}/tasks/${selectedTask.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(taskUpdatePayload),
+      });
+      if (!res.ok) throw new Error("Failed to update task");
+      await fetchProjectsAndTasks();
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
       setSelectedTask(null);
-    } catch(error) {
+    } catch (error) {
       toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
     } finally {
       setIsUpdatingTask(false);
@@ -142,7 +156,7 @@ export default function TaskTrackerPage() {
       </div>
     );
   }
-  
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">

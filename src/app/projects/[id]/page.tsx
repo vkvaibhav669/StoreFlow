@@ -1,8 +1,7 @@
-
 "use client";
 
+import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
-import { notFound, useRouter, useParams as useParamsNext } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -132,13 +131,13 @@ const projectStatuses: StoreProject['status'][] = [
 ];
 
 export default function ProjectDetailsPage() {
-  const paramsHook = useParamsNext();
-  const projectId = typeof paramsHook.id === 'string' ? paramsHook.id : undefined;
-  
+  const paramsHook = useParams();
+  const projectId = typeof paramsHook.id === "string" ? paramsHook.id : "";
+  //typeof paramsHook.id === 'string' ? paramsHook.id : undefined;
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  
+
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
   const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
@@ -222,24 +221,30 @@ export default function ProjectDetailsPage() {
       return;
     }
 
-    const currentProject = getProjectById(projectId);
-    if (currentProject) {
-        setProjectData(currentProject);
-        setProjectComments(currentProject.comments || []);
-        setEditingProjectForm({
-            name: currentProject.name, location: currentProject.location, status: currentProject.status,
-            startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
-            projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
-            franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
+    // Fetch project from backend API
+    const fetchProject = async () => {
+      try {
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjAzNTYyMywiZXhwIjoxNzUyMDYwODIzfQ.cQWAPQA2P0fNlmbNbiNS6EWiHUeeV7P9ciXLWJew4_I"
+        //user.token || localStorage.getItem("token"); // adjust as needed
+        const res = await fetch(`http://localhost:8000/api/projects/${projectId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
         });
-        setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
-        setEditingTimelineForm(currentProject.projectTimeline || {});
-        setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
-        setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
-    } else {
-        notFound(); // Project with this ID not found in mock data
-    }
-  }, [projectId, user, authLoading, router]);
+        if (!res.ok) throw new Error("Failed to fetch project");
+        const data = await res.json();
+        setProjectData(data);
+        setProjectComments(data.comments || []);
+        // Set other state as needed
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to load project.", variant: "destructive" });
+        notFound();
+      }
+    };
+
+    fetchProject();
+  }, [projectId, user, authLoading, router, toast]);
 
 
   const currentUserRole = user?.role;

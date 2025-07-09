@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAllProjects } from "@/lib/data";
+//import { getAllProjects } from "@/lib/data";
 import type { StoreProject } from "@/types";
 import { ArrowUpRight, Package2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,20 @@ export default function AllProjectsPage() {
 
   // For mock data, fetch directly.
   // No need for loading/error state here as data is immediately available.
-  const [projects, setProjects] = React.useState<StoreProject[]>(getAllProjects());
+ // const [projects, setProjects] = React.useState<StoreProject[]>(getAllProjects());
+
+ const [projects, setProjects] = React.useState<StoreProject[]>([]);
+React.useEffect(() => {
+  async function fetchProjects() {
+    const res = await fetch("127.0.0.1:8000/api/projects", { credentials: "include" });
+    if (res.ok) {
+      const data = await res.json();
+      setProjects(data);
+    }
+  }
+  fetchProjects();
+}, []);
+
 
   React.useEffect(() => {
     if (!authLoading && !user) {
