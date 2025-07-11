@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -6,9 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-//import { getAllProjects, createProject } from "@/lib/data";
 import type { StoreProject, Department, StoreType } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react";
+import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -81,33 +79,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Use direct data fetching for mock environment
-  //const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(getAllProjects());
   const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
-  React.useEffect(() => {
-  if (!authLoading && user) {
-    const fetchProjects = async () => {
-      try {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjAzNTYyMywiZXhwIjoxNzUyMDYwODIzfQ.cQWAPQA2P0fNlmbNbiNS6EWiHUeeV7P9ciXLWJew4_I"
-        //user.token || localStorage.getItem("token"); // adjust as needed
-        const res = await fetch("http://localhost:8000/api/projects", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to fetch projects");
-        const data = await res.json();
-        setDashboardProjects(data);
-      } catch (error) {
-        toast({ title: "Error", description: "Failed to load projects.", variant: "destructive" });
-      }
-    };
-    fetchProjects();
-  }
-}, [authLoading, user, toast]);
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
-  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false); // Keep for dialog submission UX
+  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false);
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
@@ -129,37 +103,43 @@ export default function DashboardPage() {
 
   const canAddProject = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
+  // Fetch projects from API
+  const fetchProjects = React.useCallback(async () => {
+    if (!authLoading && user) {
+      try {
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjIzNTI3NCwiZXhwIjoxNzUyMjYwNDc0fQ.j3HWiJktymRzevjLSxlspcFzCbKtHinYfPcYO1aNFTw"
+        //= user.token || localStorage.getItem("token");
+        const res = await fetch("http://localhost:8000/api/projects", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to fetch projects");
+        const data = await res.json();
+        // Map _id to id for each project
+        setDashboardProjects(data.map((p: any) => ({ ...p, id: p._id })));
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to load projects.", variant: "destructive" });
+      }
+    }
+  }, [authLoading, user, toast]);
+
+  React.useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
     }
   }, [user, authLoading, router]);
 
-  // Refresh projects from mock data if needed (e.g., after adding one)
-  // This could also be done by directly updating the state after createProject
-  const refreshProjects = () => {
-    setDashboardProjects(getAllProjects());
-  };
-
-  if (authLoading || (!user && !authLoading)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{authLoading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
-        {!authLoading && !user && (
-          <Button onClick={() => router.push('/auth/signin')} className="mt-4">
-            Go to Sign In
-          </Button>
-        )}
-      </div>
-    );
-  }
-
   const handleDepartmentChange = (department: Department, checked: boolean) => {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
   };
 
-  const handleAddProject = () => { // No async needed for mock
+  // Add new project via API
+  const handleAddProject = async () => {
     if (!newProjectName.trim() || !newProjectLocation.trim()) {
       toast({ title: "Validation Error", description: "Project Name and Location are required.", variant: "destructive" });
       return;
@@ -171,7 +151,7 @@ export default function DashboardPage() {
 
     setIsSubmittingProject(true);
     const today = new Date();
-    
+
     const projectDepartmentsData: Partial<StoreProject['departments']> = {};
     allDepartmentKeys.forEach(dept => {
       if (selectedDepartments[dept]) {
@@ -212,37 +192,19 @@ export default function DashboardPage() {
     };
 
     try {
-      //const createdProject = createProject(newProjectPayload); // Synchronous call
-      // setDashboardProjects(prevProjects => [createdProject, ...prevProjects]); // Optimistic update
-      // ...existing code...
-const handleAddProject = async () => {
-  // ...validation...
-  setIsSubmittingProject(true);
-  try {
-     const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjAzNTYyMywiZXhwIjoxNzUyMDYwODIzfQ.cQWAPQA2P0fNlmbNbiNS6EWiHUeeV7P9ciXLWJew4_I"
-     //user?.token || localStorage.getItem("token"); // adjust as needed
-    const res = await fetch("http://localhost:8000/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-
-      },
-      credentials: "include",
-      body: JSON.stringify(newProjectPayload),
-    });
-    if (!res.ok) throw new Error("Failed to create project");
-    const createdProject = await res.json();
-    // Refresh or update state as needed
-  } catch (error) {
-    // Handle error
-  } finally {
-    setIsSubmittingProject(false);
-  }
-};
-// ...existing code...
-      refreshProjects(); // Re-fetch all to include new one
-      toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
-
+      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjIzNTI3NCwiZXhwIjoxNzUyMjYwNDc0fQ.j3HWiJktymRzevjLSxlspcFzCbKtHinYfPcYO1aNFTw"
+      const res = await fetch("http://localhost:8000/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify(newProjectPayload),
+      });
+      if (!res.ok) throw new Error("Failed to create project");
+      await fetchProjects(); // Refresh projects after adding
+      toast({ title: "Project Created", description: `Project "${newProjectName}" has been successfully created.` });
       setNewProjectName("");
       setNewProjectLocation("");
       setNewProjectFranchiseType("COCO");
@@ -287,176 +249,189 @@ const handleAddProject = async () => {
     return projects;
   }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
 
+  if (authLoading || (!user && !authLoading)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">{authLoading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
+        {!authLoading && !user && (
+          <Button onClick={() => router.push('/auth/signin')} className="mt-4">
+            Go to Sign In
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 id="dashboard-main-heading" className="text-2xl font-semibold md:text-3xl flex-1 min-w-0 truncate">Project Dashboard</h1>
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1">
-                  <ListFilter className="h-3.5 w-3.5" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1">
+                <ListFilter className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Filter
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={filterSettings.showUpcoming}
+                onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showUpcoming: !!checked }))}
+              >
+                Upcoming
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={filterSettings.showActive}
+                onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showActive: !!checked }))}
+              >
+                Active (Not Upcoming)
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={filterSettings.showLaunched}
+                onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showLaunched: !!checked }))}
+              >
+                Launched
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={filterSettings.planningOnly}
+                onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, planningOnly: !!checked }))}
+                disabled={!filterSettings.showActive}
+              >
+                Planning (within Active)
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Filter by Store Ownership</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={filterSettings.storeOwnershipFilter}
+                onValueChange={(value) =>
+                  setFilterSettings((prev) => ({ ...prev, storeOwnershipFilter: value as StoreType | "All" }))
+                }
+              >
+                <DropdownMenuRadioItem value="All">All Types</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="COCO">COCO</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="FOFO">FOFO</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {canAddProject && (
+            <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
+              setIsAddProjectDialogOpen(isOpen);
+              if (!isOpen) {
+                setNewProjectName("");
+                setNewProjectLocation("");
+                setNewProjectFranchiseType("COCO");
+                setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
+                setMarkAsUpcoming(false);
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 gap-1" disabled={isSubmittingProject}>
+                  <PlusCircle className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Filter
+                    Add Project
                   </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                 <DropdownMenuCheckboxItem
-                  checked={filterSettings.showUpcoming}
-                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showUpcoming: !!checked }))}
-                >
-                  Upcoming
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={filterSettings.showActive}
-                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showActive: !!checked }))}
-                >
-                  Active (Not Upcoming)
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={filterSettings.showLaunched}
-                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showLaunched: !!checked }))}
-                >
-                  Launched
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={filterSettings.planningOnly}
-                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, planningOnly: !!checked }))}
-                  disabled={!filterSettings.showActive}
-                >
-                  Planning (within Active)
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Filter by Store Ownership</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={filterSettings.storeOwnershipFilter}
-                  onValueChange={(value) =>
-                    setFilterSettings((prev) => ({ ...prev, storeOwnershipFilter: value as StoreType | "All" }))
-                  }
-                >
-                  <DropdownMenuRadioItem value="All">All Types</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="COCO">COCO</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="FOFO">FOFO</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {canAddProject && (
-              <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
-                  setIsAddProjectDialogOpen(isOpen);
-                  if (!isOpen) {
-                      setNewProjectName("");
-                      setNewProjectLocation("");
-                      setNewProjectFranchiseType("COCO");
-                      setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
-                      setMarkAsUpcoming(false);
-                  }
-              }}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="h-8 gap-1" disabled={isSubmittingProject}>
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Add Project
-                    </span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Add New Project</DialogTitle>
-                    <DialogDescription>
-                      Enter the details for your new store project.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="projectName" className="sm:text-right">
-                        Name
-                      </Label>
-                      <Input
-                        id="projectName"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        className="sm:col-span-3"
-                        placeholder="e.g., City Center Flagship"
-                        disabled={isSubmittingProject}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="projectLocation" className="sm:text-right">
-                        Location
-                      </Label>
-                      <Input
-                        id="projectLocation"
-                        value={newProjectLocation}
-                        onChange={(e) => setNewProjectLocation(e.target.value)}
-                        className="sm:col-span-3"
-                        placeholder="e.g., 789 Market St, Big City"
-                        disabled={isSubmittingProject}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="franchiseType" className="sm:text-right">
-                        Franchise Type
-                      </Label>
-                      <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)} disabled={isSubmittingProject}>
-                          <SelectTrigger id="franchiseType" className="sm:col-span-3">
-                              <SelectValue placeholder="Select franchise type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {allStoreTypes.map(type => (
-                                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
-                      <Label className="sm:text-right pt-2">
-                        Departments
-                      </Label>
-                      <div className="sm:col-span-3 grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-2">
-                        {allDepartmentKeys.map(dept => (
-                          <div key={dept} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`dept-${dept}`}
-                              checked={selectedDepartments[dept]}
-                              onCheckedChange={(checked) => handleDepartmentChange(dept, !!checked)}
-                              disabled={isSubmittingProject}
-                            />
-                            <Label htmlFor={`dept-${dept}`} className="font-normal">{dept}</Label>
-                          </div>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add New Project</DialogTitle>
+                  <DialogDescription>
+                    Enter the details for your new store project.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="projectName" className="sm:text-right">
+                      Name
+                    </Label>
+                    <Input
+                      id="projectName"
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      className="sm:col-span-3"
+                      placeholder="e.g., City Center Flagship"
+                      disabled={isSubmittingProject}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="projectLocation" className="sm:text-right">
+                      Location
+                    </Label>
+                    <Input
+                      id="projectLocation"
+                      value={newProjectLocation}
+                      onChange={(e) => setNewProjectLocation(e.target.value)}
+                      className="sm:col-span-3"
+                      placeholder="e.g., 789 Market St, Big City"
+                      disabled={isSubmittingProject}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="franchiseType" className="sm:text-right">
+                      Franchise Type
+                    </Label>
+                    <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)} disabled={isSubmittingProject}>
+                      <SelectTrigger id="franchiseType" className="sm:col-span-3">
+                        <SelectValue placeholder="Select franchise type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allStoreTypes.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
                         ))}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="markUpcoming" className="sm:text-right">
-                        Options
-                      </Label>
-                      <div className="sm:col-span-3 flex items-center space-x-2">
-                        <Checkbox
-                          id="markUpcoming"
-                          checked={markAsUpcoming}
-                          onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
-                          disabled={isSubmittingProject}
-                        />
-                        <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
-                      </div>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
+                    <Label className="sm:text-right pt-2">
+                      Departments
+                    </Label>
+                    <div className="sm:col-span-3 grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-2">
+                      {allDepartmentKeys.map(dept => (
+                        <div key={dept} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`dept-${dept}`}
+                            checked={selectedDepartments[dept]}
+                            onCheckedChange={(checked) => handleDepartmentChange(dept, !!checked)}
+                            disabled={isSubmittingProject}
+                          />
+                          <Label htmlFor={`dept-${dept}`} className="font-normal">{dept}</Label>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                       <Button variant="outline" disabled={isSubmittingProject}>Cancel</Button>
-                    </DialogClose>
-                    <Button onClick={handleAddProject} disabled={isSubmittingProject}>
-                        {isSubmittingProject ? "Creating..." : "Create Project"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                    <Label htmlFor="markUpcoming" className="sm:text-right">
+                      Options
+                    </Label>
+                    <div className="sm:col-span-3 flex items-center space-x-2">
+                      <Checkbox
+                        id="markUpcoming"
+                        checked={markAsUpcoming}
+                        onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
+                        disabled={isSubmittingProject}
+                      />
+                      <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline" disabled={isSubmittingProject}>Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleAddProject} disabled={isSubmittingProject}>
+                    {isSubmittingProject ? "Creating..." : "Create Project"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       {filterSettings.showUpcoming && (
@@ -513,7 +488,7 @@ const handleAddProject = async () => {
       )}
 
       {!filterSettings.showUpcoming && !filterSettings.showActive && !filterSettings.showLaunched && (
-         <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
+        <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
       )}
 
       <div className="mt-8 pt-6 border-t flex justify-center">
