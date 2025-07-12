@@ -39,9 +39,10 @@ export default function MyApprovalsPage() {
 
   const [requestsAwaitingMyAction, setRequestsAwaitingMyAction] = React.useState<ApprovalRequest[]>([]);
   const [mySubmittedRequests, setMySubmittedRequests] = React.useState<ApprovalRequest[]>([]);
+  const [loading, setLoading] = React.useState(true);
   
-  // Use direct data for mock environment
-  const [allProjects, setAllProjects] = React.useState<StoreProject[]>(getAllProjects());
+  // Use async data for projects
+  const [allProjects, setAllProjects] = React.useState<StoreProject[]>([]);
   const [allHeadOfficeContacts, setAllHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(mockHeadOfficeContacts); // Directly use imported mock data
 
   const [requestTitle, setRequestTitle] = React.useState("");
@@ -63,11 +64,31 @@ export default function MyApprovalsPage() {
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
-    } else if (user) {
-      refreshApprovalData();
-      setAllProjects(getAllProjects()); // Refresh projects for dropdown, already synchronous
-      setAllHeadOfficeContacts(mockHeadOfficeContacts); // Ensure it's set, though it's static mock
+      return;
     }
+    
+    const loadData = async () => {
+      if (user) {
+        setLoading(true);
+        try {
+          refreshApprovalData();
+          const projects = await getAllProjects();
+          setAllProjects(projects);
+          setAllHeadOfficeContacts(mockHeadOfficeContacts);
+        } catch (error) {
+          console.error('Error loading data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load projects. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadData();
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
@@ -184,11 +205,11 @@ export default function MyApprovalsPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">Authenticating...</p>
+        <p className="text-muted-foreground">Loading approvals...</p>
       </div>
     );
   }

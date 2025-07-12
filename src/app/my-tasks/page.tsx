@@ -39,10 +39,11 @@ export default function MyTasksPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  // Synchronous data fetching for mock environment
+  // Async data fetching for projects
   const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
-  const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>(getAllProjects());
+  const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>([]);
   const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(mockHeadOfficeContacts);
+  const [loading, setLoading] = React.useState(true);
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
@@ -60,15 +61,34 @@ export default function MyTasksPage() {
   const canAssignTasks = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
   React.useEffect(() => {
-    if (user && !authLoading) {
-      setUserTasks(getTasksForUser(user.email) as UserTask[]);
-      // Refresh other data if it could change (though for mock, it's mostly static unless edited elsewhere)
-      setProjectsForAssignment(getAllProjects());
-      setHeadOfficeContacts(mockHeadOfficeContacts);
-    } else if (!authLoading && !user) {
-      // router.replace("/auth/signin"); // This is handled by AppLayout
+    if (!authLoading && !user) {
+      // Auth is handled by AppLayout
+      return;
     }
-  }, [user, authLoading]);
+    
+    const loadData = async () => {
+      if (user) {
+        setLoading(true);
+        try {
+          setUserTasks(getTasksForUser(user.email) as UserTask[]);
+          const projects = await getAllProjects();
+          setProjectsForAssignment(projects);
+          setHeadOfficeContacts(mockHeadOfficeContacts);
+        } catch (error) {
+          console.error('Error loading tasks data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load projects. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadData();
+  }, [user, authLoading, toast]);
 
 
   React.useEffect(() => {
@@ -190,11 +210,11 @@ export default function MyTasksPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
             <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-            <p className="text-muted-foreground">Authenticating...</p>
+            <p className="text-muted-foreground">Loading tasks...</p>
         </div>
     );
   }
