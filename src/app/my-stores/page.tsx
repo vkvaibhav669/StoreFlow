@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -10,7 +9,6 @@ import { Store, Filter, ArrowUpRight, PlusCircle, CalendarIcon } from "lucide-re
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Package2 } from "lucide-react";
-import { getAllStores, createStore } from "@/lib/data";
 import type { StoreItem, StoreType } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -38,7 +36,7 @@ export default function MyStoresPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [allStores, setAllStores] = React.useState<StoreItem[]>(getAllStores());
+  const [allStores, setAllStores] = React.useState<StoreItem[]>([]);
   const [filterType, setFilterType] = React.useState<StoreFilterType>("All");
 
   const [isAddStoreDialogOpen, setIsAddStoreDialogOpen] = React.useState(false);
@@ -52,16 +50,35 @@ export default function MyStoresPage() {
 
   const canAddStore = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
-  const refreshStores = () => {
-    setAllStores(getAllStores());
-  };
+  // Fetch all stores from backend using POST
+  const fetchStores = React.useCallback(async () => {
+    try {
+      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjI5OTI5NywiZXhwIjoxNzUyMzM1Mjk3fQ.xr-4WLxbGACvW52QMHryocufWVe-C-VRgbVUsGeStII"
+      // user?.token || localStorage.getItem("token");
+      const res = await fetch("http://localhost:8000/api/stores", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({}), // send empty body or filter if needed
+      });
+      if (!res.ok) throw new Error("Failed to fetch stores");
+      const data = await res.json();
+      setAllStores(data.map((store: any) => ({ ...store, id: store._id })));
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load stores.", variant: "destructive" });
+    }
+  }, [user, toast]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
+      return;
     }
-    refreshStores();
-  }, [user, authLoading, router]);
+    fetchStores();
+  }, [user, authLoading, router, fetchStores]);
 
   const filteredStores = React.useMemo(() => {
     let storesToShow = allStores;
@@ -71,45 +88,54 @@ export default function MyStoresPage() {
     return storesToShow;
   }, [allStores, filterType]);
 
-  const handleAddNewStore = () => {
+  const handleAddNewStore = async () => {
     if (!newStoreName.trim() || !newStoreLocation.trim() || !newStoreOpeningDate) {
       toast({ title: "Validation Error", description: "Store Name, Location, and Opening Date are required.", variant: "destructive" });
       return;
     }
     if (!canAddStore) {
-        toast({ title: "Permission Denied", description: "You do not have permission to add stores.", variant: "destructive" });
-        return;
+      toast({ title: "Permission Denied", description: "You do not have permission to add stores.", variant: "destructive" });
+      return;
     }
 
     setIsSubmittingStore(true);
     const newStorePayload: Partial<StoreItem> = {
-        name: newStoreName,
-        location: newStoreLocation,
-        type: newStoreType,
-        status: "Planned",
-        openingDate: format(newStoreOpeningDate, "yyyy-MM-dd"),
-        manager: newStoreManager.trim() || undefined,
-        sqft: newStoreSqft ? Number(newStoreSqft) : undefined,
+      name: newStoreName,
+      location: newStoreLocation,
+      type: newStoreType,
+      status: "Planned",
+      openingDate: format(newStoreOpeningDate, "yyyy-MM-dd"),
+      manager: newStoreManager.trim() || undefined,
+      sqft: newStoreSqft ? Number(newStoreSqft) : undefined,
     };
 
     try {
-        const createdStore = createStore(newStorePayload);
-        refreshStores();
-        toast({ title: "Store Created", description: `Store "${createdStore.name}" has been added.`});
-        
-        setIsAddStoreDialogOpen(false);
-        setNewStoreName("");
-        setNewStoreLocation("");
-        setNewStoreType("COCO");
-        setNewStoreManager("");
-        setNewStoreSqft("");
-        setNewStoreOpeningDate(new Date());
-
+      const token = user?.token || localStorage.getItem("token");
+      const res = await fetch("http://localhost:8000/api/stores", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify(newStorePayload),
+      });
+      if (!res.ok) throw new Error("Failed to create store");
+      const createdStore = await res.json();
+      await fetchStores(); // Refresh the store list
+      toast({ title: "Store Created", description: `Store "${createdStore.name}" has been added.` });
+      setIsAddStoreDialogOpen(false);
+      setNewStoreName("");
+      setNewStoreLocation("");
+      setNewStoreType("COCO");
+      setNewStoreManager("");
+      setNewStoreSqft("");
+      setNewStoreOpeningDate(new Date());
     } catch (error) {
-        console.error("Error creating store:", error);
-        toast({ title: "Error", description: "Failed to create store. Please try again.", variant: "destructive" });
+      console.error("Error creating store:", error);
+      toast({ title: "Error", description: "Failed to create store. Please try again.", variant: "destructive" });
     } finally {
-        setIsSubmittingStore(false);
+      setIsSubmittingStore(false);
     }
   };
 

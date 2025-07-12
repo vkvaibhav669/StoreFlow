@@ -107,7 +107,7 @@ export default function DashboardPage() {
   const fetchProjects = React.useCallback(async () => {
     if (!authLoading && user) {
       try {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjIzNTI3NCwiZXhwIjoxNzUyMjYwNDc0fQ.j3HWiJktymRzevjLSxlspcFzCbKtHinYfPcYO1aNFTw"
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjI5OTI5NywiZXhwIjoxNzUyMzM1Mjk3fQ.xr-4WLxbGACvW52QMHryocufWVe-C-VRgbVUsGeStII"
         //= user.token || localStorage.getItem("token");
         const res = await fetch("http://localhost:8000/api/projects", {
           method: "GET",
@@ -192,7 +192,7 @@ export default function DashboardPage() {
     };
 
     try {
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjIzNTI3NCwiZXhwIjoxNzUyMjYwNDc0fQ.j3HWiJktymRzevjLSxlspcFzCbKtHinYfPcYO1aNFTw"
+      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjI5OTI5NywiZXhwIjoxNzUyMzM1Mjk3fQ.xr-4WLxbGACvW52QMHryocufWVe-C-VRgbVUsGeStII"
       const res = await fetch("http://localhost:8000/api/projects", {
         method: "POST",
         headers: {

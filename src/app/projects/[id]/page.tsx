@@ -224,7 +224,7 @@ export default function ProjectDetailsPage() {
     // Fetch project from backend API
     const fetchProject = async () => {
       try {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjAzNTYyMywiZXhwIjoxNzUyMDYwODIzfQ.cQWAPQA2P0fNlmbNbiNS6EWiHUeeV7P9ciXLWJew4_I"
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NWQwYTc4NTY1NmU2Nzc4MjRhMzE4NSIsImlhdCI6MTc1MjI5OTI5NywiZXhwIjoxNzUyMzM1Mjk3fQ.xr-4WLxbGACvW52QMHryocufWVe-C-VRgbVUsGeStII"
         //user.token || localStorage.getItem("token"); // adjust as needed
         const res = await fetch(`http://localhost:8000/api/projects/${projectId}`, {
           headers: {
