@@ -58,61 +58,19 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
 }
 
 export function createProject(projectData: Partial<StoreProject>): StoreProject {
-  const newProject: StoreProject = {
-    id: `proj-${Date.now()}`,
-    name: projectData.name || 'New Project',
-    location: projectData.location || 'TBD',
-    status: projectData.status || 'Planning',
-    startDate: projectData.startDate || formatDate(new Date()),
-    projectedLaunchDate: projectData.projectedLaunchDate || formatDate(addDays(new Date(), 90)),
-    currentProgress: projectData.currentProgress || 0,
-    isUpcoming: projectData.isUpcoming === undefined ? true : projectData.isUpcoming,
-    franchiseType: projectData.franchiseType || 'COCO',
-    propertyDetails: projectData.propertyDetails || { address: projectData.location || 'TBD', sqft: 0, status: 'Identified' },
-    projectTimeline: projectData.projectTimeline || { totalDays: 60, currentDay: 0, kickoffDate: projectData.startDate || formatDate(new Date()) },
-    tasks: projectData.tasks || [],
-    documents: projectData.documents || [],
-    milestones: projectData.milestones || [],
-    blockers: projectData.blockers || [],
-    departments: projectData.departments || {},
-    comments: projectData.comments || [],
-    members: projectData.members || [],
-    ...projectData, // Spread the rest of projectData
-  };
-  mockProjects.unshift(newProject);
-  return newProject;
+  // This function should use API calls in production
+  console.warn('createProject called - implement proper API call');
+  throw new Error("Project creation not implemented - use API");
 }
 
 export function updateProject(id: string, projectData: Partial<StoreProject>): StoreProject {
-  const projectIndex = mockProjects.findIndex(p => p.id === id);
-  if (projectIndex === -1) throw new Error("Project not found");
-  mockProjects[projectIndex] = { ...mockProjects[projectIndex], ...projectData };
-  return mockProjects[projectIndex];
+  console.warn(`updateProject called for ${id} - implement proper API call`);
+  throw new Error("Project update not implemented - use API");
 }
 
 export function addTaskToProject(projectId: string, taskData: Partial<Task>): Task {
-  const project = getProjectById(projectId);
-  if (!project) throw new Error("Project not found for adding task");
-  const newTask: Task = {
-    id: `task-${Date.now()}`,
-    name: taskData.name || 'New Task',
-    department: taskData.department || 'Project',
-    status: taskData.status || 'Pending',
-    priority: taskData.priority || 'Medium',
-    ...taskData,
-  };
-  project.tasks.push(newTask);
-   if (project.departments && taskData.department) {
-    const deptKey = taskData.department.toLowerCase() as keyof StoreProject['departments'];
-    if (project.departments[deptKey]) {
-        (project.departments[deptKey] as DepartmentDetails).tasks.push(newTask);
-    } else {
-        if (taskData.department === "Marketing") project.departments[deptKey] = { tasks: [newTask], preLaunchCampaigns: [], postLaunchCampaigns: []};
-        else project.departments[deptKey] = { tasks: [newTask] };
-    }
-  }
-  project.currentProgress = Math.round(project.tasks.filter(t => t.status === 'Completed').length / project.tasks.length * 100);
-  return newTask;
+  console.warn(`addTaskToProject called for ${projectId} - implement proper API call`);
+  throw new Error("Task creation not implemented - use API");
 }
 
 export function updateTaskInProject(projectId: string, taskId: string, taskData: Partial<Task>): Task {
@@ -286,44 +244,16 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
 }
 
-export async function updateStore(id: string, storeData: Partial<StoreItem>): Promise<StoreItem> {
-  try {
-    const response = await fetch(`http://localhost:8000/api/store/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(storeData),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const store = await response.json();
-    return store;
-  } catch (error) {
-    console.error('Error updating store via API:', error);
-    throw new Error("Store update failed");
-  }
+export function updateStore(id: string, storeData: Partial<StoreItem>): StoreItem {
+  // This function should use API calls in production
+  console.warn(`updateStore called for ${id} - implement proper API call`);
+  throw new Error("Store update not implemented - use API");
 }
 
-export async function createStore(storeData: Partial<StoreItem>): Promise<StoreItem> {
-  try {
-    const response = await fetch('http://localhost:8000/api/store', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(storeData),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const store = await response.json();
-    return store;
-  } catch (error) {
-    console.error('Error creating store via API:', error);
-    throw new Error("Store creation failed");
-  }
+export function createStore(storeData: Partial<StoreItem>): StoreItem {
+  // This function should use API calls in production
+  console.warn(`createStore called - implement proper API call`);
+  throw new Error("Store creation not implemented - use API");
 }
 
 export async function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
@@ -386,8 +316,8 @@ export async function addCommentToImprovementPoint(storeId: string, pointId: str
 }
 
 
-export function addStoreTask(storeId: string, taskData: Partial<StoreTask>): StoreTask {
-  const store = getStoreById(storeId);
+export async function addStoreTask(storeId: string, taskData: Partial<StoreTask>): Promise<StoreTask> {
+  const store = await getStoreById(storeId);
   if (!store) throw new Error("Store not found for adding task");
   const newTask: StoreTask = {
     id: `stask-${Date.now()}`,
@@ -405,8 +335,8 @@ export function addStoreTask(storeId: string, taskData: Partial<StoreTask>): Sto
   return newTask;
 }
 
-export function updateStoreTask(storeId: string, taskId: string, taskData: Partial<StoreTask>): StoreTask {
-  const store = getStoreById(storeId);
+export async function updateStoreTask(storeId: string, taskId: string, taskData: Partial<StoreTask>): Promise<StoreTask> {
+  const store = await getStoreById(storeId);
   if (!store || !store.tasks) throw new Error("Store or tasks not found for updating task");
   const taskIndex = store.tasks.findIndex(t => t.id === taskId);
   if (taskIndex === -1) throw new Error("Store task not found");
@@ -414,8 +344,8 @@ export function updateStoreTask(storeId: string, taskId: string, taskData: Parti
   return store.tasks[taskIndex];
 }
 
-export function deleteStoreTask(storeId: string, taskId: string): void {
-  const store = getStoreById(storeId);
+export async function deleteStoreTask(storeId: string, taskId: string): Promise<void> {
+  const store = await getStoreById(storeId);
   if (!store || !store.tasks) throw new Error("Store or tasks not found for deleting task");
   store.tasks = store.tasks.filter(t => t.id !== taskId);
 }
@@ -425,60 +355,28 @@ export function deleteStoreTask(storeId: string, taskId: string): void {
 
 // --- Approval Requests ---
 export function getApprovalRequestsForUser(userEmail: string): { awaiting: ApprovalRequest[], submitted: ApprovalRequest[] } {
+  console.warn(`getApprovalRequestsForUser called for ${userEmail} - implement proper API call`);
   return {
-    awaiting: mockApprovalRequests.filter(req => req.approverEmail === userEmail && req.status === "Pending"),
-    submitted: mockApprovalRequests.filter(req => req.requestorEmail === userEmail),
+    awaiting: [],
+    submitted: [],
   };
 }
 
 export function submitApprovalRequest(requestData: Omit<ApprovalRequest, 'id' | 'submissionDate' | 'status' | 'lastUpdateDate' | 'approvalComments'>): ApprovalRequest {
-  const newRequest: ApprovalRequest = {
-    id: `appr-${Date.now()}`,
-    submissionDate: formatDate(new Date()),
-    status: 'Pending',
-    ...requestData,
-  };
-  mockApprovalRequests.unshift(newRequest);
-  return newRequest;
+  console.warn('submitApprovalRequest called - implement proper API call');
+  throw new Error("Approval request submission not implemented - use API");
 }
 
 export function updateApprovalRequestStatus(
   requestId: string,
   statusUpdate: { newStatus: ApprovalStatus; actorName: string; commentText?: string }
 ): ApprovalRequest {
-  const requestIndex = mockApprovalRequests.findIndex(req => req.id === requestId);
-  if (requestIndex === -1) throw new Error("Approval request not found");
-  
-  mockApprovalRequests[requestIndex].status = statusUpdate.newStatus;
-  mockApprovalRequests[requestIndex].lastUpdateDate = new Date().toISOString();
-  
-  if (statusUpdate.commentText) {
-    const newComment: Comment = {
-      id: `appr-cmt-${Date.now()}`,
-      author: statusUpdate.actorName,
-      timestamp: new Date().toISOString(),
-      text: statusUpdate.commentText,
-      avatarUrl: `https://placehold.co/40x40.png?text=${statusUpdate.actorName.substring(0,1)}`,
-    };
-    mockApprovalRequests[requestIndex].approvalComments = [
-      ...(mockApprovalRequests[requestIndex].approvalComments || []),
-      newComment,
-    ];
-  }
-  return mockApprovalRequests[requestIndex];
+  console.warn(`updateApprovalRequestStatus called for ${requestId} - implement proper API call`);
+  throw new Error("Approval request update not implemented - use API");
 }
 
 // --- User Tasks (Aggregated from Projects) ---
 export function getTasksForUser(userEmailOrName: string): Task[] {
-    const userTasks: Task[] = [];
-    mockProjects.forEach(project => {
-        project.tasks.forEach(task => {
-            if (task.assignedTo?.toLowerCase() === userEmailOrName.toLowerCase() || 
-                (project.members?.find(m => (m.email === userEmailOrName || m.name === userEmailOrName) && m.email === task.assignedTo))
-            ) {
-                userTasks.push({ ...task, projectName: project.name, projectId: project.id } as Task & {projectName: string, projectId: string});
-            }
-        });
-    });
-    return userTasks;
+    console.warn(`getTasksForUser called for ${userEmailOrName} - implement proper API call`);
+    return [];
 }
