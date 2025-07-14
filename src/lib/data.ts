@@ -383,12 +383,37 @@ export function removeMemberFromProject(projectId: string, memberEmail: string):
 
 
 // --- Store Functions ---
-export function getAllStores(): StoreItem[] {
-  return [...mockStores];
+export async function getAllStores(): Promise<StoreItem[]> {
+  try {
+    const response = await fetch('/api/store');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const stores = await response.json();
+    return stores;
+  } catch (error) {
+    console.error('Error fetching stores from API:', error);
+    // Fallback to mock data if API call fails
+    return [...mockStores];
+  }
 }
 
-export function getStoreById(id: string): StoreItem | undefined {
-  return mockStores.find(s => s.id === id);
+export async function getStoreById(id: string): Promise<StoreItem | undefined> {
+  try {
+    const response = await fetch(`/api/store/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return undefined;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const store = await response.json();
+    return store;
+  } catch (error) {
+    console.error('Error fetching store from API:', error);
+    // Fallback to mock data if API call fails
+    return mockStores.find(s => s.id === id);
+  }
 }
 
 export function updateStore(id: string, storeData: Partial<StoreItem>): StoreItem {
