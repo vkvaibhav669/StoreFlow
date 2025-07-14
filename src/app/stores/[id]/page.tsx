@@ -67,9 +67,9 @@ export default function StoreDetailsPage() {
 
   const storeId = typeof params.id === 'string' ? params.id : undefined;
   
-  // For mock data, fetch synchronously
-  const initialStore = storeId ? getStoreById(storeId) : null;
-  const [store, setStore] = React.useState<StoreItem | null>(initialStore);
+  const [store, setStore] = React.useState<StoreItem | null>(null);
+  const [storeLoading, setStoreLoading] = React.useState(true);
+  const [storeNotFound, setStoreNotFound] = React.useState(false);
 
   const [isAddImprovementDialogOpen, setIsAddImprovementDialogOpen] = React.useState(false);
   const [newImprovementPointText, setNewImprovementPointText] = React.useState("");
@@ -96,22 +96,34 @@ export default function StoreDetailsPage() {
   const [isRequestInfoDialogOpen, setIsRequestInfoDialogOpen] = React.useState(false);
   const [requestInfoText, setRequestInfoText] = React.useState("");
 
+  const loadStore = async (id: string) => {
+    try {
+      setStoreLoading(true);
+      const storeData = await getStoreById(id);
+      if (storeData) {
+        setStore(storeData);
+        setStoreNotFound(false);
+      } else {
+        setStoreNotFound(true);
+      }
+    } catch (error) {
+      console.error('Error loading store:', error);
+      setStoreNotFound(true);
+    } finally {
+      setStoreLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
-    } else if (storeId && !store && !authLoading) { // If store was not found initially
-      notFound();
+      return;
     }
-    // Refresh store data if it might have changed (e.g., after an update)
-    if (storeId) {
-        const currentStore = getStoreById(storeId);
-        if (currentStore) {
-            setStore(currentStore);
-        } else if (!authLoading && user) { // Store became null after being found initially
-            notFound();
-        }
+    
+    if (storeId && user) {
+      loadStore(storeId);
     }
-  }, [storeId, user, authLoading, router, store]); // Add store to dep array
+  }, [storeId, user, authLoading, router]);
 
   const currentUserRole = user?.role;
   const isUserAdmin = currentUserRole === 'Admin';
@@ -374,9 +386,19 @@ export default function StoreDetailsPage() {
         </div>
       );
   }
-  if (!store) { // If store is null after initial sync load and auth check
-      notFound(); // This should be caught by useEffect if initialStore was null
-      return null; // Should not be reached
+
+  if (storeLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">Loading store details...</p>
+      </div>
+    );
+  }
+
+  if (storeNotFound || !store) {
+      notFound();
+      return null;
   }
 
   const targetOwnershipType = store.type === 'COCO' ? 'FOFO' : 'COCO';

@@ -38,8 +38,9 @@ export default function MyStoresPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [allStores, setAllStores] = React.useState<StoreItem[]>(getAllStores());
+  const [allStores, setAllStores] = React.useState<StoreItem[]>([]);
   const [filterType, setFilterType] = React.useState<StoreFilterType>("All");
+  const [storesLoading, setStoresLoading] = React.useState(true);
 
   const [isAddStoreDialogOpen, setIsAddStoreDialogOpen] = React.useState(false);
   const [isSubmittingStore, setIsSubmittingStore] = React.useState(false);
@@ -52,15 +53,27 @@ export default function MyStoresPage() {
 
   const canAddStore = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
-  const refreshStores = () => {
-    setAllStores(getAllStores());
+  const refreshStores = async () => {
+    try {
+      setStoresLoading(true);
+      const stores = await getAllStores();
+      setAllStores(stores);
+    } catch (error) {
+      console.error('Error loading stores:', error);
+      toast({ title: "Error", description: "Failed to load stores. Please try again.", variant: "destructive" });
+    } finally {
+      setStoresLoading(false);
+    }
   };
 
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
+      return;
     }
-    refreshStores();
+    if (user) {
+      refreshStores();
+    }
   }, [user, authLoading, router]);
 
   const filteredStores = React.useMemo(() => {
@@ -126,6 +139,15 @@ export default function MyStoresPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <p className="text-muted-foreground">Please sign in to view your stores.</p>
+      </div>
+    );
+  }
+
+  if (storesLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">Loading stores...</p>
       </div>
     );
   }
