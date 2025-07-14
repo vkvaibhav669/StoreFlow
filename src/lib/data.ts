@@ -169,7 +169,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('http://localhost:8000/api/tasks');
+    const response = await fetch('http://localhost:8000/api/projects');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
