@@ -108,6 +108,37 @@ export default function DashboardPage() {
 
   const canAddProject = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
+  // Move useMemo hooks before any early returns to ensure consistent hook ordering
+  const upcomingProjects = React.useMemo(() => {
+    if (!filterSettings.showUpcoming) return [];
+    let projects = dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
+    if (filterSettings.storeOwnershipFilter !== "All") {
+      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
+    }
+    return projects;
+  }, [dashboardProjects, filterSettings.showUpcoming, filterSettings.storeOwnershipFilter]);
+
+  const activeProjects = React.useMemo(() => {
+    if (!filterSettings.showActive) return [];
+    let projects = dashboardProjects.filter(p => p.status !== "Launched" && !p.isUpcoming);
+    if (filterSettings.planningOnly) {
+      projects = projects.filter(p => p.status === "Planning");
+    }
+    if (filterSettings.storeOwnershipFilter !== "All") {
+      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
+    }
+    return projects;
+  }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly, filterSettings.storeOwnershipFilter]);
+
+  const launchedProjects = React.useMemo(() => {
+    if (!filterSettings.showLaunched) return [];
+    let projects = dashboardProjects.filter(p => p.status === "Launched");
+    if (filterSettings.storeOwnershipFilter !== "All") {
+      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
+    }
+    return projects;
+  }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
+
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
@@ -236,37 +267,6 @@ export default function DashboardPage() {
       setIsSubmittingProject(false);
     }
   };
-
-  const upcomingProjects = React.useMemo(() => {
-    if (!filterSettings.showUpcoming) return [];
-    let projects = dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
-    if (filterSettings.storeOwnershipFilter !== "All") {
-      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
-    }
-    return projects;
-  }, [dashboardProjects, filterSettings.showUpcoming, filterSettings.storeOwnershipFilter]);
-
-  const activeProjects = React.useMemo(() => {
-    if (!filterSettings.showActive) return [];
-    let projects = dashboardProjects.filter(p => p.status !== "Launched" && !p.isUpcoming);
-    if (filterSettings.planningOnly) {
-      projects = projects.filter(p => p.status === "Planning");
-    }
-    if (filterSettings.storeOwnershipFilter !== "All") {
-      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
-    }
-    return projects;
-  }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly, filterSettings.storeOwnershipFilter]);
-
-  const launchedProjects = React.useMemo(() => {
-    if (!filterSettings.showLaunched) return [];
-    let projects = dashboardProjects.filter(p => p.status === "Launched");
-    if (filterSettings.storeOwnershipFilter !== "All") {
-      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
-    }
-    return projects;
-  }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
-
 
   return (
     <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
