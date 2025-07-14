@@ -147,16 +147,17 @@ export let mockProjects: StoreProject[] = [
   },
 ];
 
-export let mockStores: StoreItem[] = [
-  { id: 'store-001', name: 'Mumbai Phoenix Mall Flagship', location: 'Lower Parel, Mumbai, Maharashtra', type: 'COCO', status: 'Under Construction', openingDate: mockProjects[0].projectedLaunchDate, manager: 'Priya Sharma', sqft: 5000 },
-  { id: 'store-002', name: 'Bangalore Orion Mall Outlet', location: 'Rajajinagar, Bangalore, Karnataka', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(new Date(), -15)), manager: 'Rohan Mehra', sqft: 3000, dailySales: 85000, customerSatisfaction: 4.5, improvementPoints: [
-    {id: 'imp-001', text: 'Improve queue management during peak hours.', addedBy: 'Anita Desai', addedAt: addDays(new Date(), -5).toISOString(), userAvatar: 'https://placehold.co/40x40.png?text=AD', comments: [], isResolved: false},
-  ], tasks: [
-    {id: 'stask-001', storeId:'store-002', title: 'Weekly Stock Audit', assignedTo: 'Rohan Mehra', status: 'Pending', priority: 'Medium', createdAt: addDays(new Date(), -2).toISOString(), createdBy: 'Anita Desai', dueDate: formatDate(addDays(new Date(), 5)) }
-  ]},
-  { id: 'store-003', name: 'Delhi Connaught Place Express', location: 'Connaught Place, New Delhi, Delhi', type: 'FOFO', status: 'Planned', openingDate: mockProjects[1].projectedLaunchDate, sqft: 2500, ownershipChangeRequested: false },
-  { id: 'store-004', name: 'Chennai Citi Centre Store', location: 'Mylapore, Chennai, Tamil Nadu', type: 'COCO', status: 'Under Construction', openingDate: mockProjects[3].projectedLaunchDate, manager: 'Vikram Singh', sqft: 2800 },
-];
+// Mock stores data has been moved to API endpoints
+// export let mockStores: StoreItem[] = [
+//   { id: 'store-001', name: 'Mumbai Phoenix Mall Flagship', location: 'Lower Parel, Mumbai, Maharashtra', type: 'COCO', status: 'Under Construction', openingDate: mockProjects[0].projectedLaunchDate, manager: 'Priya Sharma', sqft: 5000 },
+//   { id: 'store-002', name: 'Bangalore Orion Mall Outlet', location: 'Rajajinagar, Bangalore, Karnataka', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(new Date(), -15)), manager: 'Rohan Mehra', sqft: 3000, dailySales: 85000, customerSatisfaction: 4.5, improvementPoints: [
+//     {id: 'imp-001', text: 'Improve queue management during peak hours.', addedBy: 'Anita Desai', addedAt: addDays(new Date(), -5).toISOString(), userAvatar: 'https://placehold.co/40x40.png?text=AD', comments: [], isResolved: false},
+//   ], tasks: [
+//     {id: 'stask-001', storeId:'store-002', title: 'Weekly Stock Audit', assignedTo: 'Rohan Mehra', status: 'Pending', priority: 'Medium', createdAt: addDays(new Date(), -2).toISOString(), createdBy: 'Anita Desai', dueDate: formatDate(addDays(new Date(), 5)) }
+//   ]},
+//   { id: 'store-003', name: 'Delhi Connaught Place Express', location: 'Connaught Place, New Delhi, Delhi', type: 'FOFO', status: 'Planned', openingDate: mockProjects[1].projectedLaunchDate, sqft: 2500, ownershipChangeRequested: false },
+//   { id: 'store-004', name: 'Chennai Citi Centre Store', location: 'Mylapore, Chennai, Tamil Nadu', type: 'COCO', status: 'Under Construction', openingDate: mockProjects[3].projectedLaunchDate, manager: 'Vikram Singh', sqft: 2800 },
+// ];
 
 export let mockApprovalRequests: ApprovalRequest[] = [
   { id: 'appr-001', title: 'Budget Increase for Mumbai Marketing', projectId: 'proj-001', projectName: 'Mumbai Phoenix Mall Flagship', requestingDepartment: 'Marketing', requestorName: 'Amit Varma', requestorEmail: 'amit.varma@storeflow.corp', details: 'Requesting an additional 2 Lakhs for digital marketing efforts for the Mumbai launch.', approverName: 'Rajesh Kumar', approverEmail: 'rajesh.kumar@storeflow.corp', status: 'Pending', submissionDate: formatDate(addDays(new Date(), -3))},
@@ -384,43 +385,42 @@ export function removeMemberFromProject(projectId: string, memberEmail: string):
 
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
-  try {
-    const response = await fetch('/api/store');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const stores = await response.json();
-    return stores;
-  } catch (error) {
-    console.error('Error fetching stores from API:', error);
-    // Fallback to mock data if API call fails
-    return [...mockStores];
+  const response = await fetch('/api/store');
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
+  return response.json();
 }
 
 export async function getStoreById(id: string): Promise<StoreItem | undefined> {
-  try {
-    const response = await fetch(`/api/store/${id}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        return undefined;
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
+  const response = await fetch(`/api/store/${id}`);
+  if (!response.ok) {
+    if (response.status === 404) {
+      return undefined;
     }
-    const store = await response.json();
-    return store;
-  } catch (error) {
-    console.error('Error fetching store from API:', error);
-    // Fallback to mock data if API call fails
-    return mockStores.find(s => s.id === id);
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
+  return response.json();
 }
 
+// Internal store management (not exported as mock data)
+// In a real app, these would be API endpoints
+let internalStores: StoreItem[] = [
+  { id: 'store-001', name: 'Mumbai Phoenix Mall Flagship', location: 'Lower Parel, Mumbai, Maharashtra', type: 'COCO', status: 'Under Construction', openingDate: '2025-08-28', manager: 'Priya Sharma', sqft: 5000 },
+  { id: 'store-002', name: 'Bangalore Orion Mall Outlet', location: 'Rajajinagar, Bangalore, Karnataka', type: 'COCO', status: 'Operational', openingDate: '2024-12-30', manager: 'Rohan Mehra', sqft: 3000, dailySales: 85000, customerSatisfaction: 4.5, improvementPoints: [
+    {id: 'imp-001', text: 'Improve queue management during peak hours.', addedBy: 'Anita Desai', addedAt: '2025-01-09T09:19:25.000Z', userAvatar: 'https://placehold.co/40x40.png?text=AD', comments: [], isResolved: false},
+  ], tasks: [
+    {id: 'stask-001', storeId:'store-002', title: 'Weekly Stock Audit', assignedTo: 'Rohan Mehra', status: 'Pending', priority: 'Medium', createdAt: '2025-01-12T09:19:25.000Z', createdBy: 'Anita Desai', dueDate: '2025-01-19' }
+  ]},
+  { id: 'store-003', name: 'Delhi Connaught Place Express', location: 'Connaught Place, New Delhi, Delhi', type: 'FOFO', status: 'Planned', openingDate: '2025-03-30', sqft: 2500, ownershipChangeRequested: false },
+  { id: 'store-004', name: 'Chennai Citi Centre Store', location: 'Mylapore, Chennai, Tamil Nadu', type: 'COCO', status: 'Under Construction', openingDate: '2025-02-03', manager: 'Vikram Singh', sqft: 2800 },
+];
+
 export function updateStore(id: string, storeData: Partial<StoreItem>): StoreItem {
-  const storeIndex = mockStores.findIndex(s => s.id === id);
+  const storeIndex = internalStores.findIndex(s => s.id === id);
   if (storeIndex === -1) throw new Error("Store not found");
-  mockStores[storeIndex] = { ...mockStores[storeIndex], ...storeData };
-  return mockStores[storeIndex];
+  internalStores[storeIndex] = { ...internalStores[storeIndex], ...storeData };
+  return internalStores[storeIndex];
 }
 
 export function createStore(storeData: Partial<StoreItem>): StoreItem {
@@ -437,12 +437,17 @@ export function createStore(storeData: Partial<StoreItem>): StoreItem {
         improvementPoints: [],
         tasks: [],
     };
-    mockStores.unshift(newStore);
+    internalStores.unshift(newStore);
     return newStore;
 }
 
+// Internal function to get store synchronously for management operations
+function getStoreByIdSync(id: string): StoreItem | undefined {
+  return internalStores.find(s => s.id === id);
+}
+
 export function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): ImprovementPoint {
-    const store = getStoreById(storeId);
+    const store = getStoreByIdSync(storeId);
     if (!store) throw new Error("Store not found");
     const newPoint: ImprovementPoint = {
         id: `imp-${Date.now()}`,
@@ -459,7 +464,7 @@ export function addImprovementPointToStore(storeId: string, pointData: Partial<I
 }
 
 export function updateImprovementPointInStore(storeId: string, pointId: string, pointData: Partial<ImprovementPoint>): ImprovementPoint {
-    const store = getStoreById(storeId);
+    const store = getStoreByIdSync(storeId);
     if (!store || !store.improvementPoints) throw new Error("Store or improvement points not found");
     const pointIndex = store.improvementPoints.findIndex(p => p.id === pointId);
     if (pointIndex === -1) throw new Error("Improvement point not found");
@@ -468,7 +473,7 @@ export function updateImprovementPointInStore(storeId: string, pointId: string, 
 }
 
 export function addCommentToImprovementPoint(storeId: string, pointId: string, commentData: Partial<Comment> & { parentCommentId?: string }): Comment {
-    const store = getStoreById(storeId);
+    const store = getStoreByIdSync(storeId);
     if (!store || !store.improvementPoints) throw new Error("Store or improvement points not found");
     const point = store.improvementPoints.find(p => p.id === pointId);
     if (!point) throw new Error("Improvement point not found");
@@ -502,7 +507,7 @@ export function addCommentToImprovementPoint(storeId: string, pointId: string, c
 
 
 export function addStoreTask(storeId: string, taskData: Partial<StoreTask>): StoreTask {
-  const store = getStoreById(storeId);
+  const store = getStoreByIdSync(storeId);
   if (!store) throw new Error("Store not found for adding task");
   const newTask: StoreTask = {
     id: `stask-${Date.now()}`,
@@ -521,7 +526,7 @@ export function addStoreTask(storeId: string, taskData: Partial<StoreTask>): Sto
 }
 
 export function updateStoreTask(storeId: string, taskId: string, taskData: Partial<StoreTask>): StoreTask {
-  const store = getStoreById(storeId);
+  const store = getStoreByIdSync(storeId);
   if (!store || !store.tasks) throw new Error("Store or tasks not found for updating task");
   const taskIndex = store.tasks.findIndex(t => t.id === taskId);
   if (taskIndex === -1) throw new Error("Store task not found");
@@ -530,7 +535,7 @@ export function updateStoreTask(storeId: string, taskId: string, taskData: Parti
 }
 
 export function deleteStoreTask(storeId: string, taskId: string): void {
-  const store = getStoreById(storeId);
+  const store = getStoreByIdSync(storeId);
   if (!store || !store.tasks) throw new Error("Store or tasks not found for deleting task");
   store.tasks = store.tasks.filter(t => t.id !== taskId);
 }
