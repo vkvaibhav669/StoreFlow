@@ -11,158 +11,16 @@ export const addDays = (date: Date, days: number): Date => {
 
 // --- Mock Data with Indian Theme ---
 
-export const mockHeadOfficeContacts: ProjectMember[] = [
-  { id: 'ho-001', name: 'Rajesh Kumar', role: 'Chief Executive Officer', department: 'Executive Office', email: 'rajesh.kumar@storeflow.corp', phone: '(022) 2345-0001', avatarSeed: 'rajesh' },
-  { id: 'ho-002', name: 'Anita Desai', role: 'Chief Operations Officer', department: 'Operations', email: 'anita.desai@storeflow.corp', phone: '(022) 2345-0002', avatarSeed: 'anita' },
-  { id: 'ho-003', name: 'Suresh Menon', role: 'Head of Property Development', department: 'Property', email: 'suresh.menon@storeflow.corp', phone: '(022) 2345-0003', avatarSeed: 'suresh' },
-  { id: 'ho-004', name: 'Deepika Iyer', role: 'Head of Project Management', department: 'Projects', email: 'deepika.iyer@storeflow.corp', phone: '(022) 2345-0004', avatarSeed: 'deepika' },
-  { id: 'ho-005', name: 'Karan Malhotra', role: 'Head of Merchandising', department: 'Merchandising', email: 'karan.malhotra@storeflow.corp', phone: '(022) 2345-0005', avatarSeed: 'karan' },
-  { id: 'ho-006', name: 'Sunita Joshi', role: 'Head of Human Resources', department: 'HR', email: 'sunita.joshi@storeflow.corp', phone: '(022) 2345-0006', avatarSeed: 'sunita' },
-  { id: 'ho-007', name: 'Amit Varma', role: 'Head of Marketing', department: 'Marketing', email: 'amit.varma@storeflow.corp', phone: '(022) 2345-0007', avatarSeed: 'amit' },
-  { id: 'ho-008', name: 'Vijay Nair', role: 'Head of IT', department: 'IT', email: 'vijay.nair@storeflow.corp', phone: '(022) 2345-0008', avatarSeed: 'vijay' },
-];
+export const mockHeadOfficeContacts: ProjectMember[] = [];
 
-const commonProjectMembers: ProjectMember[] = [
-    { email: 'priya.sharma@example.com', name: 'Priya Sharma', roleInProject: 'Project Lead', department: 'Projects', avatarSeed: 'priya', isProjectHod: true, role: 'Admin' },
-    { email: 'rohan.mehra@example.com', name: 'Rohan Mehra', roleInProject: 'Marketing Coordinator', department: 'Marketing', avatarSeed: 'rohan', role: 'Member' },
-    { email: 'vikram.singh@example.com', name: 'Vikram Singh', roleInProject: 'IT Support', department: 'IT', avatarSeed: 'vikram', role: 'Member' },
-    { email: 'neha.patel@example.com', name: 'Neha Patel', roleInProject: 'HR Specialist', department: 'HR', avatarSeed: 'neha', role: 'Admin'},
-    { email: 'suresh.menon@storeflow.corp', name: 'Suresh Menon', roleInProject: 'Property Advisor', department: 'Property', avatarSeed: 'suresh_prop', role: 'Member'},
-];
+const commonProjectMembers: ProjectMember[] = [];
 
 
-export let mockProjects: StoreProject[] = [
-  {
-    id: 'proj-001',
-    name: 'Mumbai Phoenix Mall Flagship',
-    location: 'Lower Parel, Mumbai, Maharashtra',
-    status: 'Execution',
-    startDate: formatDate(addDays(new Date(), -30)),
-    projectedLaunchDate: formatDate(addDays(new Date(), 45)),
-    currentProgress: 65,
-    isUpcoming: false,
-    franchiseType: 'COCO',
-    propertyDetails: { address: 'Phoenix Mills Compound, S B Marg, Lower Parel', sqft: 5000, status: 'Finalized', notes: 'High footfall area.' },
-    projectTimeline: { totalDays: 75, currentDay: 30, kickoffDate: formatDate(addDays(new Date(), -30)) },
-    threeDRenderUrl: 'https://placehold.co/600x400.png',
-    tasks: [
-      { id: 'task-001', name: 'Finalize Lease Agreement', department: 'Property', status: 'Completed', assignedTo: 'Suresh Menon', dueDate: formatDate(addDays(new Date(), -25)), priority: 'High' },
-      { id: 'task-002', name: 'Interior Design Sign-off', department: 'Project', status: 'In Progress', assignedTo: 'Deepika Iyer', dueDate: formatDate(addDays(new Date(), 5)), priority: 'High',
-        comments: [
-          { id: 'task-cmt-001', author: 'Priya Sharma', text: 'Deepika, can we get a status update on this? The deadline is approaching.', timestamp: addDays(new Date(), -1).toISOString(), avatarUrl: 'https://placehold.co/40x40.png?text=PS' },
-          { id: 'task-cmt-002', author: 'Deepika Iyer', text: 'Working on it, Priya. Should have the final designs ready by EOD tomorrow.', timestamp: new Date().toISOString(), avatarUrl: 'https://placehold.co/40x40.png?text=DI' }
-        ]
-      },
-      { id: 'task-003', name: 'Recruit Store Manager', department: 'HR', status: 'In Progress', assignedTo: 'Sunita Joshi', dueDate: formatDate(addDays(new Date(), 15)), priority: 'Medium' },
-      { id: 'task-004', name: 'Plan Launch Campaign', department: 'Marketing', status: 'Pending', assignedTo: 'Amit Varma', dueDate: formatDate(addDays(new Date(), 30)), priority: 'High' },
-    ],
-    documents: [
-      { id: 'doc-001', name: 'Mumbai Store Layout v3.pdf', type: 'Property Document', url: '#', uploadedAt: formatDate(addDays(new Date(), -20)), size: '2.5MB', uploadedBy: 'Suresh Menon', hodOnly: false },
-      { id: 'doc-002', name: 'Store_Render_Mumbai.jpg', type: '3D Render', url: 'https://placehold.co/800x600.png', uploadedAt: formatDate(addDays(new Date(), -15)), size: '4.1MB', uploadedBy: 'Deepika Iyer', dataAiHint: 'modern store', hodOnly: true},
-    ],
-    milestones: [
-      { id: 'm-001', name: 'Lease Signed', date: formatDate(addDays(new Date(), -28)), completed: true, description: "Property lease finalized." },
-      { id: 'm-002', name: 'Construction Start', date: formatDate(addDays(new Date(), -10)), completed: false, description: "Interior work begins." },
-    ],
-    blockers: [
-        { id: 'b-001', title: 'Material Delay', description: 'Imported tiles delayed by 1 week.', dateReported: formatDate(addDays(new Date(),-5)), isResolved: false, reportedBy: 'Deepika Iyer'}
-    ],
-    departments: {
-      property: { tasks: [{ id: 'task-001', name: 'Finalize Lease Agreement', department: 'Property', status: 'Completed', assignedTo: 'Suresh Menon', dueDate: formatDate(addDays(new Date(), -25)), priority: 'High' }], notes: 'Lease negotiation completed.' },
-      project: { tasks: [{ id: 'task-002', name: 'Interior Design Sign-off', department: 'Project', status: 'In Progress', assignedTo: 'Deepika Iyer', dueDate: formatDate(addDays(new Date(), 5)), priority: 'High' }], notes: 'Awaiting final design approval.' },
-      hr: { tasks: [{ id: 'task-003', name: 'Recruit Store Manager', department: 'HR', status: 'In Progress', assignedTo: 'Sunita Joshi', dueDate: formatDate(addDays(new Date(), 15)), priority: 'Medium' }], recruitmentStatus: "Interviewing candidates" , totalNeeded: 15, staffHired: 5 },
-      marketing: { tasks: [{ id: 'task-004', name: 'Plan Launch Campaign', department: 'Marketing', status: 'Pending', assignedTo: 'Amit Varma', dueDate: formatDate(addDays(new Date(), 30)), priority: 'High' }], preLaunchCampaigns: [{id: 'camp-001', name: 'Social Media Buzz', type:'Digital', status:'Planned', startDate: formatDate(addDays(new Date(), 20)), endDate: formatDate(addDays(new Date(), 45)) }]},
-    },
-    comments: [
-      { id: 'cmt-001', author: 'Rajesh Kumar', text: 'Great progress team! Let\'s ensure we are on track for the Mumbai launch.', timestamp: addDays(new Date(), -2).toISOString(), avatarUrl: 'https://placehold.co/40x40.png?text=RK' }
-    ],
-    members: commonProjectMembers,
-  },
-  {
-    id: 'proj-002',
-    name: 'Delhi Connaught Place Express',
-    location: 'Connaught Place, New Delhi, Delhi',
-    status: 'Planning',
-    startDate: formatDate(addDays(new Date(), 5)),
-    projectedLaunchDate: formatDate(addDays(new Date(), 75)),
-    currentProgress: 10,
-    isUpcoming: true,
-    franchiseType: 'FOFO',
-    propertyDetails: { address: 'Block A, Connaught Place', sqft: 2500, status: 'Identified', notes: 'Seeking franchisee partner.' },
-    projectTimeline: { totalDays: 70, currentDay: 5, kickoffDate: formatDate(addDays(new Date(), 5)) },
-    tasks: [
-        { id: 'task-005', name: 'Identify Franchisee', department: 'Property', status: 'Pending', assignedTo: 'Suresh Menon', dueDate: formatDate(addDays(new Date(), 20)), priority: 'High'}
-    ],
-    documents: [],
-    milestones: [],
-    blockers: [],
-    departments: {
-        property: { tasks: [{ id: 'task-005', name: 'Identify Franchisee', department: 'Property', status: 'Pending', assignedTo: 'Suresh Menon', dueDate: formatDate(addDays(new Date(), 20)), priority: 'High'}], notes: 'Initial site survey done.'}
-    },
-    members: [commonProjectMembers[0], commonProjectMembers[1]],
-  },
-  {
-    id: 'proj-003',
-    name: 'Bangalore Orion Mall Outlet',
-    location: 'Rajajinagar, Bangalore, Karnataka',
-    status: 'Launched',
-    startDate: formatDate(addDays(new Date(), -90)),
-    projectedLaunchDate: formatDate(addDays(new Date(), -15)),
-    currentProgress: 100,
-    franchiseType: 'COCO',
-    propertyDetails: { address: 'Orion Mall, Brigade Gateway', sqft: 3000, status: 'Finalized' },
-    projectTimeline: { totalDays: 75, currentDay: 75, kickoffDate: formatDate(addDays(new Date(), -90)) },
-    tasks: [ { id: 'task-006', name: 'Post-Launch Feedback Collection', department: 'Marketing', status: 'Completed', assignedTo: 'Amit Varma', dueDate: formatDate(addDays(new Date(), -5)), priority: 'Medium'}],
-    documents: [],
-    milestones: [{ id: 'm-003', name: 'Store Soft Launch', date: formatDate(addDays(new Date(), -15)), completed: true, description: "Successfully launched!" }],
-    departments: {
-        marketing: { tasks: [{ id: 'task-006', name: 'Post-Launch Feedback Collection', department: 'Marketing', status: 'Completed', assignedTo: 'Amit Varma', dueDate: formatDate(addDays(new Date(), -5)), priority: 'Medium'}], postLaunchCampaigns: [{id: 'camp-002', name: 'Customer Loyalty Program', type:'Digital', status:'Ongoing', startDate: formatDate(addDays(new Date(), -14)), endDate: formatDate(addDays(new Date(), 20)) }]}
-    },
-    members: commonProjectMembers,
-  },
-  {
-    id: 'proj-004',
-    name: 'Chennai Citi Centre Store',
-    location: 'Mylapore, Chennai, Tamil Nadu',
-    status: 'Merchandising',
-    startDate: formatDate(addDays(new Date(), -40)),
-    projectedLaunchDate: formatDate(addDays(new Date(), 20)),
-    currentProgress: 75,
-    franchiseType: 'COCO',
-    propertyDetails: { address: 'Citi Centre Mall, Dr Radha Krishnan Salai', sqft: 2800, status: 'Finalized' },
-    projectTimeline: { totalDays: 60, currentDay: 40, kickoffDate: formatDate(addDays(new Date(), -40)) },
-    tasks: [
-      { id: 'task-007', name: 'Stock Inventory Setup', department: 'Merchandising', status: 'In Progress', assignedTo: 'Karan Malhotra', dueDate: formatDate(addDays(new Date(), 5)), priority: 'High' },
-      { id: 'task-008', name: 'Visual Merchandising Display', department: 'Merchandising', status: 'Pending', assignedTo: 'Karan Malhotra', dueDate: formatDate(addDays(new Date(), 10)), priority: 'Medium' },
-    ],
-    documents: [],
-    milestones: [{ id: 'm-004', name: 'Handover for Fit-out', date: formatDate(addDays(new Date(), -35)), completed: true }],
-    departments: {
-      merchandising: { tasks: [
-        { id: 'task-007', name: 'Stock Inventory Setup', department: 'Merchandising', status: 'In Progress', assignedTo: 'Karan Malhotra', dueDate: formatDate(addDays(new Date(), 5)), priority: 'High' },
-        { id: 'task-008', name: 'Visual Merchandising Display', department: 'Merchandising', status: 'Pending', assignedTo: 'Karan Malhotra', dueDate: formatDate(addDays(new Date(), 10)), priority: 'Medium' },
-      ], virtualPlanUrl: 'chennai_store_plan_v1.url' },
-    },
-    members: [commonProjectMembers[0], commonProjectMembers[2], commonProjectMembers[4]],
-  },
-];
+export let mockProjects: StoreProject[] = [];
 
-export let mockStores: StoreItem[] = [
-  { id: 'store-001', name: 'Mumbai Phoenix Mall Flagship', location: 'Lower Parel, Mumbai, Maharashtra', type: 'COCO', status: 'Under Construction', openingDate: mockProjects[0].projectedLaunchDate, manager: 'Priya Sharma', sqft: 5000 },
-  { id: 'store-002', name: 'Bangalore Orion Mall Outlet', location: 'Rajajinagar, Bangalore, Karnataka', type: 'COCO', status: 'Operational', openingDate: formatDate(addDays(new Date(), -15)), manager: 'Rohan Mehra', sqft: 3000, dailySales: 85000, customerSatisfaction: 4.5, improvementPoints: [
-    {id: 'imp-001', text: 'Improve queue management during peak hours.', addedBy: 'Anita Desai', addedAt: addDays(new Date(), -5).toISOString(), userAvatar: 'https://placehold.co/40x40.png?text=AD', comments: [], isResolved: false},
-  ], tasks: [
-    {id: 'stask-001', storeId:'store-002', title: 'Weekly Stock Audit', assignedTo: 'Rohan Mehra', status: 'Pending', priority: 'Medium', createdAt: addDays(new Date(), -2).toISOString(), createdBy: 'Anita Desai', dueDate: formatDate(addDays(new Date(), 5)) }
-  ]},
-  { id: 'store-003', name: 'Delhi Connaught Place Express', location: 'Connaught Place, New Delhi, Delhi', type: 'FOFO', status: 'Planned', openingDate: mockProjects[1].projectedLaunchDate, sqft: 2500, ownershipChangeRequested: false },
-  { id: 'store-004', name: 'Chennai Citi Centre Store', location: 'Mylapore, Chennai, Tamil Nadu', type: 'COCO', status: 'Under Construction', openingDate: mockProjects[3].projectedLaunchDate, manager: 'Vikram Singh', sqft: 2800 },
-];
+export let mockStores: StoreItem[] = [];
 
-export let mockApprovalRequests: ApprovalRequest[] = [
-  { id: 'appr-001', title: 'Budget Increase for Mumbai Marketing', projectId: 'proj-001', projectName: 'Mumbai Phoenix Mall Flagship', requestingDepartment: 'Marketing', requestorName: 'Amit Varma', requestorEmail: 'amit.varma@storeflow.corp', details: 'Requesting an additional 2 Lakhs for digital marketing efforts for the Mumbai launch.', approverName: 'Rajesh Kumar', approverEmail: 'rajesh.kumar@storeflow.corp', status: 'Pending', submissionDate: formatDate(addDays(new Date(), -3))},
-  { id: 'appr-002', title: 'Vendor Contract - Chennai Signage', projectId: 'proj-004', projectName: 'Chennai Citi Centre Store', requestingDepartment: 'Project', requestorName: 'Deepika Iyer', requestorEmail: 'deepika.iyer@storeflow.corp', details: 'Approval for signage vendor contract, quote attached.', approverName: 'Anita Desai', approverEmail: 'anita.desai@storeflow.corp', status: 'Approved', submissionDate: formatDate(addDays(new Date(), -7)), lastUpdateDate: formatDate(addDays(new Date(), -5))},
-  { id: 'appr-003', title: 'Priya Sharma - Leave Request', requestingDepartment: 'HR', requestorName: 'Priya Sharma', requestorEmail: 'priya.sharma@example.com', details: 'Requesting 5 days leave from 15th to 19th next month.', approverName: 'Sunita Joshi', approverEmail: 'sunita.joshi@storeflow.corp', status: 'Pending', submissionDate: formatDate(addDays(new Date(), -1))},
-];
+export let mockApprovalRequests: ApprovalRequest[] = [];
 
 
 // --- Synchronous Data Functions ---
@@ -177,13 +35,26 @@ export async function getAllProjects(): Promise<StoreProject[]> {
     return projects;
   } catch (error) {
     console.error('Error fetching projects from API:', error);
-    // Fallback to mock data if API call fails
-    return [...mockProjects];
+    // Return empty array instead of mock data
+    return [];
   }
 }
 
-export function getProjectById(id: string): StoreProject | undefined {
-  return mockProjects.find(p => p.id === id);
+export async function getProjectById(id: string): Promise<StoreProject | undefined> {
+  try {
+    const response = await fetch(`http://localhost:8000/api/projects/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return undefined;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const project = await response.json();
+    return project;
+  } catch (error) {
+    console.error('Error fetching project from API:', error);
+    return undefined;
+  }
 }
 
 export function createProject(projectData: Partial<StoreProject>): StoreProject {
@@ -375,8 +246,8 @@ export function addMemberToProject(projectId: string, memberData: { email: strin
     return newMember;
 }
 
-export function removeMemberFromProject(projectId: string, memberEmail: string): void {
-    const project = getProjectById(projectId);
+export async function removeMemberFromProject(projectId: string, memberEmail: string): Promise<void> {
+    const project = await getProjectById(projectId);
     if (!project || !project.members) throw new Error("Project or members list not found");
     project.members = project.members.filter(m => m.email !== memberEmail);
 }
@@ -393,8 +264,8 @@ export async function getAllStores(): Promise<StoreItem[]> {
     return stores;
   } catch (error) {
     console.error('Error fetching stores from API:', error);
-    // Fallback to mock data if API call fails
-    return [...mockStores];
+    // Return empty array instead of mock data
+    return [];
   }
 }
 
@@ -411,38 +282,52 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
     return store;
   } catch (error) {
     console.error('Error fetching store from API:', error);
-    // Fallback to mock data if API call fails
-    return mockStores.find(s => s.id === id);
+    return undefined;
   }
 }
 
-export function updateStore(id: string, storeData: Partial<StoreItem>): StoreItem {
-  const storeIndex = mockStores.findIndex(s => s.id === id);
-  if (storeIndex === -1) throw new Error("Store not found");
-  mockStores[storeIndex] = { ...mockStores[storeIndex], ...storeData };
-  return mockStores[storeIndex];
+export async function updateStore(id: string, storeData: Partial<StoreItem>): Promise<StoreItem> {
+  try {
+    const response = await fetch(`http://localhost:8000/api/store/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(storeData),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const store = await response.json();
+    return store;
+  } catch (error) {
+    console.error('Error updating store via API:', error);
+    throw new Error("Store update failed");
+  }
 }
 
-export function createStore(storeData: Partial<StoreItem>): StoreItem {
-    const newStore: StoreItem = {
-        id: `store-${Date.now()}`,
-        name: storeData.name || "New Store",
-        location: storeData.location || "TBD",
-        type: storeData.type || "COCO",
-        status: storeData.status || "Planned",
-        openingDate: storeData.openingDate || formatDate(new Date()),
-        manager: storeData.manager,
-        sqft: storeData.sqft,
-        ownershipChangeRequested: false,
-        improvementPoints: [],
-        tasks: [],
-    };
-    mockStores.unshift(newStore);
-    return newStore;
+export async function createStore(storeData: Partial<StoreItem>): Promise<StoreItem> {
+  try {
+    const response = await fetch('http://localhost:8000/api/store', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(storeData),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const store = await response.json();
+    return store;
+  } catch (error) {
+    console.error('Error creating store via API:', error);
+    throw new Error("Store creation failed");
+  }
 }
 
-export function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): ImprovementPoint {
-    const store = getStoreById(storeId);
+export async function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
+    const store = await getStoreById(storeId);
     if (!store) throw new Error("Store not found");
     const newPoint: ImprovementPoint = {
         id: `imp-${Date.now()}`,
@@ -458,8 +343,8 @@ export function addImprovementPointToStore(storeId: string, pointData: Partial<I
     return newPoint;
 }
 
-export function updateImprovementPointInStore(storeId: string, pointId: string, pointData: Partial<ImprovementPoint>): ImprovementPoint {
-    const store = getStoreById(storeId);
+export async function updateImprovementPointInStore(storeId: string, pointId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
+    const store = await getStoreById(storeId);
     if (!store || !store.improvementPoints) throw new Error("Store or improvement points not found");
     const pointIndex = store.improvementPoints.findIndex(p => p.id === pointId);
     if (pointIndex === -1) throw new Error("Improvement point not found");
@@ -467,8 +352,8 @@ export function updateImprovementPointInStore(storeId: string, pointId: string, 
     return store.improvementPoints[pointIndex];
 }
 
-export function addCommentToImprovementPoint(storeId: string, pointId: string, commentData: Partial<Comment> & { parentCommentId?: string }): Comment {
-    const store = getStoreById(storeId);
+export async function addCommentToImprovementPoint(storeId: string, pointId: string, commentData: Partial<Comment> & { parentCommentId?: string }): Promise<Comment> {
+    const store = await getStoreById(storeId);
     if (!store || !store.improvementPoints) throw new Error("Store or improvement points not found");
     const point = store.improvementPoints.find(p => p.id === pointId);
     if (!point) throw new Error("Improvement point not found");

@@ -8,6 +8,7 @@ export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Mark
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
 export type UserRole = "Member" | "Admin" | "SuperAdmin";
 export type StoreType = "COCO" | "FOFO";
+export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Withdrawn";
 
 // --- Main Document Schemas (Collections) ---
 
@@ -60,6 +61,7 @@ export interface StoreProject {
   milestones: Milestone[];
   blockers: Blocker[];
   discussion: Comment[]; // Main discussion thread for the project
+  comments?: Comment[]; // Alternative field name for compatibility
   
   departments: {
     property?: DepartmentDetails;
@@ -70,8 +72,8 @@ export interface StoreProject {
     it?: DepartmentDetails;
   };
 
-  createdAt: string; // ISO String
-  updatedAt: string; // ISO String
+  createdAt?: string; // ISO String - made optional
+  updatedAt?: string; // ISO String - made optional
 }
 
 
@@ -104,12 +106,14 @@ export interface ApprovalRequest {
   id: string; // Corresponds to MongoDB's _id
   title: string;
   details: string;
-  status: "Pending" | "Approved" | "Rejected" | "Withdrawn";
+  status: ApprovalStatus;
   
-  requestorId: string; // Ref: users
+  requestorId?: string; // Ref: users
   requestorName: string; // Denormalized name
-  approverId: string; // Ref: users
+  requestorEmail?: string; // Email for compatibility
+  approverId?: string; // Ref: users
   approverName: string; // Denormalized name
+  approverEmail?: string; // Email for compatibility
   
   projectId?: string; // Optional Ref: projects
   projectName?: string; // Denormalized name
@@ -128,13 +132,16 @@ export interface ApprovalRequest {
 
 /** Represents a single member within a project's `members` array. */
 export interface ProjectMember {
-  userId: string; // Ref: users
+  id?: string; // Optional ID for compatibility
+  userId?: string; // Ref: users
   name: string;   // Denormalized from User document
   email: string;  // Denormalized from User document
   roleInProject?: string;
+  role?: string; // For head office contacts compatibility
   department?: Department;
   isProjectHod?: boolean;
   avatarSeed?: string; // For mock UI only
+  phone?: string; // For contact information
 }
 
 /** Represents a single task within a project's `tasks` array. */
@@ -145,17 +152,18 @@ export interface Task {
   status: "Pending" | "In Progress" | "Completed" | "Blocked";
   priority: TaskPriority;
   assignedToId?: string; // Ref: users
+  assignedTo?: string; // For compatibility with existing code
   assignedToName?: string; // Denormalized user name
   dueDate?: string; // ISO String
   description?: string;
-  comments: Comment[]; // Task-specific comments
-  createdAt: string; // ISO String
+  comments?: Comment[]; // Task-specific comments - made optional
+  createdAt?: string; // ISO String - made optional
 }
 
 /** Represents a single comment or reply, can be nested. */
 export interface Comment {
   id: string;
-  authorId: string; // Ref: users
+  authorId?: string; // Ref: users - made optional for compatibility
   author: string;   // Denormalized user name
   avatarUrl?: string; // For mock UI
   timestamp: string;  // ISO String
@@ -191,7 +199,7 @@ export interface Blocker {
   id: string;
   title: string;
   description: string;
-  reportedById: string; // Ref: users
+  reportedById?: string; // Ref: users - made optional
   reportedBy: string;   // Denormalized name
   dateReported: string; // ISO String
   isResolved: boolean;
@@ -251,7 +259,7 @@ export interface StoreTask {
   assignedTo?: string; // e.g., "Store Manager", not a direct user ref
   status: "Pending" | "In Progress" | "Completed" | "Blocked";
   priority: TaskPriority;
-  createdById: string; // Ref: users
+  createdById?: string; // Ref: users - made optional
   createdBy: string;   // Denormalized user name
   createdAt: string;   // ISO String
   dueDate?: string;     // ISO String
