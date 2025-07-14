@@ -42,6 +42,7 @@ export default function TaskTrackerPage() {
 
   const [projects, setProjects] = React.useState<StoreProject[]>([]);
   const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
   const [selectedProject, setSelectedProject] = React.useState<string | "All">("All");
@@ -54,24 +55,42 @@ export default function TaskTrackerPage() {
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
   const [showTaskComments, setShowTaskComments] = React.useState(false);
 
-  const refreshTasks = () => {
-    const updatedProjects = getAllProjects();
-    setProjects(updatedProjects);
-    const updatedTasks: KanbanTask[] = [];
-    updatedProjects.forEach((project) => {
-      (project.tasks || []).forEach((task) => {
-        updatedTasks.push({ ...task, projectName: project.name, projectId: project.id });
+  const refreshTasks = async () => {
+    try {
+      const updatedProjects = await getAllProjects();
+      setProjects(updatedProjects);
+      const updatedTasks: KanbanTask[] = [];
+      updatedProjects.forEach((project) => {
+        (project.tasks || []).forEach((task) => {
+          updatedTasks.push({ ...task, projectName: project.name, projectId: project.id });
+        });
       });
-    });
-    setTasksWithProjectInfo(updatedTasks);
+      setTasksWithProjectInfo(updatedTasks);
+    } catch (error) {
+      console.error('Error refreshing tasks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load tasks. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
-    } else if (user) {
-      refreshTasks();
+      return;
     }
+    
+    const loadTasks = async () => {
+      if (user) {
+        setLoading(true);
+        await refreshTasks();
+        setLoading(false);
+      }
+    };
+    
+    loadTasks();
   }, [user, authLoading, router]);
 
   const handleViewTaskDetails = (task: KanbanTask) => {
@@ -134,11 +153,11 @@ export default function TaskTrackerPage() {
     return grouped;
   }, [filteredTasks]);
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">Authenticating...</p>
+        <p className="text-muted-foreground">Loading tasks...</p>
       </div>
     );
   }

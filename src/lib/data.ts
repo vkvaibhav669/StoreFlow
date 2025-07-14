@@ -167,8 +167,19 @@ export let mockApprovalRequests: ApprovalRequest[] = [
 
 // --- Synchronous Data Functions ---
 
-export function getAllProjects(): StoreProject[] {
-  return [...mockProjects];
+export async function getAllProjects(): Promise<StoreProject[]> {
+  try {
+    const response = await fetch('/api/tasks');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const projects = await response.json();
+    return projects;
+  } catch (error) {
+    console.error('Error fetching projects from API:', error);
+    // Fallback to mock data if API call fails
+    return [...mockProjects];
+  }
 }
 
 export function getProjectById(id: string): StoreProject | undefined {

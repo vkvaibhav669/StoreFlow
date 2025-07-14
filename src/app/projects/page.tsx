@@ -19,20 +19,40 @@ export default function AllProjectsPage() {
   const router = useRouter(); // For redirect
   const { toast } = useToast(); // Keep for any future messages
 
-  // For mock data, fetch directly.
-  // No need for loading/error state here as data is immediately available.
-  const [projects, setProjects] = React.useState<StoreProject[]>(getAllProjects());
+  const [projects, setProjects] = React.useState<StoreProject[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin"); // Redirect if not authenticated
+      return;
     }
-    // Optionally refresh data if it can change via other components
-    setProjects(getAllProjects());
-  }, [user, authLoading, router]);
+    
+    // Fetch projects asynchronously
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        const data = await getAllProjects();
+        setProjects(data);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load projects. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchProjects();
+    }
+  }, [user, authLoading, router, toast]);
 
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />

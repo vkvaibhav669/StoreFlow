@@ -81,8 +81,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Use direct data fetching for mock environment
-  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>(getAllProjects());
+  // Use async data fetching for projects
+  const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
   const [isSubmittingProject, setIsSubmittingProject] = React.useState(false); // Keep for dialog submission UX
@@ -110,16 +111,43 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
+      return;
     }
-  }, [user, authLoading, router]);
+    
+    // Fetch projects asynchronously
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        const data = await getAllProjects();
+        setDashboardProjects(data);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load projects. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Refresh projects from mock data if needed (e.g., after adding one)
-  // This could also be done by directly updating the state after createProject
-  const refreshProjects = () => {
-    setDashboardProjects(getAllProjects());
+    if (user) {
+      fetchProjects();
+    }
+  }, [user, authLoading, router, toast]);
+
+  // Refresh projects from API after adding one
+  const refreshProjects = async () => {
+    try {
+      const data = await getAllProjects();
+      setDashboardProjects(data);
+    } catch (error) {
+      console.error('Error refreshing projects:', error);
+    }
   };
 
-  if (authLoading || (!user && !authLoading)) {
+  if (authLoading || loading || (!user && !authLoading)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
