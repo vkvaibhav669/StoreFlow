@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getAllProjects, createProject } from "@/lib/data";
+import { getAllProjects, createProject } from "@/lib/api";
 import type { StoreProject, Department, StoreType } from "@/types";
 import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -196,7 +196,7 @@ export default function DashboardPage() {
     setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
   };
 
-  const handleAddProject = () => { // No async needed for mock
+  const handleAddProject = async () => {
     if (!newProjectName.trim() || !newProjectLocation.trim()) {
       toast({ title: "Validation Error", description: "Project Name and Location are required.", variant: "destructive" });
       return;
@@ -249,9 +249,8 @@ export default function DashboardPage() {
     };
 
     try {
-      const createdProject = createProject(newProjectPayload); // Synchronous call
-      // setDashboardProjects(prevProjects => [createdProject, ...prevProjects]); // Optimistic update
-      refreshProjects(); // Re-fetch all to include new one
+      const createdProject = await createProject(newProjectPayload);
+      await refreshProjects(); // Re-fetch all to include new one
       toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
 
       setNewProjectName("");
