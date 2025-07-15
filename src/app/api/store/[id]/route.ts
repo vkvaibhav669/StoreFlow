@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import clientPromise, { isValidObjectId, toObjectId, transformMongoDocument } from '@/lib/mongodb';
 import { mockStores } from '@/lib/data';
 
 export async function GET(
@@ -8,7 +9,33 @@ export async function GET(
   try {
     const { id } = params;
     
-    // Find the store by ID from mock data
+    // Validate the ID parameter
+    if (!id || id.trim() === '' || id === 'undefined') {
+      return NextResponse.json(
+        { error: 'Invalid store ID' },
+        { status: 400 }
+      );
+    }
+
+    // Try MongoDB first if ObjectId is valid
+    if (isValidObjectId(id)) {
+      try {
+        const client = await clientPromise;
+        const db = client.db("storeflow");
+        const collection = db.collection("stores");
+        
+        const store = await collection.findOne({ _id: toObjectId(id) });
+        
+        if (store) {
+          return NextResponse.json(transformMongoDocument(store));
+        }
+      } catch (mongoError) {
+        console.error('MongoDB error:', mongoError);
+        // Fall back to mock data if MongoDB fails
+      }
+    }
+    
+    // Fall back to mock data for simple string IDs or if MongoDB fails
     const store = mockStores.find(store => store.id === id);
     
     if (!store) {

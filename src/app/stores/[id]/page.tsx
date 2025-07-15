@@ -68,7 +68,18 @@ export default function StoreDetailsPage() {
   // Add better validation for storeId to prevent "undefined" from being passed to API
   const storeId = React.useMemo(() => {
     if (typeof params.id === 'string' && params.id.trim() && params.id !== 'undefined') {
-      return params.id;
+      // Additional validation to ensure it's a valid ID format (either simple string or ObjectId)
+      const id = params.id.trim();
+      // ObjectId format: 24 character hex string
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+      // Simple string format (fallback for mock data): alphanumeric, hyphens, underscores, but not "undefined"
+      // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
+      const looksLikeObjectId = id.length === 24 && /^[0-9a-fA-F]{20,}/.test(id);
+      const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(id) && id !== 'undefined';
+      
+      if (isObjectId || isSimpleString) {
+        return id;
+      }
     }
     return null;
   }, [params.id]);

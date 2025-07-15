@@ -135,7 +135,18 @@ export default function ProjectDetailsPage() {
   // Add better validation for projectId to prevent "undefined" from being passed to API
   const projectId = React.useMemo(() => {
     if (typeof paramsHook.id === 'string' && paramsHook.id.trim() && paramsHook.id !== 'undefined') {
-      return paramsHook.id;
+      // Additional validation to ensure it's a valid ID format (either simple string or ObjectId)
+      const id = paramsHook.id.trim();
+      // ObjectId format: 24 character hex string
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+      // Simple string format (fallback for mock data): alphanumeric, hyphens, underscores, but not "undefined"
+      // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
+      const looksLikeObjectId = id.length === 24 && /^[0-9a-fA-F]{20,}/.test(id);
+      const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(id) && id !== 'undefined';
+      
+      if (isObjectId || isSimpleString) {
+        return id;
+      }
     }
     return null;
   }, [paramsHook.id]);

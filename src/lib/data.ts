@@ -143,14 +143,26 @@ export async function getAllProjects(): Promise<StoreProject[]> {
 }
 
 export async function getProjectById(id: string): Promise<StoreProject | undefined> {
-  // Validate id to prevent sending "undefined" to the API
+  // Validate id to prevent sending invalid IDs to the API
   if (!id || id === 'undefined' || id.trim() === '') {
     console.warn('getProjectById called with invalid id:', id);
     return undefined;
   }
   
+  // Additional validation for ID format
+  const trimmedId = id.trim();
+  const isObjectId = /^[0-9a-fA-F]{24}$/.test(trimmedId);
+  // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
+  const looksLikeObjectId = trimmedId.length === 24 && /^[0-9a-fA-F]{20,}/.test(trimmedId);
+  const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(trimmedId) && trimmedId !== 'undefined';
+  
+  if (!isObjectId && !isSimpleString) {
+    console.warn('getProjectById called with invalid ID format:', id);
+    return undefined;
+  }
+  
   try {
-    const response = await fetch(`/api/projects/${id}`);
+    const response = await fetch(`/api/projects/${trimmedId}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -336,14 +348,26 @@ export async function getAllStores(): Promise<StoreItem[]> {
 }
 
 export async function getStoreById(id: string): Promise<StoreItem | undefined> {
-  // Validate id to prevent sending "undefined" to the API
+  // Validate id to prevent sending invalid IDs to the API
   if (!id || id === 'undefined' || id.trim() === '') {
     console.warn('getStoreById called with invalid id:', id);
     return undefined;
   }
   
+  // Additional validation for ID format
+  const trimmedId = id.trim();
+  const isObjectId = /^[0-9a-fA-F]{24}$/.test(trimmedId);
+  // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
+  const looksLikeObjectId = trimmedId.length === 24 && /^[0-9a-fA-F]{20,}/.test(trimmedId);
+  const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(trimmedId) && trimmedId !== 'undefined';
+  
+  if (!isObjectId && !isSimpleString) {
+    console.warn('getStoreById called with invalid ID format:', id);
+    return undefined;
+  }
+  
   try {
-    const response = await fetch(`/api/store/${id}`);
+    const response = await fetch(`/api/store/${trimmedId}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
