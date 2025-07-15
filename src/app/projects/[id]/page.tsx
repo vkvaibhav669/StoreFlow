@@ -133,7 +133,13 @@ const projectStatuses: StoreProject['status'][] = [
 
 export default function ProjectDetailsPage() {
   const paramsHook = useParamsNext();
-  const projectId = typeof paramsHook.id === 'string' ? paramsHook.id : undefined;
+  // Add better validation for projectId to prevent "undefined" from being passed to API
+  const projectId = React.useMemo(() => {
+    if (typeof paramsHook.id === 'string' && paramsHook.id.trim() && paramsHook.id !== 'undefined') {
+      return paramsHook.id;
+    }
+    return null;
+  }, [paramsHook.id]);
   
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -222,23 +228,33 @@ export default function ProjectDetailsPage() {
       return;
     }
 
-    const currentProject = getProjectById(projectId);
-    if (currentProject) {
-        setProjectData(currentProject);
-        setProjectComments(currentProject.comments || []);
-        setEditingProjectForm({
-            name: currentProject.name, location: currentProject.location, status: currentProject.status,
-            startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
-            projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
-            franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
-        });
-        setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
-        setEditingTimelineForm(currentProject.projectTimeline || {});
-        setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
-        setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
-    } else {
-        notFound(); // Project with this ID not found in mock data
-    }
+    // Fetch project data asynchronously
+    const fetchProject = async () => {
+      try {
+        const currentProject = await getProjectById(projectId);
+        if (currentProject) {
+            setProjectData(currentProject);
+            setProjectComments(currentProject.comments || []);
+            setEditingProjectForm({
+                name: currentProject.name, location: currentProject.location, status: currentProject.status,
+                startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
+                projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
+                franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
+            });
+            setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
+            setEditingTimelineForm(currentProject.projectTimeline || {});
+            setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
+            setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
+        } else {
+            notFound(); // Project with this ID not found
+        }
+      } catch (error) {
+        console.error('Error fetching project:', error);
+        notFound(); // Handle fetch errors by showing not found
+      }
+    };
+
+    fetchProject();
   }, [projectId, user, authLoading, router]);
 
 
@@ -319,7 +335,7 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  const handleAddNewTask = () => {
+  const handleAddNewTask = async () => {
     if (!newTaskName || !newTaskDepartment || !newTaskAssignedTo) {
       toast({ title: "Error", description: "Task Name, Department, and Assignee are required.", variant: "destructive" });
       return;
@@ -344,7 +360,9 @@ export default function ProjectDetailsPage() {
 
     try {
       const addedTask = addTaskToProject(projectData.id, newTaskPayload);
-      setProjectData(getProjectById(projectData.id) || null);
+      // Refresh project data asynchronously
+      const refreshedProject = await getProjectById(projectData.id);
+      setProjectData(refreshedProject || null);
       toast({ title: "Task Added", description: `Task "${addedTask.name}" has been added.` });
       setNewTaskName(""); setNewTaskDepartment(""); setNewTaskDescription("");
       setNewTaskDueDate(""); setNewTaskAssignedTo(""); setNewTaskPriority("Medium");
@@ -365,7 +383,7 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const handleAddNewDocument = () => {
+  const handleAddNewDocument = async () => {
     if (!newDocumentFile || !newDocumentName || !newDocumentType) {
       toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
       return;
@@ -383,7 +401,9 @@ export default function ProjectDetailsPage() {
 
     try {
       const addedDocument = addDocumentToProject(projectData.id, formData);
-      setProjectData(getProjectById(projectData.id) || null);
+      // Refresh project data asynchronously
+      const refreshedProject = await getProjectById(projectData.id);
+      setProjectData(refreshedProject || null);
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
       setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
       setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
@@ -396,7 +416,7 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (newCommentText.trim() && projectData && user) {
       setIsSubmittingComment(true);
       const commentPayload: Partial<Comment> = {
@@ -408,7 +428,7 @@ export default function ProjectDetailsPage() {
       };
       try {
         addCommentToProject(projectData.id, commentPayload);
-        const updatedProject = getProjectById(projectData.id);
+        const updatedProject = await getProjectById(projectData.id);
         setProjectData(updatedProject || null);
         setProjectComments(updatedProject?.comments || []);
         toast({ title: "Comment Posted", description: "Your comment has been added." });
@@ -422,7 +442,7 @@ export default function ProjectDetailsPage() {
     }
   };
   
-  const handleReplyToComment = (commentId: string, replyText: string) => {
+  const handleReplyToComment = async (commentId: string, replyText: string) => {
       if (!projectData || !user || !replyText.trim()) return;
       setIsSubmittingComment(true);
 
@@ -436,7 +456,7 @@ export default function ProjectDetailsPage() {
 
       try {
           addReplyToProjectComment(projectData.id, commentId, replyPayload);
-          const updatedProject = getProjectById(projectData.id);
+          const updatedProject = await getProjectById(projectData.id);
           setProjectData(updatedProject || null);
           setProjectComments(updatedProject?.comments || []);
           toast({ title: "Reply Posted", description: "Your reply has been added." });
@@ -458,7 +478,7 @@ export default function ProjectDetailsPage() {
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleUpdateTaskDetails = () => {
+  const handleUpdateTaskDetails = async () => {
     if (!selectedTask || !projectData || !user) return;
     setIsUpdatingTask(true);
     const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
@@ -477,7 +497,7 @@ export default function ProjectDetailsPage() {
 
     try {
       updateTaskInProject(projectData.id, selectedTask.id, taskUpdatePayload);
-      const updatedProject = getProjectById(projectData.id);
+      const updatedProject = await getProjectById(projectData.id);
       setProjectData(updatedProject || null);
       setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
@@ -490,7 +510,7 @@ export default function ProjectDetailsPage() {
     }
   };
   
-  const handlePostNewTaskComment = () => {
+  const handlePostNewTaskComment = async () => {
     if (!selectedTask || !newTaskCommentTextForTask.trim() || !projectData || !user) return;
     setIsSubmittingTaskComment(true);
     const commentPayload: Partial<Comment> = {
@@ -501,7 +521,7 @@ export default function ProjectDetailsPage() {
     };
 
     try {
-      const projectToUpdate = getProjectById(projectData.id);
+      const projectToUpdate = await getProjectById(projectData.id);
       if (!projectToUpdate) throw new Error("Project not found");
       const taskToUpdate = projectToUpdate.tasks.find(t => t.id === selectedTask.id);
       if (!taskToUpdate) throw new Error("Task not found");
@@ -510,7 +530,7 @@ export default function ProjectDetailsPage() {
       taskToUpdate.comments = [newComment, ...(taskToUpdate.comments || [])];
       
       updateProject(projectData.id, projectToUpdate);
-      const updatedProject = getProjectById(projectData.id);
+      const updatedProject = await getProjectById(projectData.id);
       setProjectData(updatedProject || null);
       setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
 
@@ -524,7 +544,7 @@ export default function ProjectDetailsPage() {
     }
   };
 
-const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: string) => {
+const handleReplyToTaskComment = async (taskId: string, commentId: string, replyText: string) => {
     if (!projectData || !user || !replyText.trim()) return;
     setIsSubmittingTaskComment(true);
 
@@ -536,7 +556,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     };
 
     try {
-        const projectToUpdate = getProjectById(projectData.id);
+        const projectToUpdate = await getProjectById(projectData.id);
         if (!projectToUpdate) throw new Error("Project not found");
         const taskToUpdate = projectToUpdate.tasks.find(t => t.id === taskId);
         if (!taskToUpdate || !taskToUpdate.comments) throw new Error("Task or task comments not found");
@@ -557,7 +577,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
         if (!addReplyFn(taskToUpdate.comments)) throw new Error("Parent comment for reply not found");
 
         updateProject(projectData.id, projectToUpdate);
-        const updatedProject = getProjectById(projectData.id);
+        const updatedProject = await getProjectById(projectData.id);
         setProjectData(updatedProject || null);
         if (selectedTask && selectedTask.id === taskId) {
             setSelectedTask(updatedProject?.tasks.find(t => t.id === taskId) || null);
@@ -595,7 +615,7 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     setEditingTimelineForm(prev => ({...prev, [field]: value}));
   };
 
-  const handleSaveProjectChanges = () => {
+  const handleSaveProjectChanges = async () => {
     if (!projectData || !editingProjectForm.status || !canEditProject) {
       toast({ title: "Permission Denied or Error", description: "You do not have permission to edit this project, or there was an error.", variant: "destructive"});
       return;
@@ -669,9 +689,9 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     toast({ title: "Blocker Ready", description: `"${newBlocker.title}" added to edit form. Save project to persist.` });
   };
 
-  const handleToggleTimelineBlockerResolution = (blockerId: string) => {
+  const handleToggleTimelineBlockerResolution = async (blockerId: string) => {
     if (!projectData || !canEditProject) return;
-    const currentProject = getProjectById(projectData.id);
+    const currentProject = await getProjectById(projectData.id);
     if (!currentProject || !currentProject.blockers) return;
 
     const blockerIndex = currentProject.blockers.findIndex(b => b.id === blockerId);
@@ -686,29 +706,31 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     
     try {
         updateProject(currentProject.id, { blockers: currentProject.blockers });
-        setProjectData(getProjectById(currentProject.id) || null);
+        const refreshedProject = await getProjectById(currentProject.id);
+        setProjectData(refreshedProject || null);
         toast({ title: "Blocker Status Updated", description: `Blocker resolution status has been changed.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to update blocker status.", variant: "destructive" });
     }
   };
 
-  const handleRemoveTimelineBlocker = (blockerId: string) => {
+  const handleRemoveTimelineBlocker = async (blockerId: string) => {
     if (!projectData || !canEditProject) return;
-    const currentProject = getProjectById(projectData.id);
+    const currentProject = await getProjectById(projectData.id);
     if (!currentProject || !currentProject.blockers) return;
 
     const updatedBlockers = (currentProject.blockers || []).filter(b => b.id !== blockerId);
     try {
         updateProject(currentProject.id, { blockers: updatedBlockers });
-        setProjectData(getProjectById(currentProject.id) || null);
+        const refreshedProject = await getProjectById(currentProject.id);
+        setProjectData(refreshedProject || null);
         toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to remove blocker.", variant: "destructive" });
     }
   };
 
-  const handleAddProjectMember = () => {
+  const handleAddProjectMember = async () => {
     if (!selectedNewMemberEmail || !projectData || !canEditProject || !user) {
       toast({ title: "Error or Permission Denied", description: "Please select a person to add, or you may not have permission.", variant: "destructive" });
       return;
@@ -725,7 +747,8 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     };
     try {
       addMemberToProject(projectData.id, memberPayload);
-      setProjectData(getProjectById(projectData.id) || null);
+      const refreshedProject = await getProjectById(projectData.id);
+      setProjectData(refreshedProject || null);
       toast({ title: "Member Added", description: `${memberPayload.name} has been added to the project.` });
       setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false);
       setIsAddMemberDialogOpen(false);
@@ -737,12 +760,13 @@ const handleReplyToTaskComment = (taskId: string, commentId: string, replyText: 
     }
   };
 
-  const confirmRemoveMember = () => {
+  const confirmRemoveMember = async () => {
     if (!memberToRemoveInfo || !projectData || !user?.role) { setIsConfirmRemoveMemberDialogOpen(false); return; }
     setIsRemovingMember(true);
     try {
-      removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
-      setProjectData(getProjectById(projectData.id) || null);
+      await removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
+      const refreshedProject = await getProjectById(projectData.id);
+      setProjectData(refreshedProject || null);
       toast({ title: "Member Removed", description: `${memberToRemoveInfo.name} has been removed from the project.` });
       setMemberToRemoveInfo(null); setIsConfirmRemoveMemberDialogOpen(false); 
     } catch (error) {

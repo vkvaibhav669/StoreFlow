@@ -41,6 +41,12 @@ export async function getAllProjects(): Promise<StoreProject[]> {
 }
 
 export async function getProjectById(id: string): Promise<StoreProject | undefined> {
+  // Validate id to prevent sending "undefined" to the API
+  if (!id || id === 'undefined' || id.trim() === '') {
+    console.warn('getProjectById called with invalid id:', id);
+    return undefined;
+  }
+  
   try {
     const response = await fetch(`http://localhost:8000/api/projects/${id}`);
     if (!response.ok) {
@@ -228,6 +234,12 @@ export async function getAllStores(): Promise<StoreItem[]> {
 }
 
 export async function getStoreById(id: string): Promise<StoreItem | undefined> {
+  // Validate id to prevent sending "undefined" to the API
+  if (!id || id === 'undefined' || id.trim() === '') {
+    console.warn('getStoreById called with invalid id:', id);
+    return undefined;
+  }
+  
   try {
     const response = await fetch(`http://localhost:8000/api/store/${id}`);
     if (!response.ok) {
