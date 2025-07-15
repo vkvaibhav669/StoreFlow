@@ -3,7 +3,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { getAllProjects, mockHeadOfficeContacts, addTaskToProject, getTasksForUser } from "@/lib/data"; 
+import { mockHeadOfficeContacts, addTaskToProject } from "@/lib/data"; 
+import { getAllProjects, getTasksForUser } from "@/lib/api"; 
 import type { Task, StoreProject, Department, TaskPriority, ProjectMember as HeadOfficeContactType, UserTask } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,7 +71,8 @@ export default function MyTasksPage() {
       if (user) {
         setLoading(true);
         try {
-          setUserTasks(getTasksForUser(user.email) as UserTask[]);
+          const tasks = await getTasksForUser(user.email || user.id || user.name || "");
+          setUserTasks(tasks as UserTask[]);
           const projects = await getAllProjects();
           setProjectsForAssignment(projects);
           setHeadOfficeContacts(mockHeadOfficeContacts);

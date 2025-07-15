@@ -10,7 +10,7 @@ import { Store, Filter, ArrowUpRight, PlusCircle, CalendarIcon } from "lucide-re
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Package2 } from "lucide-react";
-import { getAllStores, createStore } from "@/lib/data";
+import { getAllStores, createStore } from "@/lib/api";
 import type { StoreItem, StoreType } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -84,7 +84,7 @@ export default function MyStoresPage() {
     return storesToShow;
   }, [allStores, filterType]);
 
-  const handleAddNewStore = () => {
+  const handleAddNewStore = async () => {
     if (!newStoreName.trim() || !newStoreLocation.trim() || !newStoreOpeningDate) {
       toast({ title: "Validation Error", description: "Store Name, Location, and Opening Date are required.", variant: "destructive" });
       return;
@@ -106,8 +106,8 @@ export default function MyStoresPage() {
     };
 
     try {
-        const createdStore = createStore(newStorePayload);
-        refreshStores();
+        const createdStore = await createStore(newStorePayload);
+        await refreshStores();
         toast({ title: "Store Created", description: `Store "${createdStore.name}" has been added.`});
         
         setIsAddStoreDialogOpen(false);

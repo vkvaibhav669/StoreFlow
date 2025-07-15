@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAllProjects } from "@/lib/data";
+import { getAllProjects } from "@/lib/api";
 import type { StoreProject } from "@/types";
 import { ArrowUpRight, Package2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
