@@ -10,8 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  getProjectById,
-  updateProject,
   addTaskToProject,
   updateTaskInProject,
   addDocumentToProject,
@@ -21,6 +19,7 @@ import {
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
+import { getProjectById, updateProject } from "@/lib/api";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -136,7 +135,18 @@ export default function ProjectDetailsPage() {
   // Add better validation for projectId to prevent "undefined" from being passed to API
   const projectId = React.useMemo(() => {
     if (typeof paramsHook.id === 'string' && paramsHook.id.trim() && paramsHook.id !== 'undefined') {
-      return paramsHook.id;
+      // Additional validation to ensure it's a valid ID format (either simple string or ObjectId)
+      const id = paramsHook.id.trim();
+      // ObjectId format: 24 character hex string
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+      // Simple string format (fallback for mock data): alphanumeric, hyphens, underscores, but not "undefined"
+      // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
+      const looksLikeObjectId = id.length === 24 && /^[0-9a-fA-F]{20,}/.test(id);
+      const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(id) && id !== 'undefined';
+      
+      if (isObjectId || isSimpleString) {
+        return id;
+      }
     }
     return null;
   }, [paramsHook.id]);

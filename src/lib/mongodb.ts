@@ -1,10 +1,5 @@
 
-// This file is a placeholder for your MongoDB connection logic.
-// You would typically use this in your Next.js API routes (server-side).
-// Example using the official 'mongodb' driver:
-
-/*
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 
 const uri = process.env.MONGODB_URI; // Your MongoDB connection string from .env.local or environment variables
 const options = {
@@ -43,23 +38,34 @@ if (process.env.NODE_ENV === 'development') {
 // separate module, the client can be shared across functions.
 export default clientPromise;
 
-// How to use in an API route:
-// import clientPromise from '@/lib/mongodb';
-//
-// export async function GET(request: Request) {
-//   try {
-//     const client = await clientPromise;
-//     const db = client.db("yourDatabaseName"); // Replace with your DB name
-//     const projects = await db.collection("projects").find({}).toArray();
-//     return Response.json(projects);
-//   } catch (e) {
-//     console.error(e);
-//     return Response.json({ error: "Failed to fetch projects" }, { status: 500 });
-//   }
-// }
-*/
+// Utility functions for handling MongoDB ObjectIds
+export function isValidObjectId(id: string): boolean {
+  return ObjectId.isValid(id);
+}
 
-// Placeholder export to make the file valid typescript
-// Remove this when you implement the actual connection logic above
-export default {};
+export function toObjectId(id: string): ObjectId {
+  if (!isValidObjectId(id)) {
+    throw new Error(`Invalid ObjectId: ${id}`);
+  }
+  return new ObjectId(id);
+}
+
+// Transform MongoDB document to match frontend expectations
+export function transformMongoDocument(doc: any): any {
+  if (!doc) return null;
+  
+  // Convert _id to id and remove _id
+  const transformed = {
+    ...doc,
+    id: doc._id.toString(),
+  };
+  delete transformed._id;
+  
+  return transformed;
+}
+
+// Transform array of MongoDB documents
+export function transformMongoDocuments(docs: any[]): any[] {
+  return docs.map(transformMongoDocument);
+}
     
