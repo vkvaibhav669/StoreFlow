@@ -16,9 +16,111 @@ export const mockHeadOfficeContacts: ProjectMember[] = [];
 const commonProjectMembers: ProjectMember[] = [];
 
 
-export let mockProjects: StoreProject[] = [];
+export let mockProjects: StoreProject[] = [
+  {
+    id: "project-1",
+    name: "Mumbai Store Launch",
+    location: "Mumbai, Maharashtra",
+    status: "Planning",
+    startDate: "2024-01-15",
+    projectedLaunchDate: "2024-06-15",
+    currentProgress: 25,
+    isUpcoming: true,
+    franchiseType: "COCO",
+    propertyDetails: {
+      address: "123 Main Street, Mumbai",
+      sqft: 2500,
+      status: "Identified",
+      notes: "Prime location in commercial area"
+    },
+    projectTimeline: {
+      totalDays: 150
+    },
+    tasks: [
+      {
+        id: "task-1",
+        name: "Property Finalization",
+        department: "Property",
+        status: "In Progress",
+        priority: "High",
+        assignedTo: "property.manager@company.com",
+        assignedToName: "Property Manager",
+        dueDate: "2024-02-15",
+        description: "Finalize property lease agreement"
+      }
+    ],
+    members: [],
+    documents: [],
+    comments: [],
+    departments: {}
+  },
+  {
+    id: "project-2", 
+    name: "Delhi Store Launch",
+    location: "Delhi, India",
+    status: "Execution",
+    startDate: "2023-12-01",
+    projectedLaunchDate: "2024-05-01",
+    currentProgress: 60,
+    isUpcoming: false,
+    franchiseType: "FOFO",
+    propertyDetails: {
+      address: "456 Market Road, Delhi",
+      sqft: 3000,
+      status: "Finalized",
+      notes: "High traffic area"
+    },
+    projectTimeline: {
+      totalDays: 120
+    },
+    tasks: [
+      {
+        id: "task-2",
+        name: "Interior Design",
+        department: "Project",
+        status: "Completed",
+        priority: "Medium",
+        assignedTo: "design.team@company.com",
+        assignedToName: "Design Team",
+        dueDate: "2024-03-01",
+        description: "Complete interior design and fit-out"
+      }
+    ],
+    members: [],
+    documents: [],
+    comments: [],
+    departments: {}
+  }
+];
 
-export let mockStores: StoreItem[] = [];
+export let mockStores: StoreItem[] = [
+  {
+    id: "store-1",
+    name: "Mumbai Central Store",
+    location: "Mumbai, Maharashtra",
+    storeType: "COCO",
+    status: "Active",
+    launchDate: "2023-06-15",
+    manager: "John Doe",
+    contact: "+91-9876543210",
+    address: "123 Main Street, Mumbai, Maharashtra",
+    improvementPoints: [],
+    tasks: []
+  },
+  {
+    id: "store-2",
+    name: "Delhi South Store", 
+    location: "Delhi, India",
+    storeType: "FOFO",
+    status: "Active",
+    launchDate: "2023-09-20",
+    manager: "Jane Smith",
+    contact: "+91-9876543211",
+    address: "456 Market Road, Delhi, India",
+    improvementPoints: [],
+    tasks: []
+  }
+];
 
 export let mockApprovalRequests: ApprovalRequest[] = [];
 
@@ -27,7 +129,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [];
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('http://localhost:8000/api/projects');
+    const response = await fetch('/api/projects');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -48,7 +150,7 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
   }
   
   try {
-    const response = await fetch(`http://localhost:8000/api/projects/${id}`);
+    const response = await fetch(`/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -220,7 +322,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('http://localhost:8000/api/store');
+    const response = await fetch('/api/store');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -241,7 +343,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`http://localhost:8000/api/store/${id}`);
+    const response = await fetch(`/api/store/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
