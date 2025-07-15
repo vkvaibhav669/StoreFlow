@@ -65,7 +65,13 @@ export default function StoreDetailsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const storeId = typeof params.id === 'string' ? params.id : undefined;
+  // Add better validation for storeId to prevent "undefined" from being passed to API
+  const storeId = React.useMemo(() => {
+    if (typeof params.id === 'string' && params.id.trim() && params.id !== 'undefined') {
+      return params.id;
+    }
+    return null;
+  }, [params.id]);
   
   const [store, setStore] = React.useState<StoreItem | null>(null);
   const [storeLoading, setStoreLoading] = React.useState(true);
@@ -117,6 +123,12 @@ export default function StoreDetailsPage() {
   React.useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/auth/signin");
+      return;
+    }
+    
+    if (!storeId) {
+      setStoreNotFound(true);
+      setStoreLoading(false);
       return;
     }
     
