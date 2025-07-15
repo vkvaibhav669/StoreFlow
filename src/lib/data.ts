@@ -129,7 +129,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [];
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('/api/projects');
+    const response = await fetch('http://localhost:8000/api/projects');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -150,7 +150,7 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
   }
   
   try {
-    const response = await fetch(`/api/projects/${id}`);
+    const response = await fetch(`http://localhost:8000/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -322,7 +322,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('/api/store');
+    const response = await fetch('http://localhost:8000/api/stores');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -343,7 +343,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`/api/store/${id}`);
+    const response = await fetch(`http://localhost:8000/api/stores/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
