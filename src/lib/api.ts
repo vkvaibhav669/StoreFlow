@@ -1,6 +1,6 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = 'http://localhost:8080/api';
 
 // Error handling utility
 class ApiError extends Error {
