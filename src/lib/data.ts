@@ -129,7 +129,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [];
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('/api/projects');
+    const response = await fetch('http://localhost:8000/api/projects');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -149,20 +149,8 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
     return undefined;
   }
   
-  // Additional validation for ID format
-  const trimmedId = id.trim();
-  const isObjectId = /^[0-9a-fA-F]{24}$/.test(trimmedId);
-  // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
-  const looksLikeObjectId = trimmedId.length === 24 && /^[0-9a-fA-F]{20,}/.test(trimmedId);
-  const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(trimmedId) && trimmedId !== 'undefined';
-  
-  if (!isObjectId && !isSimpleString) {
-    console.warn('getProjectById called with invalid ID format:', id);
-    return undefined;
-  }
-  
   try {
-    const response = await fetch(`/api/projects/${trimmedId}`);
+    const response = await fetch(`http://localhost:8000/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -334,7 +322,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('/api/store');
+    const response = await fetch('http://localhost:8000/api/stores');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -354,20 +342,8 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
     return undefined;
   }
   
-  // Additional validation for ID format
-  const trimmedId = id.trim();
-  const isObjectId = /^[0-9a-fA-F]{24}$/.test(trimmedId);
-  // If it's exactly 24 chars and mostly hex, treat as invalid ObjectId, not simple string
-  const looksLikeObjectId = trimmedId.length === 24 && /^[0-9a-fA-F]{20,}/.test(trimmedId);
-  const isSimpleString = !looksLikeObjectId && /^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$/.test(trimmedId) && trimmedId !== 'undefined';
-  
-  if (!isObjectId && !isSimpleString) {
-    console.warn('getStoreById called with invalid ID format:', id);
-    return undefined;
-  }
-  
   try {
-    const response = await fetch(`/api/store/${trimmedId}`);
+    const response = await fetch(`http://localhost:8000/api/stores/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
