@@ -34,7 +34,9 @@ export let mockProjects: StoreProject[] = [
       notes: "Prime location in commercial area"
     },
     projectTimeline: {
-      totalDays: 150
+      totalDays: 150,
+      currentDay: 38,
+      kickoffDate: "2024-01-15"
     },
     tasks: [
       {
@@ -46,12 +48,16 @@ export let mockProjects: StoreProject[] = [
         assignedTo: "property.manager@company.com",
         assignedToName: "Property Manager",
         dueDate: "2024-02-15",
-        description: "Finalize property lease agreement"
+        description: "Finalize property lease agreement",
+        comments: []
       }
     ],
     members: [],
     documents: [],
     comments: [],
+    milestones: [],
+    blockers: [],
+    discussion: [],
     departments: {}
   },
   {
@@ -71,7 +77,9 @@ export let mockProjects: StoreProject[] = [
       notes: "High traffic area"
     },
     projectTimeline: {
-      totalDays: 120
+      totalDays: 120,
+      currentDay: 72,
+      kickoffDate: "2023-12-01"
     },
     tasks: [
       {
@@ -83,12 +91,16 @@ export let mockProjects: StoreProject[] = [
         assignedTo: "design.team@company.com",
         assignedToName: "Design Team",
         dueDate: "2024-03-01",
-        description: "Complete interior design and fit-out"
+        description: "Complete interior design and fit-out",
+        comments: []
       }
     ],
     members: [],
     documents: [],
     comments: [],
+    milestones: [],
+    blockers: [],
+    discussion: [],
     departments: {}
   }
 ];
