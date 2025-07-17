@@ -1,11 +1,51 @@
 import { NextResponse } from 'next/server';
-import clientPromise, {
-  isValidObjectId,
-  toObjectId,
-  transformMongoDocument
-} from '@/lib/mongodb';
-import { mockProjects } from '@/lib/data';
-import type { Task } from '@/types';
+
+// Mock projects data directly in the file for testing
+const mockProjects = [
+  {
+    id: "project-1",
+    name: "Mumbai Store Launch",
+    location: "Mumbai, Maharashtra",
+    status: "Planning",
+    startDate: "2024-01-15",
+    projectedLaunchDate: "2024-06-15",
+    currentProgress: 25,
+    tasks: [
+      {
+        id: "task-1",
+        name: "Property Finalization",
+        department: "Property",
+        status: "In Progress",
+        priority: "High",
+        assignedTo: "property.manager@company.com",
+        assignedToName: "Property Manager",
+        dueDate: "2024-02-15",
+        description: "Finalize property lease agreement",
+        comments: [],
+        createdAt: "2024-01-15T00:00:00Z",
+      }
+    ],
+    departments: {
+      property: {
+        tasks: [
+          {
+            id: "task-1",
+            name: "Property Finalization",
+            department: "Property",
+            status: "In Progress",
+            priority: "High",
+            assignedTo: "property.manager@company.com",
+            assignedToName: "Property Manager",
+            dueDate: "2024-02-15",
+            description: "Finalize property lease agreement",
+            comments: [],
+            createdAt: "2024-01-15T00:00:00Z",
+          }
+        ]
+      }
+    }
+  }
+];
 
 export async function GET(
   request: Request,
@@ -22,42 +62,11 @@ export async function GET(
       );
     }
 
-    // Try to get tasks from MongoDB first
-    try {
-      const client = await clientPromise;
-      const db = client.db("storeflow");
-      const collection = db.collection("projects");
-      
-      // Check if projectId is a valid ObjectId
-      if (isValidObjectId(projectId)) {
-        // Fetch the specific project by ObjectId
-        const project = await collection.findOne({ _id: toObjectId(projectId) });
-        
-        if (project) {
-          const transformedProject = transformMongoDocument(project);
-          return NextResponse.json(transformedProject.tasks || []);
-        }
-      } else {
-        // For backward compatibility, also try to find by string ID
-        const project = await collection.findOne({ id: projectId });
-        
-        if (project) {
-          const transformedProject = transformMongoDocument(project);
-          return NextResponse.json(transformedProject.tasks || []);
-        }
-      }
-    } catch (mongoError) {
-      console.error('MongoDB error:', mongoError);
-      // Fall back to mock data if MongoDB fails
-    }
-    
-    // Fallback to mock data
     const mockProject = mockProjects.find(p => p.id === projectId);
     if (mockProject) {
       return NextResponse.json(mockProject.tasks || []);
     }
     
-    // Project not found
     return NextResponse.json(
       { error: 'Project not found' },
       { status: 404 }
@@ -98,7 +107,7 @@ export async function POST(
     }
 
     // Create the new task with generated ID
-    const newTask: Task = {
+    const newTask = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: taskData.name,
       department: taskData.department,
@@ -112,135 +121,35 @@ export async function POST(
       createdAt: new Date().toISOString(),
     };
 
-    // Try to add task to MongoDB first
-    try {
-      const client = await clientPromise;
-      const db = client.db("storeflow");
-      const collection = db.collection("projects");
+    // Use mock data
+    const mockProject = mockProjects.find(p => p.id === projectId);
+    if (mockProject) {
+      mockProject.tasks.push(newTask);
       
-      let project;
-      let updateResult;
-      
-      // Check if projectId is a valid ObjectId
-      if (isValidObjectId(projectId)) {
-        // First, fetch the project to get current state
-        project = await collection.findOne({ _id: toObjectId(projectId) });
-        if (project) {
-          // Update the project with the new task
-          updateResult = await collection.updateOne(
-            { _id: toObjectId(projectId) },
-            { $push: { tasks: newTask } }
-          );
-        }
-      } else {
-        // For backward compatibility, also try to find by string ID
-        project = await collection.findOne({ id: projectId });
-        if (project) {
-          updateResult = await collection.updateOne(
-            { id: projectId },
-            { $push: { tasks: newTask } }
-          );
-        }
-      }
-
-      if (updateResult && updateResult.matchedCount > 0) {
-        // Also update the department tasks if departments exist
-        if (project && project.departments) {
-          const departmentKey = taskData.department.toLowerCase();
-          const departmentUpdate: any = {};
-          
+      // Also add to department tasks if departments exist
+      if (mockProject.departments) {
+        const departmentKey = taskData.department.toLowerCase();
+        if (mockProject.departments[departmentKey]) {
+          const deptDetails = mockProject.departments[departmentKey];
+          if (deptDetails) {
+            deptDetails.tasks = deptDetails.tasks || [];
+            deptDetails.tasks.push(newTask);
+          }
+        } else {
           // Initialize department if it doesn't exist
-          if (!project.departments[departmentKey]) {
-            departmentUpdate[`departments.${departmentKey}`] = {
-              tasks: [newTask]
-            };
-          } else {
-            // Add task to existing department
-            departmentUpdate[`departments.${departmentKey}.tasks`] = [
-              ...(project.departments[departmentKey].tasks || []),
-              newTask
-            ];
-          }
-          
-          // Update the department tasks
-          if (isValidObjectId(projectId)) {
-            await collection.updateOne(
-              { _id: toObjectId(projectId) },
-              { $set: departmentUpdate }
-            );
-          } else {
-            await collection.updateOne(
-              { id: projectId },
-              { $set: departmentUpdate }
-            );
-          }
+          mockProject.departments[departmentKey] = {
+            tasks: [newTask]
+          };
         }
-        
-        return NextResponse.json(newTask, { status: 201 });
-      } else {
-        // Project not found in MongoDB, try mock data
-        const mockProject = mockProjects.find(p => p.id === projectId);
-        if (mockProject) {
-          mockProject.tasks.push(newTask);
-          
-          // Also add to department tasks if departments exist
-          if (mockProject.departments) {
-            const departmentKey = taskData.department.toLowerCase() as keyof typeof mockProject.departments;
-            if (mockProject.departments[departmentKey]) {
-              const deptDetails = mockProject.departments[departmentKey];
-              if (deptDetails) {
-                deptDetails.tasks = deptDetails.tasks || [];
-                deptDetails.tasks.push(newTask);
-              }
-            } else {
-              // Initialize department if it doesn't exist
-              (mockProject.departments as any)[departmentKey] = {
-                tasks: [newTask]
-              };
-            }
-          }
-          
-          return NextResponse.json(newTask, { status: 201 });
-        }
-        
-        return NextResponse.json(
-          { error: 'Project not found' },
-          { status: 404 }
-        );
-      }
-    } catch (mongoError) {
-      console.error('MongoDB error:', mongoError);
-      
-      // Fall back to mock data if MongoDB fails
-      const mockProject = mockProjects.find(p => p.id === projectId);
-      if (mockProject) {
-        mockProject.tasks.push(newTask);
-        
-        // Also add to department tasks if departments exist
-        if (mockProject.departments) {
-          const departmentKey = taskData.department.toLowerCase() as keyof typeof mockProject.departments;
-          if (mockProject.departments[departmentKey]) {
-            const deptDetails = mockProject.departments[departmentKey];
-            if (deptDetails) {
-              deptDetails.tasks = deptDetails.tasks || [];
-              deptDetails.tasks.push(newTask);
-            }
-          } else {
-            // Initialize department if it doesn't exist
-            (mockProject.departments as any)[departmentKey] = {
-              tasks: [newTask]
-            };
-          }
-        }
-        
-        return NextResponse.json(newTask, { status: 201 });
       }
       
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return NextResponse.json(newTask, { status: 201 });
     }
+    
+    return NextResponse.json(
+      { error: 'Project not found' },
+      { status: 404 }
+    );
   } catch (error) {
     console.error('Error adding task to project:', error);
     return NextResponse.json(
