@@ -1,6 +1,6 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 // Error handling utility
 class ApiError extends Error {
@@ -92,6 +92,10 @@ export async function getTasksForUser(userId: string): Promise<Task[]> {
 
 export async function getAllTasks(): Promise<Task[]> {
   return apiFetch<Task[]>('/tasks');
+}
+
+export async function getTasksByProjectId(projectId: string): Promise<Task[]> {
+  return apiFetch<Task[]>(`/tasks/${projectId}`);
 }
 
 export async function createTask(taskData: Partial<Task>): Promise<Task> {
