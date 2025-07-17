@@ -9,10 +9,10 @@ import type { Task } from '@/types';
 
 export async function GET(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
 
     // Validate the projectId parameter
     if (!projectId || projectId.trim() === '') {

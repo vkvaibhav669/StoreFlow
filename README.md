@@ -54,6 +54,7 @@ See [docs/mongodb-id-handling.md](docs/mongodb-id-handling.md) for detailed info
 ## Environment Variables
 
 - `MONGODB_URI` - MongoDB connection string
+- `NEXT_PUBLIC_API_URL` - External backend API URL (defaults to `http://localhost:8000/api`)
 - Other environment variables as needed
 
 ## Testing
@@ -76,6 +77,7 @@ node tests/mongodb/mongodb-demo.js
 - `/api/projects` - Project management endpoints
 - `/api/store` - Store management endpoints  
 - `/api/tasks` - Task management endpoints
+- `/api/tasks/:projectId` - Get tasks for a specific project
 
 Each endpoint supports both MongoDB ObjectIds and simple string IDs for backward compatibility.
 
