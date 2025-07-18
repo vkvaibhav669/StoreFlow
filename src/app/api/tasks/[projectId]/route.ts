@@ -70,3 +70,94 @@ export async function GET(
     );
   }
 }
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const { projectId } = await params;
+
+    // Validate the projectId parameter
+    if (!projectId || projectId.trim() === '') {
+      return NextResponse.json(
+        { error: 'Invalid project ID' },
+        { status: 400 }
+      );
+    }
+
+    // Parse the request body
+    const body = await request.json();
+    const { name, department, priority, description, assignedTo, assignedToId, dueDate } = body;
+
+    // Validate required fields
+    if (!name || !department) {
+      return NextResponse.json(
+        { error: 'Name and department are required' },
+        { status: 400 }
+      );
+    }
+
+    // Create new task
+    const newTask: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name,
+      department,
+      status: "Pending",
+      priority: priority || "Medium",
+      assignedTo: assignedTo || undefined,
+      assignedToId: assignedToId || undefined,
+      assignedToName: assignedTo || undefined,
+      dueDate: dueDate || undefined,
+      description: description || undefined,
+      comments: [],
+      createdAt: new Date().toISOString()
+    };
+
+    // Try MongoDB first if ObjectId is valid
+    if (isValidObjectId(projectId)) {
+      try {
+        const client = await clientPromise;
+        const db = client.db("storeflow");
+        const collection = db.collection("projects");
+        
+        // Find and update the project with the new task
+        const result = await collection.updateOne(
+          { _id: toObjectId(projectId) },
+          { 
+            $push: { tasks: newTask } as any,
+            $set: { updatedAt: new Date().toISOString() }
+          }
+        );
+
+        if (result.modifiedCount > 0) {
+          return NextResponse.json(newTask, { status: 201 });
+        }
+      } catch (mongoError) {
+        console.error('MongoDB error:', mongoError);
+        // Fall back to mock data if MongoDB fails
+      }
+    }
+    
+    // Fall back to mock data for simple string IDs or if MongoDB fails
+    const projectIndex = mockProjects.findIndex(p => p.id === projectId);
+    if (projectIndex !== -1) {
+      if (!mockProjects[projectIndex].tasks) {
+        mockProjects[projectIndex].tasks = [];
+      }
+      mockProjects[projectIndex].tasks.push(newTask);
+      return NextResponse.json(newTask, { status: 201 });
+    }
+
+    return NextResponse.json(
+      { error: 'Project not found' },
+      { status: 404 }
+    );
+  } catch (error) {
+    console.error('Error creating task:', error);
+    return NextResponse.json(
+      { error: 'Failed to create task' },
+      { status: 500 }
+    );
+  }
+}
