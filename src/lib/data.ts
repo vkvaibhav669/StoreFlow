@@ -18,14 +18,14 @@ const commonProjectMembers: ProjectMember[] = [];
 
 export let mockProjects: StoreProject[] = [
   {
-    id: "project-1",
-    name: "Mumbai Store Launch",
+    id: "685d0c075656e677824a318f",
+    name: "New Flagship Store",
     location: "Mumbai, Maharashtra",
     status: "Planning",
-    startDate: "2024-01-15",
-    projectedLaunchDate: "2024-06-15",
-    currentProgress: 25,
-    isUpcoming: true,
+    startDate: "2025-07-01T00:00:00.000Z",
+    projectedLaunchDate: "2026-01-01T00:00:00.000Z",
+    currentProgress: 0,
+    isUpcoming: false,
     franchiseType: "COCO",
     propertyDetails: {
       address: "123 Main Street, Mumbai",
@@ -36,25 +36,79 @@ export let mockProjects: StoreProject[] = [
     projectTimeline: {
       totalDays: 150,
       currentDay: 30,
-      kickoffDate: "2024-01-15"
+      kickoffDate: "2025-07-01T00:00:00.000Z"
     },
     tasks: [
       {
-        id: "task-1",
-        name: "Property Finalization",
-        department: "Property",
+        id: "685e58c122b9d912d6223a3d",
+        name: "Sample Task 17",
+        department: "IT",
         status: "In Progress",
         priority: "High",
-        assignedTo: "property.manager@company.com",
-        assignedToName: "Property Manager",
-        dueDate: "2024-02-15",
-        description: "Finalize property lease agreement"
+        dueDate: "2025-07-01T00:00:00.000Z",
+        description: "This is a function feature test in progress",
+        comments: [
+          {
+            text: "This is a comment",
+            addedById: "685d0a785656e677824a3185",
+            addedByName: "Admin",
+            _id: "685e58d322b9d912d6223a43",
+            addedAt: "2025-06-27T08:39:47.280Z",
+            id: "685e58d322b9d912d6223a43",
+            author: "Admin",
+            timestamp: "2025-06-27T08:39:47.280Z",
+            replies: []
+          },
+          {
+            text: "This is a comment by user 2 ",
+            addedById: "685d0a785656e677824a3185",
+            addedByName: "Admin",
+            _id: "685e58e322b9d912d6223a4a",
+            addedAt: "2025-06-27T08:40:03.444Z",
+            id: "685e58e322b9d912d6223a4a",
+            author: "Admin",
+            timestamp: "2025-06-27T08:40:03.444Z",
+            replies: [
+              {
+                text: "This is a reply to comment ",
+                addedById: "685d0a785656e677824a3185",
+                addedByName: "Vaibhhav ",
+                _id: "685e70de5f60d8170479bed0",
+                addedAt: "2025-06-27T10:22:22.247Z",
+                id: "685e70de5f60d8170479bed0",
+                author: "Vaibhhav ",
+                timestamp: "2025-06-27T10:22:22.247Z",
+                replies: []
+              }
+            ]
+          }
+        ],
+        createdAt: "2025-06-27T08:39:29.163Z"
       }
     ],
-    members: [],
+    members: [
+      {
+        _id: "685d0c075656e677824a3190",
+        userId: {
+          _id: "685d0a785656e677824a3185",
+          name: "Admin User",
+          email: "admin@example.com"
+        },
+        name: "Admin User",
+        email: "admin@example.com",
+        roleInProject: "HOD",
+        department: "Project",
+        isProjectHod: true
+      }
+    ],
     documents: [],
     comments: [],
-    departments: {}
+    milestones: [],
+    blockers: [],
+    discussion: [],
+    departments: {},
+    createdAt: "2025-06-26T08:59:51.634Z",
+    updatedAt: "2025-07-07T07:43:37.849Z"
   },
   {
     id: "project-2", 
@@ -93,6 +147,9 @@ export let mockProjects: StoreProject[] = [
     members: [],
     documents: [],
     comments: [],
+    milestones: [],
+    blockers: [],
+    discussion: [],
     departments: {}
   }
 ];
