@@ -12,10 +12,10 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     'local-origin.dev', 
     '*.local-origin.dev', 
-    '8080-firebase-studio-1746690261773.cluster-w5vd22whf5gmav2vgkomwtc4go.cloudworkstations.dev',
+    '8000-firebase-studio-1746690261773.cluster-w5vd22whf5gmav2vgkomwtc4go.cloudworkstations.dev',
     '6000-firebase-studio-1746690261773.cluster-w5vd22whf5gmav2vgkomwtc4go.cloudworkstations.dev',
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
   ], 
   images: {
     remotePatterns: [
