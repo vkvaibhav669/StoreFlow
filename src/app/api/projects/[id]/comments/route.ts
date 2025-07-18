@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import clientPromise, { isValidObjectId, toObjectId, transformMongoDocument } from '@/lib/mongodb';
 import { mockProjects } from '@/lib/data';
 import type { Comment } from '@/types';
 
@@ -18,20 +17,25 @@ export async function GET(
       );
     }
 
-    // Try MongoDB first if ObjectId is valid
-    if (isValidObjectId(id)) {
+    // Check if MongoDB is configured
+    if (process.env.MONGODB_URI) {
       try {
-        const client = await clientPromise;
-        const db = client.db("storeflow");
-        const collection = db.collection("projects");
+        // Dynamic import to avoid module load errors when MONGODB_URI is not set
+        const { default: clientPromise, isValidObjectId, toObjectId, transformMongoDocument } = await import('@/lib/mongodb');
         
-        const project = await collection.findOne({ _id: toObjectId(id) });
-        
-        if (project) {
-          const transformedProject = transformMongoDocument(project);
-          // Return comments from either 'discussion' or 'comments' field
-          const comments = transformedProject.discussion || transformedProject.comments || [];
-          return NextResponse.json(comments);
+        if (isValidObjectId(id)) {
+          const client = await clientPromise;
+          const db = client.db("storeflow");
+          const collection = db.collection("projects");
+          
+          const project = await collection.findOne({ _id: toObjectId(id) });
+          
+          if (project) {
+            const transformedProject = transformMongoDocument(project);
+            // Return comments from either 'discussion' or 'comments' field
+            const comments = transformedProject.discussion || transformedProject.comments || [];
+            return NextResponse.json(comments);
+          }
         }
       } catch (mongoError) {
         console.error('MongoDB error:', mongoError);
@@ -98,32 +102,37 @@ export async function POST(
       replies: []
     };
 
-    // Try MongoDB first if ObjectId is valid
-    if (isValidObjectId(id)) {
+    // Check if MongoDB is configured
+    if (process.env.MONGODB_URI) {
       try {
-        const client = await clientPromise;
-        const db = client.db("storeflow");
-        const collection = db.collection("projects");
+        // Dynamic import to avoid module load errors when MONGODB_URI is not set
+        const { default: clientPromise, isValidObjectId, toObjectId } = await import('@/lib/mongodb');
         
-        const project = await collection.findOne({ _id: toObjectId(id) });
-        
-        if (project) {
-          // Update the project with the new comment
-          const result = await collection.updateOne(
-            { _id: toObjectId(id) },
-            { 
-              $push: { discussion: newComment } as any,
-              $set: { updatedAt: new Date().toISOString() }
-            }
-          );
-
-          if (result.modifiedCount > 0) {
-            return NextResponse.json(newComment, { status: 201 });
-          } else {
-            return NextResponse.json(
-              { error: 'Failed to add comment' },
-              { status: 500 }
+        if (isValidObjectId(id)) {
+          const client = await clientPromise;
+          const db = client.db("storeflow");
+          const collection = db.collection("projects");
+          
+          const project = await collection.findOne({ _id: toObjectId(id) });
+          
+          if (project) {
+            // Update the project with the new comment
+            const result = await collection.updateOne(
+              { _id: toObjectId(id) },
+              { 
+                $push: { discussion: newComment } as any,
+                $set: { updatedAt: new Date().toISOString() }
+              }
             );
+
+            if (result.modifiedCount > 0) {
+              return NextResponse.json(newComment, { status: 201 });
+            } else {
+              return NextResponse.json(
+                { error: 'Failed to add comment' },
+                { status: 500 }
+              );
+            }
           }
         }
       } catch (mongoError) {
