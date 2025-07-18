@@ -22,9 +22,14 @@ export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
   const [likes, setLikes] = React.useState(Math.floor(Math.random() * 25)); // Random likes for demo
   const [liked, setLiked] = React.useState(false);
 
+  // Handle both old and new comment formats
+  const commentId = comment.id || comment._id || '';
+  const authorName = comment.author || comment.addedByName || 'Unknown';
+  const commentTimestamp = comment.timestamp || comment.addedAt || '';
+
   const handleReplySubmit = () => {
     if (replyText.trim() && onReply) {
-      onReply(comment.id, replyText);
+      onReply(commentId, replyText);
       setReplyText("");
       setShowReplyForm(false);
     }
@@ -41,16 +46,16 @@ export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
         <div className="flex items-start space-x-3">
           <Avatar className="h-10 w-10">
             <AvatarImage 
-              src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${comment.author.substring(0,1)}`} 
-              alt={comment.author} 
+              src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${authorName.substring(0,1)}`} 
+              alt={authorName} 
               data-ai-hint="user avatar" />
-            <AvatarFallback>{comment.author.substring(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{authorName.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-card-foreground">{comment.author}</p>
+                <p className="text-sm font-semibold text-card-foreground">{authorName}</p>
                 <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}
+                {commentTimestamp && formatDistanceToNow(new Date(commentTimestamp), { addSuffix: true })}
                 </p>
             </div>
             <p className="text-sm mt-1 text-card-foreground whitespace-pre-wrap">{comment.text}</p>
@@ -70,7 +75,7 @@ export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
       {showReplyForm && onReply && (
         <CardContent className="p-4 pt-0 border-t border-border">
           <Textarea
-            placeholder={`Reply to ${comment.author}...`}
+            placeholder={`Reply to ${authorName}...`}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             className="mb-2 mt-3"
@@ -84,8 +89,8 @@ export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
       )}
       {comment.replies && comment.replies.length > 0 && (
         <div className="pt-2 border-t border-border mx-4">
-          {comment.replies.map(reply => (
-            <CommentCard key={reply.id} comment={reply} onReply={onReply} level={level + 1} />
+          {comment.replies.map((reply, index) => (
+            <CommentCard key={reply.id || reply._id || index} comment={reply} onReply={onReply} level={level + 1} />
           ))}
         </div>
       )}

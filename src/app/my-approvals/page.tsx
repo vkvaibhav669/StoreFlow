@@ -372,7 +372,7 @@ export default function MyApprovalsPage() {
                             {req.approvalComments.map(comment => (
                                 <div key={comment.id} className="text-xs p-2 bg-muted rounded-md">
                                     <p className="italic">"{comment.text}"</p>
-                                    <p className="text-right text-muted-foreground/80">- {comment.author} on {format(new Date(comment.timestamp), "PP")}</p>
+                                    <p className="text-right text-muted-foreground/80">- {comment.author || comment.addedByName} on {comment.timestamp || comment.addedAt ? format(new Date(comment.timestamp || comment.addedAt!), "PP") : "Unknown date"}</p>
                                 </div>
                             ))}
                         </div>

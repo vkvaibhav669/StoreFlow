@@ -89,7 +89,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick, is
         <CardTitle className="flex items-center gap-2 text-lg">
           <Icon className="h-5 w-5 text-primary" />
           {title}
-          {isLockedForCurrentUser && <Lock className="h-4 w-4 text-muted-foreground" title="Access restricted" />}
+          {isLockedForCurrentUser && <Lock className="h-4 w-4 text-muted-foreground" aria-label="Access restricted" />}
         </CardTitle>
         {!isLockedForCurrentUser && totalTasks > 0 && (
           <CardDescription>{completedTasks} of {totalTasks} tasks completed.</CardDescription>
@@ -123,7 +123,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick, is
 
 const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Executive Office", "Operations"];
 const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
-const propertyStatuses: StoreProject['propertyDetails']['status'][] = ["Identified", "Negotiating", "Finalized"];
+const propertyStatuses = ["Identified", "Negotiating", "Finalized"] as const;
 const storeTypes: StoreType[] = ["COCO", "FOFO"];
 const projectStatuses: StoreProject['status'][] = [
   "Planning", "Property Finalized", "Project Kickoff", "Execution",
@@ -244,7 +244,9 @@ export default function ProjectDetailsPage() {
         const currentProject = await getProjectById(projectId);
         if (currentProject) {
             setProjectData(currentProject);
-            setProjectComments(currentProject.comments || []);
+            // Handle both 'comments' and 'discussion' fields for backward compatibility
+            const comments = currentProject.comments || currentProject.discussion || [];
+            setProjectComments(comments);
             setEditingProjectForm({
                 name: currentProject.name, location: currentProject.location, status: currentProject.status,
                 startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
@@ -431,8 +433,11 @@ export default function ProjectDetailsPage() {
       setIsSubmittingComment(true);
       const commentPayload: Partial<Comment> = {
         author: user.name || user.email || "Anonymous User",
+        addedByName: user.name || user.email || "Anonymous User",
+        addedById: user.id || user.email,
         avatarUrl: `https://picsum.photos/seed/${user.id || 'currentUser'}/40/40`,
         timestamp: new Date().toISOString(),
+        addedAt: new Date().toISOString(),
         text: newCommentText,
         replies: [],
       };
@@ -440,7 +445,7 @@ export default function ProjectDetailsPage() {
         addCommentToProject(projectData.id, commentPayload);
         const updatedProject = await getProjectById(projectData.id);
         setProjectData(updatedProject || null);
-        setProjectComments(updatedProject?.comments || []);
+        setProjectComments(updatedProject?.comments || updatedProject?.discussion || []);
         toast({ title: "Comment Posted", description: "Your comment has been added." });
         setNewCommentText("");
       } catch (error) {
@@ -458,8 +463,11 @@ export default function ProjectDetailsPage() {
 
       const replyPayload: Partial<Comment> = {
           author: user.name || user.email || "Anonymous User",
+          addedByName: user.name || user.email || "Anonymous User",
+          addedById: user.id || user.email,
           avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`,
           timestamp: new Date().toISOString(),
+          addedAt: new Date().toISOString(),
           text: replyText,
           replies: [],
       };
@@ -468,7 +476,7 @@ export default function ProjectDetailsPage() {
           addReplyToProjectComment(projectData.id, commentId, replyPayload);
           const updatedProject = await getProjectById(projectData.id);
           setProjectData(updatedProject || null);
-          setProjectComments(updatedProject?.comments || []);
+          setProjectComments(updatedProject?.comments || updatedProject?.discussion || []);
           toast({ title: "Reply Posted", description: "Your reply has been added." });
       } catch (error) {
           console.error("Error posting reply:", error);
@@ -525,8 +533,11 @@ export default function ProjectDetailsPage() {
     setIsSubmittingTaskComment(true);
     const commentPayload: Partial<Comment> = {
       author: user.name || user.email || "Anonymous User",
+      addedByName: user.name || user.email || "Anonymous User",
+      addedById: user.id || user.email,
       avatarUrl: `https://picsum.photos/seed/${user.id || 'taskUser'}/40/40`,
       timestamp: new Date().toISOString(),
+      addedAt: new Date().toISOString(),
       text: newTaskCommentTextForTask,
     };
 
@@ -536,7 +547,11 @@ export default function ProjectDetailsPage() {
       const taskToUpdate = projectToUpdate.tasks.find(t => t.id === selectedTask.id);
       if (!taskToUpdate) throw new Error("Task not found");
 
-      const newComment: Comment = { id: `taskcmt-${Date.now()}`, ...commentPayload } as Comment;
+      const newComment: Comment = { 
+        id: `taskcmt-${Date.now()}`, 
+        _id: `taskcmt-${Date.now()}`,
+        ...commentPayload 
+      } as Comment;
       taskToUpdate.comments = [newComment, ...(taskToUpdate.comments || [])];
       
       updateProject(projectData.id, projectToUpdate);
@@ -560,8 +575,11 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
 
     const replyPayload: Partial<Comment> = {
         author: user.name || user.email || "Anonymous User",
+        addedByName: user.name || user.email || "Anonymous User",
+        addedById: user.id || user.email,
         avatarUrl: `https://picsum.photos/seed/${user.id || 'taskReplyUser'}/40/40`,
         timestamp: new Date().toISOString(),
+        addedAt: new Date().toISOString(),
         text: replyText,
     };
 
@@ -571,11 +589,16 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         const taskToUpdate = projectToUpdate.tasks.find(t => t.id === taskId);
         if (!taskToUpdate || !taskToUpdate.comments) throw new Error("Task or task comments not found");
 
-        const newReply: Comment = { id: `taskreply-${Date.now()}`, ...replyPayload } as Comment;
+        const newReply: Comment = { 
+          id: `taskreply-${Date.now()}`, 
+          _id: `taskreply-${Date.now()}`,
+          ...replyPayload 
+        } as Comment;
 
         const addReplyFn = (comments: Comment[]): boolean => {
             for (let comment of comments) {
-                if (comment.id === commentId) {
+                const currentCommentId = comment.id || comment._id;
+                if (currentCommentId === commentId) {
                     comment.replies = [newReply, ...(comment.replies || [])];
                     return true;
                 }
@@ -636,13 +659,13 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         status: editingProjectForm.status as StoreProject['status'],
         propertyDetails: {
             ...(projectData.propertyDetails || { address: '', sqft: 0, status: 'Identified' }),
-            ...editingPropertyDetailsForm,
-            sqft: Number(editingPropertyDetailsForm.sqft) || projectData.propertyDetails?.sqft || 0,
+            ...(editingPropertyDetailsForm || {}),
+            sqft: Number(editingPropertyDetailsForm?.sqft) || projectData.propertyDetails?.sqft || 0,
         },
         projectTimeline: {
             ...(projectData.projectTimeline || { totalDays: 0, currentDay:0, kickoffDate: utilFormatDate(new Date()) }),
-            ...editingTimelineForm,
-            totalDays: Number(editingTimelineForm.totalDays) || projectData.projectTimeline?.totalDays || 0,
+            ...(editingTimelineForm || {}),
+            totalDays: Number(editingTimelineForm?.totalDays) || projectData.projectTimeline?.totalDays || 0,
         },
         milestones: editingMilestones,
         blockers: editingBlockers,
@@ -891,15 +914,15 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="editPropertyAddress">Address</Label>
-                        <Input id="editPropertyAddress" value={editingPropertyDetailsForm.address || ""} onChange={(e) => handleEditPropertyDetailChange('address', e.target.value)} disabled={isSavingProject}/>
+                        <Input id="editPropertyAddress" value={editingPropertyDetailsForm?.address || ""} onChange={(e) => handleEditPropertyDetailChange('address', e.target.value)} disabled={isSavingProject}/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="editPropertySqft">Sqft</Label>
-                        <Input id="editPropertySqft" type="number" value={editingPropertyDetailsForm.sqft || ""} onChange={(e) => handleEditPropertyDetailChange('sqft', Number(e.target.value))} disabled={isSavingProject}/>
+                        <Input id="editPropertySqft" type="number" value={editingPropertyDetailsForm?.sqft || ""} onChange={(e) => handleEditPropertyDetailChange('sqft', Number(e.target.value))} disabled={isSavingProject}/>
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="editPropertyStatus">Property Status</Label>
-                        <Select value={editingPropertyDetailsForm.status || ""} onValueChange={(value) => handleEditPropertyDetailChange('status', value as StoreProject['propertyDetails']['status'])} disabled={isSavingProject}>
+                        <Select value={editingPropertyDetailsForm?.status || ""} onValueChange={(value) => handleEditPropertyDetailChange('status', value as typeof propertyStatuses[number])} disabled={isSavingProject}>
                             <SelectTrigger><SelectValue placeholder="Select property status" /></SelectTrigger>
                             <SelectContent>
                                 {propertyStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
@@ -908,7 +931,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="editPropertyNotes">Property Notes</Label>
-                        <Textarea id="editPropertyNotes" value={editingPropertyDetailsForm.notes || ""} onChange={(e) => handleEditPropertyDetailChange('notes', e.target.value)} rows={3} disabled={isSavingProject}/>
+                        <Textarea id="editPropertyNotes" value={editingPropertyDetailsForm?.notes || ""} onChange={(e) => handleEditPropertyDetailChange('notes', e.target.value)} rows={3} disabled={isSavingProject}/>
                     </div>
                   </div>
 
@@ -916,7 +939,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="editTotalDays">Total Project Days</Label>
-                        <Input id="editTotalDays" type="number" value={editingTimelineForm.totalDays || ""} onChange={(e) => handleEditTimelineChange('totalDays', Number(e.target.value))} disabled={isSavingProject}/>
+                        <Input id="editTotalDays" type="number" value={editingTimelineForm?.totalDays || ""} onChange={(e) => handleEditTimelineChange('totalDays', Number(e.target.value))} disabled={isSavingProject}/>
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="editThreeDRenderUrl">3D Render URL</Label>
@@ -1360,7 +1383,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 <Avatar className="h-10 w-10 mt-1 flex-shrink-0"><AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/><AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                 <div className="flex-1"><Textarea placeholder="Write a comment..." value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)} className="mb-2" rows={3} disabled={isSubmittingComment}/><div className="flex justify-end"><Button onClick={handleAddComment} disabled={!newCommentText.trim() || isSubmittingComment}>{isSubmittingComment ? "Posting..." : "Post Comment"}</Button></div></div>
               </div>
-              {projectComments.length > 0 ? (<div className="space-y-0">{projectComments.map((comment) => (<CommentCard key={comment.id} comment={comment} onReply={handleReplyToComment} />))}</div>) : (<p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>)}
+              {projectComments.length > 0 ? (<div className="space-y-0">{projectComments.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={handleReplyToComment} />))}</div>) : (<p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>)}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1399,7 +1422,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                   <Avatar className="h-9 w-9 mt-1 flex-shrink-0"><AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUserTaskComment'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/><AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                   <div className="flex-1"><Textarea placeholder="Write a comment for this task..." value={newTaskCommentTextForTask} onChange={(e) => setNewTaskCommentTextForTask(e.target.value)} className="mb-2" rows={2} disabled={isSubmittingTaskComment}/><div className="flex justify-end"><Button onClick={handlePostNewTaskComment} disabled={!newTaskCommentTextForTask.trim() || isSubmittingTaskComment} size="sm"><MessageSquare className="mr-2 h-4 w-4" />{isSubmittingTaskComment ? "Posting..." : "Post Comment"}</Button></div></div>
                 </div>
-                {((selectedTask.comments || []).length > 0) ? (<div className="space-y-0">{selectedTask.comments?.map(comment => (<CommentCard key={comment.id} comment={comment} onReply={(commentId, replyText) => handleReplyToTaskComment(selectedTask.id, commentId, replyText)}/>))}</div>) : (<p className="text-sm text-muted-foreground text-center py-4">No comments for this task yet.</p>)}
+                {((selectedTask.comments || []).length > 0) ? (<div className="space-y-0">{selectedTask.comments?.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={(commentId, replyText) => handleReplyToTaskComment(selectedTask.id, commentId, replyText)}/>))}</div>) : (<p className="text-sm text-muted-foreground text-center py-4">No comments for this task yet.</p>)}
               </div>
             </ScrollArea>)}
           <DialogFooter className="mt-4">

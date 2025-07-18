@@ -54,12 +54,49 @@ export function toObjectId(id: string): ObjectId {
 export function transformMongoDocument(doc: any): any {
   if (!doc) return null;
   
-  // Convert _id to id and remove _id
+  // Convert _id to id and keep both for compatibility
   const transformed = {
     ...doc,
     id: doc._id.toString(),
   };
-  delete transformed._id;
+  
+  // Transform nested comments in tasks
+  if (transformed.tasks && Array.isArray(transformed.tasks)) {
+    transformed.tasks = transformed.tasks.map((task: any) => {
+      if (task.comments && Array.isArray(task.comments)) {
+        task.comments = task.comments.map((comment: any) => transformComment(comment));
+      }
+      return task;
+    });
+  }
+  
+  // Transform discussion/comments at project level
+  if (transformed.discussion && Array.isArray(transformed.discussion)) {
+    transformed.discussion = transformed.discussion.map((comment: any) => transformComment(comment));
+  }
+  
+  if (transformed.comments && Array.isArray(transformed.comments)) {
+    transformed.comments = transformed.comments.map((comment: any) => transformComment(comment));
+  }
+  
+  return transformed;
+}
+
+// Helper function to transform comment structure
+function transformComment(comment: any): any {
+  if (!comment) return comment;
+  
+  const transformed = {
+    ...comment,
+    id: comment._id || comment.id,
+    author: comment.addedByName || comment.author,
+    timestamp: comment.addedAt || comment.timestamp,
+  };
+  
+  // Transform nested replies
+  if (transformed.replies && Array.isArray(transformed.replies)) {
+    transformed.replies = transformed.replies.map((reply: any) => transformComment(reply));
+  }
   
   return transformed;
 }
