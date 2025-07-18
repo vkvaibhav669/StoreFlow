@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
-import clientPromise, {
-  isValidObjectId,
-  toObjectId,
-  transformMongoDocument
-} from '@/lib/mongodb';
+import { mockProjects } from '@/lib/data';
+
+// Helper function to safely get MongoDB client
+async function getMongoClient() {
+  try {
+    const { default: clientPromise, isValidObjectId, toObjectId, transformMongoDocument } = await import('@/lib/mongodb');
+    return { clientPromise, isValidObjectId, toObjectId, transformMongoDocument };
+  } catch (error) {
+    console.log('MongoDB not available, using mock data');
+    return null;
+  }
+}
 
 export async function GET(
   request: Request,
@@ -13,7 +20,6 @@ export async function GET(
     const { id } = params;
 
     // Validate the ID parameter
-    // || id === 'undefined'
     if (!id || id.trim() === '') {
       return NextResponse.json(
         { error: 'Invalid project ID' },
@@ -21,31 +27,41 @@ export async function GET(
       );
     }
 
-    // Check if ID is a valid ObjectId
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: 'Invalid ObjectId format' },
-        { status: 400 }
-      );
+    // Try to get project from MongoDB first
+    const mongoHelpers = await getMongoClient();
+    if (mongoHelpers) {
+      try {
+        // Check if ID is a valid ObjectId
+        if (mongoHelpers.isValidObjectId(id)) {
+          // Connect to MongoDB
+          const client = await mongoHelpers.clientPromise;
+          const db = client.db('storeflow');
+          const collection = db.collection('projects');
+
+          // Fetch the project
+          const project = await collection.findOne({ _id: mongoHelpers.toObjectId(id) });
+
+          if (project) {
+            // Return transformed project
+            return NextResponse.json(mongoHelpers.transformMongoDocument(project));
+          }
+        }
+      } catch (mongoError) {
+        console.error('MongoDB error:', mongoError);
+        // Fall back to mock data
+      }
     }
 
-    // Connect to MongoDB
-    const client = await clientPromise;
-    const db = client.db('storeflow');
-    const collection = db.collection('projects');
-
-    // Fetch the project
-    const project = await collection.findOne({ _id: toObjectId(id) });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+    // Fallback to mock data
+    const mockProject = mockProjects.find(p => p.id === id);
+    if (mockProject) {
+      return NextResponse.json(mockProject);
     }
 
-    // Return transformed project
-    return NextResponse.json(transformMongoDocument(project));
+    return NextResponse.json(
+      { error: 'Project not found' },
+      { status: 404 }
+    );
   } catch (error) {
     console.error('Error fetching project:', error);
     return NextResponse.json(

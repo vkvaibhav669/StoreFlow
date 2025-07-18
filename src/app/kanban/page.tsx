@@ -2,7 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { getAllProjects, updateTaskInProject } from "@/lib/data";
+import { getAllProjects } from "@/lib/api";
+import { updateTaskInProject } from "@/lib/data";
 import type { Task, StoreProject, Department, TaskPriority } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

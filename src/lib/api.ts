@@ -1,6 +1,6 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 // Error handling utility
 class ApiError extends Error {
@@ -96,6 +96,13 @@ export async function getAllTasks(): Promise<Task[]> {
 
 export async function getTasksByProjectId(projectId: string): Promise<Task[]> {
   return apiFetch<Task[]>(`/tasks/${projectId}`);
+}
+
+export async function createTaskForProject(projectId: string, taskData: Partial<Task>): Promise<Task> {
+  return apiFetch<Task>(`/tasks/${projectId}`, {
+    method: 'POST',
+    body: JSON.stringify(taskData),
+  });
 }
 
 export async function createTask(taskData: Partial<Task>): Promise<Task> {
