@@ -19,7 +19,7 @@ import {
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
-import { getProjectById, updateProject } from "@/lib/api";
+import { getProjectById, updateProject, createTaskForProject } from "@/lib/api";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -367,11 +367,12 @@ export default function ProjectDetailsPage() {
       priority: newTaskPriority,
       status: "Pending",
       assignedTo: newTaskAssignedTo,
+      assignedToName: newTaskAssignedTo, // For now, use the same value for both
       comments: [],
     };
 
     try {
-      const addedTask = addTaskToProject(projectData.id, newTaskPayload);
+      const addedTask = await createTaskForProject(projectData.id, newTaskPayload);
       // Refresh project data asynchronously
       const refreshedProject = await getProjectById(projectData.id);
       setProjectData(refreshedProject || null);
