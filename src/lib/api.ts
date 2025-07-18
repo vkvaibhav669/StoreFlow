@@ -111,3 +111,26 @@ export async function updateTask(id: string, taskData: Partial<Task>): Promise<T
     body: JSON.stringify(taskData),
   });
 }
+
+// Comments API
+export async function getProjectComments(projectId: string) {
+  return apiFetch(`/projects/${projectId}/comments`);
+}
+
+export async function addProjectComment(projectId: string, commentData: { author: string; text: string; authorId?: string }) {
+  return apiFetch(`/projects/${projectId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(commentData),
+  });
+}
+
+export async function getTaskComments(taskId: string) {
+  return apiFetch(`/task-comments/${taskId}`);
+}
+
+export async function addTaskComment(taskId: string, commentData: { author: string; text: string; authorId?: string }) {
+  return apiFetch(`/task-comments/${taskId}`, {
+    method: 'POST',
+    body: JSON.stringify(commentData),
+  });
+}

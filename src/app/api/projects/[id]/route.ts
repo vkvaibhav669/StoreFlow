@@ -4,13 +4,14 @@ import clientPromise, {
   toObjectId,
   transformMongoDocument
 } from '@/lib/mongodb';
+import { mockProjects } from '@/lib/data';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Validate the ID parameter
     // || id === 'undefined'
@@ -21,21 +22,28 @@ export async function GET(
       );
     }
 
-    // Check if ID is a valid ObjectId
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: 'Invalid ObjectId format' },
-        { status: 400 }
-      );
+    // Check if ID is a valid ObjectId, if so try MongoDB first
+    if (isValidObjectId(id)) {
+      try {
+        // Connect to MongoDB
+        const client = await clientPromise;
+        const db = client.db('storeflow');
+        const collection = db.collection('projects');
+
+        // Fetch the project
+        const project = await collection.findOne({ _id: toObjectId(id) });
+
+        if (project) {
+          return NextResponse.json(transformMongoDocument(project));
+        }
+      } catch (mongoError) {
+        console.error('MongoDB error:', mongoError);
+        // Fall back to mock data if MongoDB fails
+      }
     }
 
-    // Connect to MongoDB
-    const client = await clientPromise;
-    const db = client.db('storeflow');
-    const collection = db.collection('projects');
-
-    // Fetch the project
-    const project = await collection.findOne({ _id: toObjectId(id) });
+    // Fallback to mock data for simple string IDs or if MongoDB fails
+    const project = mockProjects.find(p => p.id === id);
 
     if (!project) {
       return NextResponse.json(
@@ -44,8 +52,7 @@ export async function GET(
       );
     }
 
-    // Return transformed project
-    return NextResponse.json(transformMongoDocument(project));
+    return NextResponse.json(project);
   } catch (error) {
     console.error('Error fetching project:', error);
     return NextResponse.json(
