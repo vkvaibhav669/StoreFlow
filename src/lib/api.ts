@@ -1,6 +1,6 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Error handling utility
 class ApiError extends Error {
@@ -13,7 +13,8 @@ class ApiError extends Error {
 // Generic fetch wrapper with error handling
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const url = BASE_URL ? `${BASE_URL}${endpoint}` : `/api${endpoint}`;
+    const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
@@ -98,15 +99,15 @@ export async function getTasksByProjectId(projectId: string): Promise<Task[]> {
   return apiFetch<Task[]>(`/tasks/${projectId}`);
 }
 
-export async function createTask(taskData: Partial<Task>): Promise<Task> {
-  return apiFetch<Task>('/tasks', {
+export async function createTask(projectId: string, taskData: Partial<Task>): Promise<Task> {
+  return apiFetch<Task>(`/tasks/${projectId}`, {
     method: 'POST',
     body: JSON.stringify(taskData),
   });
 }
 
-export async function updateTask(id: string, taskData: Partial<Task>): Promise<Task> {
-  return apiFetch<Task>(`/tasks/${id}`, {
+export async function updateTask(projectId: string, taskId: string, taskData: Partial<Task>): Promise<Task> {
+  return apiFetch<Task>(`/tasks/${projectId}/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(taskData),
   });

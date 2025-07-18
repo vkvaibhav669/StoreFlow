@@ -1,9 +1,4 @@
 import { NextResponse } from 'next/server';
-import clientPromise, {
-  isValidObjectId,
-  toObjectId,
-  transformMongoDocument
-} from '@/lib/mongodb';
 import { mockProjects } from '@/lib/data';
 
 export async function GET(
@@ -22,19 +17,24 @@ export async function GET(
       );
     }
 
-    // Check if ID is a valid ObjectId, if so try MongoDB first
-    if (isValidObjectId(id)) {
+    // Check if MongoDB is configured and ID is a valid ObjectId
+    if (process.env.MONGODB_URI) {
       try {
-        // Connect to MongoDB
-        const client = await clientPromise;
-        const db = client.db('storeflow');
-        const collection = db.collection('projects');
+        // Dynamic import to avoid module load errors when MONGODB_URI is not set
+        const { default: clientPromise, isValidObjectId, toObjectId, transformMongoDocument } = await import('@/lib/mongodb');
+        
+        if (isValidObjectId(id)) {
+          // Connect to MongoDB
+          const client = await clientPromise;
+          const db = client.db('storeflow');
+          const collection = db.collection('projects');
 
-        // Fetch the project
-        const project = await collection.findOne({ _id: toObjectId(id) });
+          // Fetch the project
+          const project = await collection.findOne({ _id: toObjectId(id) });
 
-        if (project) {
-          return NextResponse.json(transformMongoDocument(project));
+          if (project) {
+            return NextResponse.json(transformMongoDocument(project));
+          }
         }
       } catch (mongoError) {
         console.error('MongoDB error:', mongoError);

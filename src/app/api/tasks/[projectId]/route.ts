@@ -1,9 +1,4 @@
 import { NextResponse } from 'next/server';
-import clientPromise, {
-  isValidObjectId,
-  toObjectId,
-  transformMongoDocument
-} from '@/lib/mongodb';
 import { mockProjects } from '@/lib/data';
 import type { Task } from '@/types';
 
@@ -22,33 +17,37 @@ export async function GET(
       );
     }
 
-    // Try to get tasks from MongoDB first
-    try {
-      const client = await clientPromise;
-      const db = client.db("storeflow");
-      const collection = db.collection("projects");
-      
-      // Check if projectId is a valid ObjectId
-      if (isValidObjectId(projectId)) {
-        // Fetch the specific project by ObjectId
-        const project = await collection.findOne({ _id: toObjectId(projectId) });
+    // Try to get tasks from MongoDB first if configured
+    if (process.env.MONGODB_URI) {
+      try {
+        // Dynamic import to avoid module load errors when MONGODB_URI is not set
+        const { default: clientPromise, isValidObjectId, toObjectId, transformMongoDocument } = await import('@/lib/mongodb');
+        const client = await clientPromise;
+        const db = client.db("storeflow");
+        const collection = db.collection("projects");
         
-        if (project) {
-          const transformedProject = transformMongoDocument(project);
-          return NextResponse.json(transformedProject.tasks || []);
+        // Check if projectId is a valid ObjectId
+        if (isValidObjectId(projectId)) {
+          // Fetch the specific project by ObjectId
+          const project = await collection.findOne({ _id: toObjectId(projectId) });
+          
+          if (project) {
+            const transformedProject = transformMongoDocument(project);
+            return NextResponse.json(transformedProject.tasks || []);
+          }
+        } else {
+          // For backward compatibility, also try to find by string ID
+          const project = await collection.findOne({ id: projectId });
+          
+          if (project) {
+            const transformedProject = transformMongoDocument(project);
+            return NextResponse.json(transformedProject.tasks || []);
+          }
         }
-      } else {
-        // For backward compatibility, also try to find by string ID
-        const project = await collection.findOne({ id: projectId });
-        
-        if (project) {
-          const transformedProject = transformMongoDocument(project);
-          return NextResponse.json(transformedProject.tasks || []);
-        }
+      } catch (mongoError) {
+        console.error('MongoDB error:', mongoError);
+        // Fall back to mock data if MongoDB fails
       }
-    } catch (mongoError) {
-      console.error('MongoDB error:', mongoError);
-      // Fall back to mock data if MongoDB fails
     }
     
     // Fallback to mock data
@@ -114,24 +113,29 @@ export async function POST(
       createdAt: new Date().toISOString()
     };
 
-    // Try MongoDB first if ObjectId is valid
-    if (isValidObjectId(projectId)) {
+    // Try MongoDB first if configured and ObjectId is valid
+    if (process.env.MONGODB_URI) {
       try {
-        const client = await clientPromise;
-        const db = client.db("storeflow");
-        const collection = db.collection("projects");
+        // Dynamic import to avoid module load errors when MONGODB_URI is not set
+        const { default: clientPromise, isValidObjectId, toObjectId } = await import('@/lib/mongodb');
         
-        // Find and update the project with the new task
-        const result = await collection.updateOne(
-          { _id: toObjectId(projectId) },
-          { 
-            $push: { tasks: newTask } as any,
-            $set: { updatedAt: new Date().toISOString() }
-          }
-        );
+        if (isValidObjectId(projectId)) {
+          const client = await clientPromise;
+          const db = client.db("storeflow");
+          const collection = db.collection("projects");
+          
+          // Find and update the project with the new task
+          const result = await collection.updateOne(
+            { _id: toObjectId(projectId) },
+            { 
+              $push: { tasks: newTask } as any,
+              $set: { updatedAt: new Date().toISOString() }
+            }
+          );
 
-        if (result.modifiedCount > 0) {
-          return NextResponse.json(newTask, { status: 201 });
+          if (result.modifiedCount > 0) {
+            return NextResponse.json(newTask, { status: 201 });
+          }
         }
       } catch (mongoError) {
         console.error('MongoDB error:', mongoError);
