@@ -1,5 +1,5 @@
 
-import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, ApprovalRequest, ApprovalStatus, StoreItem, ImprovementPoint, Blocker, Department, StoreTask, TaskPriority, User, ProjectMember } from '@/types';
+import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, ApprovalRequest, ApprovalStatus, StoreItem, ImprovementPoint, Blocker, Department, DepartmentDetails, StoreTask, TaskPriority, User, ProjectMember } from '@/types';
 import { format, addDays as dateFnsAddDays } from 'date-fns';
 
 export const formatDate = (date: Date): string => date.toISOString().split('T')[0];
@@ -34,7 +34,9 @@ export let mockProjects: StoreProject[] = [
       notes: "Prime location in commercial area"
     },
     projectTimeline: {
-      totalDays: 150
+      totalDays: 150,
+      currentDay: 30,
+      kickoffDate: "2024-01-15"
     },
     tasks: [
       {
@@ -71,7 +73,9 @@ export let mockProjects: StoreProject[] = [
       notes: "High traffic area"
     },
     projectTimeline: {
-      totalDays: 120
+      totalDays: 120,
+      currentDay: 72,
+      kickoffDate: "2023-12-01"
     },
     tasks: [
       {
@@ -98,9 +102,9 @@ export let mockStores: StoreItem[] = [
     id: "store-1",
     name: "Mumbai Central Store",
     location: "Mumbai, Maharashtra",
-    storeType: "COCO",
-    status: "Active",
-    launchDate: "2023-06-15",
+    type: "COCO",
+    status: "Operational",
+    openingDate: "2023-06-15",
     manager: "John Doe",
     contact: "+91-9876543210",
     address: "123 Main Street, Mumbai, Maharashtra",
@@ -111,9 +115,9 @@ export let mockStores: StoreItem[] = [
     id: "store-2",
     name: "Delhi South Store", 
     location: "Delhi, India",
-    storeType: "FOFO",
-    status: "Active",
-    launchDate: "2023-09-20",
+    type: "FOFO",
+    status: "Operational",
+    openingDate: "2023-09-20",
     manager: "Jane Smith",
     contact: "+91-9876543211",
     address: "456 Market Road, Delhi, India",
@@ -172,8 +176,11 @@ export function createProject(projectData: Partial<StoreProject>): StoreProject 
 }
 
 export function updateProject(id: string, projectData: Partial<StoreProject>): StoreProject {
-  console.warn(`updateProject called for ${id} - implement proper API call`);
-  throw new Error("Project update not implemented - use API");
+  const projectIndex = mockProjects.findIndex(p => p.id === id);
+  if (projectIndex === -1) throw new Error("Project not found");
+  
+  mockProjects[projectIndex] = { ...mockProjects[projectIndex], ...projectData };
+  return mockProjects[projectIndex];
 }
 
 export function addTaskToProject(projectId: string, taskData: Partial<Task>): Task {
@@ -182,7 +189,7 @@ export function addTaskToProject(projectId: string, taskData: Partial<Task>): Ta
 }
 
 export function updateTaskInProject(projectId: string, taskId: string, taskData: Partial<Task>): Task {
-    const project = getProjectById(projectId);
+    const project = mockProjects.find(p => p.id === projectId);
     if (!project) throw new Error("Project not found for updating task");
     const taskIndex = project.tasks.findIndex(t => t.id === taskId);
     if (taskIndex === -1) throw new Error("Task not found in project");
@@ -221,7 +228,7 @@ export function updateTaskInProject(projectId: string, taskId: string, taskData:
 
 
 export function addDocumentToProject(projectId: string, documentData: FormData): DocumentFile {
-  const project = getProjectById(projectId);
+  const project = mockProjects.find(p => p.id === projectId);
   if (!project) throw new Error("Project not found for adding document");
 
   // FormData handling is more complex for mock. We'll simplify.
@@ -240,6 +247,7 @@ export function addDocumentToProject(projectId: string, documentData: FormData):
     url: file ? URL.createObjectURL(file) : '#', // Create a blob URL for mock preview
     uploadedAt: formatDate(new Date()),
     uploadedBy: uploadedBy,
+    uploadedById: 'mock-user-id', // Add the required uploadedById field
     size: file ? `${(file.size / 1024 / 1024).toFixed(2)}MB` : 'N/A',
     dataAiHint: dataAiHint,
     hodOnly: hodOnly
@@ -249,12 +257,16 @@ export function addDocumentToProject(projectId: string, documentData: FormData):
 }
 
 export function addCommentToProject(projectId: string, commentData: Partial<Comment>): Comment {
-  const project = getProjectById(projectId);
+  const project = mockProjects.find(p => p.id === projectId);
   if (!project) throw new Error("Project not found for adding comment");
   const newComment: Comment = {
     id: `cmt-${Date.now()}`,
+    _id: `cmt-${Date.now()}`,
     author: commentData.author || 'Anonymous',
+    addedByName: commentData.addedByName || commentData.author || 'Anonymous',
+    addedById: commentData.addedById,
     timestamp: commentData.timestamp || new Date().toISOString(),
+    addedAt: commentData.addedAt || commentData.timestamp || new Date().toISOString(),
     text: commentData.text || '',
     avatarUrl: commentData.avatarUrl || `https://placehold.co/40x40.png?text=${(commentData.author || 'A').substring(0,1)}`,
     replies: [],
@@ -264,16 +276,21 @@ export function addCommentToProject(projectId: string, commentData: Partial<Comm
 }
 
 export function addReplyToProjectComment(projectId: string, commentId: string, replyData: Partial<Comment>): Comment {
-    const project = getProjectById(projectId);
+    const project = mockProjects.find(p => p.id === projectId);
     if (!project || !project.comments) throw new Error("Project or comments not found");
 
     const findAndAddReply = (comments: Comment[]): Comment | undefined => {
         for (let comment of comments) {
-            if (comment.id === commentId) {
+            const currentCommentId = comment.id || comment._id;
+            if (currentCommentId === commentId) {
                 const newReply: Comment = {
                     id: `rply-${Date.now()}`,
+                    _id: `rply-${Date.now()}`,
                     author: replyData.author || 'Anonymous',
+                    addedByName: replyData.addedByName || replyData.author || 'Anonymous',
+                    addedById: replyData.addedById,
                     timestamp: replyData.timestamp || new Date().toISOString(),
+                    addedAt: replyData.addedAt || replyData.timestamp || new Date().toISOString(),
                     text: replyData.text || '',
                     avatarUrl: replyData.avatarUrl || `https://placehold.co/40x40.png?text=${(replyData.author || 'A').substring(0,1)}`,
                     replies: [],
@@ -294,10 +311,10 @@ export function addReplyToProjectComment(projectId: string, commentId: string, r
 }
 
 export function addMemberToProject(projectId: string, memberData: { email: string; name: string; roleInProject: string; department?: Department; avatarSeed?:string; isProjectHod: boolean }): ProjectMember {
-    const project = getProjectById(projectId);
+    const project = mockProjects.find(p => p.id === projectId);
     if (!project) throw new Error("Project not found for adding member");
     
-    const existingMember = project.members?.find(m => m.email === memberData.email);
+    const existingMember = project.members?.find((m: ProjectMember) => m.email === memberData.email);
     if (existingMember) throw new Error("Member already exists in this project.");
 
     const newMember: ProjectMember = {
@@ -312,8 +329,8 @@ export function addMemberToProject(projectId: string, memberData: { email: strin
     return newMember;
 }
 
-export async function removeMemberFromProject(projectId: string, memberEmail: string): Promise<void> {
-    const project = await getProjectById(projectId);
+export function removeMemberFromProject(projectId: string, memberEmail: string): void {
+    const project = mockProjects.find(p => p.id === projectId);
     if (!project || !project.members) throw new Error("Project or members list not found");
     project.members = project.members.filter(m => m.email !== memberEmail);
 }
@@ -376,6 +393,7 @@ export async function addImprovementPointToStore(storeId: string, pointData: Par
     const newPoint: ImprovementPoint = {
         id: `imp-${Date.now()}`,
         text: pointData.text || "New Improvement Point",
+        addedById: pointData.addedById || "system-user",
         addedBy: pointData.addedBy || "System",
         addedAt: pointData.addedAt || new Date().toISOString(),
         userAvatar: pointData.userAvatar || `https://placehold.co/40x40.png?text=S`,

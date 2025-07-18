@@ -162,11 +162,15 @@ export interface Task {
 
 /** Represents a single comment or reply, can be nested. */
 export interface Comment {
-  id: string;
+  id?: string;
+  _id?: string; // MongoDB ID for compatibility
   authorId?: string; // Ref: users - made optional for compatibility
-  author: string;   // Denormalized user name
+  addedById?: string; // Alternative field for user ID
+  author?: string;   // Denormalized user name
+  addedByName?: string; // Alternative field for user name
   avatarUrl?: string; // For mock UI
-  timestamp: string;  // ISO String
+  timestamp?: string;  // ISO String
+  addedAt?: string; // Alternative field for timestamp
   text: string;
   replies?: Comment[];
 }
