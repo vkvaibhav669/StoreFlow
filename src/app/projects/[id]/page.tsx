@@ -10,8 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  addTaskToProject,
-  updateTaskInProject,
   addDocumentToProject,
   addCommentToProject,
   addReplyToProjectComment,
@@ -19,7 +17,7 @@ import {
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
-import { getProjectById, updateProject } from "@/lib/api";
+import { getProjectById, updateProject, createTask, updateTask } from "@/lib/api";
 import { useProjectComments, useTaskComments } from "@/hooks/useComments";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
@@ -385,7 +383,7 @@ export default function ProjectDetailsPage() {
     };
 
     try {
-      const addedTask = addTaskToProject(projectData.id, newTaskPayload);
+      const addedTask = await createTask(projectData.id, newTaskPayload);
       // Refresh project data asynchronously
       const refreshedProject = await getProjectById(projectData.id);
       setProjectData(refreshedProject || null);
@@ -520,7 +518,7 @@ export default function ProjectDetailsPage() {
     const taskUpdatePayload: Partial<Task> = { status: newStatus, assignedTo: newAssignedTo, department: newDepartment, priority: newPriority };
 
     try {
-      updateTaskInProject(projectData.id, selectedTask.id, taskUpdatePayload);
+      await updateTask(projectData.id, selectedTask.id, taskUpdatePayload);
       const updatedProject = await getProjectById(projectData.id);
       setProjectData(updatedProject || null);
       setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
