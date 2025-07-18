@@ -10,7 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  addTaskToProject,
   updateTaskInProject,
   addDocumentToProject,
   addCommentToProject,
@@ -19,7 +18,7 @@ import {
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
-import { getProjectById, updateProject } from "@/lib/api";
+import { getProjectById, updateProject, createTaskForProject } from "@/lib/api";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -371,7 +370,7 @@ export default function ProjectDetailsPage() {
     };
 
     try {
-      const addedTask = addTaskToProject(projectData.id, newTaskPayload);
+      const addedTask = await createTaskForProject(projectData.id, newTaskPayload);
       // Refresh project data asynchronously
       const refreshedProject = await getProjectById(projectData.id);
       setProjectData(refreshedProject || null);
@@ -674,7 +673,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     };
 
     try {
-      const updatedProject = updateProject(projectData.id, projectUpdatePayload);
+      const updatedProject = await updateProject(projectData.id, projectUpdatePayload);
       setProjectData(updatedProject); 
       toast({ title: "Project Updated", description: `${updatedProject.name} has been successfully updated.` });
       setIsEditProjectDialogOpen(false);
