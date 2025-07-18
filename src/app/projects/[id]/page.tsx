@@ -20,6 +20,7 @@ import {
   mockHeadOfficeContacts
 } from "@/lib/data";
 import { getProjectById, updateProject } from "@/lib/api";
+import { useProjectComments, useTaskComments } from "@/hooks/useComments";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -156,9 +157,16 @@ export default function ProjectDetailsPage() {
   const router = useRouter();
   
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
-  const [projectComments, setProjectComments] = React.useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = React.useState("");
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+
+  // Use the new real-time comment hook
+  const { 
+    comments: projectComments, 
+    isLoading: commentsLoading, 
+    addComment: addProjectComment,
+    error: commentsError 
+  } = useProjectComments(projectData?.id || null);
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
@@ -178,6 +186,14 @@ export default function ProjectDetailsPage() {
   const [newDocumentHodOnly, setNewDocumentHodOnly] = React.useState(false);
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
+  
+  // Task comment hooks for the selected task (must be after selectedTask is declared)
+  const { 
+    comments: taskComments, 
+    isLoading: taskCommentsLoading, 
+    addComment: addTaskComment,
+    error: taskCommentsError 
+  } = useTaskComments(selectedTask?.id || null);
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [isUpdatingTask, setIsUpdatingTask] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
@@ -244,9 +260,7 @@ export default function ProjectDetailsPage() {
         const currentProject = await getProjectById(projectId);
         if (currentProject) {
             setProjectData(currentProject);
-            // Handle both 'comments' and 'discussion' fields for backward compatibility
-            const comments = currentProject.comments || currentProject.discussion || [];
-            setProjectComments(comments);
+            // Comments are now handled by the useProjectComments hook
             setEditingProjectForm({
                 name: currentProject.name, location: currentProject.location, status: currentProject.status,
                 startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
@@ -431,21 +445,13 @@ export default function ProjectDetailsPage() {
   const handleAddComment = async () => {
     if (newCommentText.trim() && projectData && user) {
       setIsSubmittingComment(true);
-      const commentPayload: Partial<Comment> = {
+      const commentPayload = {
         author: user.name || user.email || "Anonymous User",
-        addedByName: user.name || user.email || "Anonymous User",
-        addedById: user.id || user.email,
-        avatarUrl: `https://picsum.photos/seed/${user.id || 'currentUser'}/40/40`,
-        timestamp: new Date().toISOString(),
-        addedAt: new Date().toISOString(),
         text: newCommentText,
-        replies: [],
+        authorId: user.id || user.email,
       };
       try {
-        addCommentToProject(projectData.id, commentPayload);
-        const updatedProject = await getProjectById(projectData.id);
-        setProjectData(updatedProject || null);
-        setProjectComments(updatedProject?.comments || updatedProject?.discussion || []);
+        await addProjectComment(commentPayload);
         toast({ title: "Comment Posted", description: "Your comment has been added." });
         setNewCommentText("");
       } catch (error) {
@@ -476,7 +482,7 @@ export default function ProjectDetailsPage() {
           addReplyToProjectComment(projectData.id, commentId, replyPayload);
           const updatedProject = await getProjectById(projectData.id);
           setProjectData(updatedProject || null);
-          setProjectComments(updatedProject?.comments || updatedProject?.discussion || []);
+          // Comments are now handled by the real-time hook
           toast({ title: "Reply Posted", description: "Your reply has been added." });
       } catch (error) {
           console.error("Error posting reply:", error);
@@ -529,36 +535,17 @@ export default function ProjectDetailsPage() {
   };
   
   const handlePostNewTaskComment = async () => {
-    if (!selectedTask || !newTaskCommentTextForTask.trim() || !projectData || !user) return;
+    if (!selectedTask || !newTaskCommentTextForTask.trim() || !user) return;
     setIsSubmittingTaskComment(true);
-    const commentPayload: Partial<Comment> = {
+    
+    const commentPayload = {
       author: user.name || user.email || "Anonymous User",
-      addedByName: user.name || user.email || "Anonymous User",
-      addedById: user.id || user.email,
-      avatarUrl: `https://picsum.photos/seed/${user.id || 'taskUser'}/40/40`,
-      timestamp: new Date().toISOString(),
-      addedAt: new Date().toISOString(),
       text: newTaskCommentTextForTask,
+      authorId: user.id || user.email,
     };
 
     try {
-      const projectToUpdate = await getProjectById(projectData.id);
-      if (!projectToUpdate) throw new Error("Project not found");
-      const taskToUpdate = projectToUpdate.tasks.find(t => t.id === selectedTask.id);
-      if (!taskToUpdate) throw new Error("Task not found");
-
-      const newComment: Comment = { 
-        id: `taskcmt-${Date.now()}`, 
-        _id: `taskcmt-${Date.now()}`,
-        ...commentPayload 
-      } as Comment;
-      taskToUpdate.comments = [newComment, ...(taskToUpdate.comments || [])];
-      
-      updateProject(projectData.id, projectToUpdate);
-      const updatedProject = await getProjectById(projectData.id);
-      setProjectData(updatedProject || null);
-      setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
-
+      await addTaskComment(commentPayload);
       setNewTaskCommentTextForTask("");
       toast({ title: "Comment Added to Task", description: "Your comment has been posted." });
     } catch (error) {
@@ -1383,7 +1370,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 <Avatar className="h-10 w-10 mt-1 flex-shrink-0"><AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/><AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                 <div className="flex-1"><Textarea placeholder="Write a comment..." value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)} className="mb-2" rows={3} disabled={isSubmittingComment}/><div className="flex justify-end"><Button onClick={handleAddComment} disabled={!newCommentText.trim() || isSubmittingComment}>{isSubmittingComment ? "Posting..." : "Post Comment"}</Button></div></div>
               </div>
-              {projectComments.length > 0 ? (<div className="space-y-0">{projectComments.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={handleReplyToComment} />))}</div>) : (<p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>)}
+              {commentsLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading comments...</p>}
+              {projectComments.length > 0 ? (<div className="space-y-0">{projectComments.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={handleReplyToComment} />))}</div>) : (!commentsLoading && <p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>)}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1417,12 +1405,13 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 </div>
               </div>
               <div className="mt-6 pt-4 border-t">
-                <h3 className="text-md font-semibold mb-3">Task Comments ({(selectedTask.comments || []).length})</h3>
+                <h3 className="text-md font-semibold mb-3">Task Comments ({taskComments.length})</h3>
                 <div className="flex items-start space-x-3 mb-4">
                   <Avatar className="h-9 w-9 mt-1 flex-shrink-0"><AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUserTaskComment'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/><AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                   <div className="flex-1"><Textarea placeholder="Write a comment for this task..." value={newTaskCommentTextForTask} onChange={(e) => setNewTaskCommentTextForTask(e.target.value)} className="mb-2" rows={2} disabled={isSubmittingTaskComment}/><div className="flex justify-end"><Button onClick={handlePostNewTaskComment} disabled={!newTaskCommentTextForTask.trim() || isSubmittingTaskComment} size="sm"><MessageSquare className="mr-2 h-4 w-4" />{isSubmittingTaskComment ? "Posting..." : "Post Comment"}</Button></div></div>
                 </div>
-                {((selectedTask.comments || []).length > 0) ? (<div className="space-y-0">{selectedTask.comments?.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={(commentId, replyText) => handleReplyToTaskComment(selectedTask.id, commentId, replyText)}/>))}</div>) : (<p className="text-sm text-muted-foreground text-center py-4">No comments for this task yet.</p>)}
+                {taskCommentsLoading && <p className="text-sm text-muted-foreground text-center py-4">Loading comments...</p>}
+                {taskComments.length > 0 ? (<div className="space-y-0">{taskComments.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={(commentId, replyText) => handleReplyToTaskComment(selectedTask.id, commentId, replyText)}/>))}</div>) : (!taskCommentsLoading && <p className="text-sm text-muted-foreground text-center py-4">No comments for this task yet.</p>)}
               </div>
             </ScrollArea>)}
           <DialogFooter className="mt-4">
