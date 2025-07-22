@@ -62,6 +62,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Package2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { isValidObjectId } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 
 interface DepartmentCardProps {
@@ -502,26 +504,45 @@ export default function ProjectDetailsPage() {
 
   const handleUpdateTaskDetails = async () => {
     if (!selectedTask || !projectData || !user) return;
-    setIsUpdatingTask(true);
-    const newStatus = editingTaskStatus as Task['status'] || selectedTask.status;
-    const newAssignedTo = editingTaskAssignedTo || selectedTask.assignedTo;
-    const newDepartment = editingSelectedTaskDepartment as Department || selectedTask.department;
-    const newPriority = editingSelectedTaskPriority as TaskPriority || selectedTask.priority || "Medium";
-    
+    console.log("Updating task details for:", selectedTask);
+    var re = selectedTask?._id || selectedTask?.id || selectedTask[0]?._id || selectedTask[0]?.id || selectedTask.id;
+    console.log("telling the task details for:", re);    
+    console.log(selectedTask);
+    // 1. Permission Check for members trying to change department or priority
     if (isUserMember) {
-        if (newDepartment !== selectedTask.department || newPriority !== (selectedTask.priority || "Medium")) {
+        const departmentChanged = (editingSelectedTaskDepartment as Department || selectedTask.department) !== selectedTask.department;
+        const priorityChanged = (editingSelectedTaskPriority as TaskPriority || selectedTask.priority || "Medium") !== (selectedTask.priority || "Medium");
+        if (departmentChanged || priorityChanged) {
              toast({ title: "Permission Denied", description: "Members cannot change task department or priority.", variant: "destructive"});
-             setIsUpdatingTask(false); return;
+             return;
         }
     }
 
-    const taskUpdatePayload: Partial<Task> = { status: newStatus, assignedTo: newAssignedTo, department: newDepartment, priority: newPriority };
+    setIsUpdatingTask(true);
+    //const validID = selectedTask.id;
+    //console.log("Validating task ID:", validID);
+    // 1. Validate the task ID format
+  
+    // 2. Prepare the payload with the updated data from the dialog form
+    const taskUpdatePayload: Partial<Task> = {
+      status: (editingTaskStatus as Task['status']) || selectedTask.status,
+      assignedTo: editingTaskAssignedTo || selectedTask.assignedTo,
+      department: (editingSelectedTaskDepartment as Department) || selectedTask.department,
+      priority: (editingSelectedTaskPriority as TaskPriority) || selectedTask.priority || "Medium",
+    };
 
     try {
-      await updateTask(projectData.id, selectedTask.id, taskUpdatePayload);
-      const updatedProject = await getProjectById(projectData.id);
-      setProjectData(updatedProject || null);
-      setSelectedTask(updatedProject?.tasks.find(t => t.id === selectedTask.id) || null);
+      // 3. Invoke the PUT API call using the projectId and taskId.
+      // The `updateTask` function is imported from `lib/api.ts` and handles the fetch request.
+      //await updateTask(projectData.id, selectedTask.id, taskUpdatePayload);
+      //await updateTask(projectData.id, selectedTask.id, taskUpdatePayload);
+      await updateTask(projectData.id, re , taskUpdatePayload);
+      // 4. Re-fetch the entire project to ensure the UI is perfectly in sync with the database.
+      // This is a robust strategy that ensures any changes to the task (e.g., status, department)
+      // are reflected correctly across all components on the page (progress bars, department cards, etc.).
+      const refreshedProject = await getProjectById(projectData.id);
+      setProjectData(refreshedProject || null);
+      setSelectedTask(refreshedProject?.tasks.find(t => t.id === selectedTask.id) || null);
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
     } catch (error) {
@@ -530,7 +551,8 @@ export default function ProjectDetailsPage() {
     } finally {
       setIsUpdatingTask(false);
     }
-  };
+   
+};
   
   const handlePostNewTaskComment = async () => {
     if (!selectedTask || !newTaskCommentTextForTask.trim() || !user) return;

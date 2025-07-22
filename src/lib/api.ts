@@ -110,6 +110,8 @@ export async function createTask(projectId: string, taskData: Partial<Task>): Pr
 }
 
 export async function updateTask(projectId: string, taskId: string, taskData: Partial<Task>): Promise<Task> {
+  console.log('Updating task of id  ', taskId, 'with data: ', taskData);
+  // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskq
   return apiFetch<Task>(`/tasks/${projectId}/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(taskData),

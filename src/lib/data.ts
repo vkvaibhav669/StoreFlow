@@ -253,7 +253,7 @@ export function addTaskToProject(projectId: string, taskData: Partial<Task>): Ta
 export async function updateTaskInProject(projectId: string, taskId: string, taskData: Partial<Task>): Promise<Task> {
   // This implementation directly calls a dedicated API endpoint to update the task,
   // which is more efficient than fetching the entire project.
-  console.log('Updating task in project ', projectId, 'with data:', taskData);
+  console.log('Updating task in project ', projectId, 'with data:', taskData , 'taskId:', taskId );
   try {
     // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
     // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
