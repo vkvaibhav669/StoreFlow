@@ -23,7 +23,7 @@ export async function GET(
         // Dynamic import to avoid module load errors when MONGODB_URI is not set
         const { default: clientPromise, isValidObjectId, toObjectId, transformMongoDocument } = await import('@/lib/mongodb');
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("projects");
         
         // Check if projectId is a valid ObjectId
@@ -121,7 +121,7 @@ export async function POST(
         
         if (isValidObjectId(projectId)) {
           const client = await clientPromise;
-          const db = client.db("storeflow");
+          const db = client.db("StoreFlow");
           const collection = db.collection("projects");
           
           // Find and update the project with the new task

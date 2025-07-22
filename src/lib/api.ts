@@ -1,6 +1,6 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Error handling utility
 class ApiError extends Error {
@@ -13,7 +13,10 @@ class ApiError extends Error {
 // Generic fetch wrapper with error handling
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
-    const url = BASE_URL ? `${BASE_URL}${endpoint}` : `/api${endpoint}`;
+    const url = BASE_URL ? `${BASE_URL}${endpoint}` : `${endpoint}`;
+    console.log(`try to fetch: ${url}`);
+    console.log(url)
+    console.log(`Fetching: ${url}`);
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',

@@ -61,12 +61,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Package2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 
 interface DepartmentCardProps {
   title: string;
-  icon: React.ElementType;
+  icon: React.ElementType<React.ComponentPropsWithoutRef<'svg'>>;
   tasks: Task[];
   notes?: string;
   children?: React.ReactNode;
@@ -94,7 +94,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick, is
           <CardDescription>{completedTasks} of {totalTasks} tasks completed.</CardDescription>
         )}
          {isLockedForCurrentUser && <CardDescription>Access restricted.</CardDescription>}
-      </CardHeader>
+      </CardHeader> 
       <CardContent className="space-y-3">
         {!isLockedForCurrentUser && totalTasks > 0 && <Progress value={progress} className="h-2" />}
         {!isLockedForCurrentUser && notes && <p className="text-sm text-muted-foreground italic">{notes}</p>}
@@ -660,8 +660,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
 
     try {
       const updatedProject = updateProject(projectData.id, projectUpdatePayload);
-      setProjectData(updatedProject); 
-      toast({ title: "Project Updated", description: `${updatedProject.name} has been successfully updated.` });
+      setProjectData(await updatedProject); 
+      toast({ title: "Project Updated", description: `${(await updatedProject).name} has been successfully updated.` });
       setIsEditProjectDialogOpen(false);
     } catch (error) {
       console.error("Error updating project:", error);
@@ -916,8 +916,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="editPropertyNotes">Property Notes</Label>
-                        <Textarea id="editPropertyNotes" value={editingPropertyDetailsForm?.notes || ""} onChange={(e) => handleEditPropertyDetailChange('notes', e.target.value)} rows={3} disabled={isSavingProject}/>
-                    </div>
+                        <Textarea id="editPropertyNotes" value={editingPropertyDetailsForm?.notes || ""} onChange={(e) => handleEditPropertyDetailChange('notes' , String(e.target.value))} rows={3} disabled={isSavingProject}/>
+                    </div> 
                   </div>
 
                   <h3 className="text-md font-semibold mt-4 mb-1 col-span-full">Timeline & Visuals</h3>
@@ -1134,7 +1134,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
           <div>
             <p className="text-sm font-medium">Projected Launch Date</p>
             <p className="text-muted-foreground">{projectData.projectedLaunchDate ? format(new Date(projectData.projectedLaunchDate), "PPP") : "N/A"}</p>
-          </div>
+          </div> 
           <div>
             <p className="text-sm font-medium">Start Date</p>
             <p className="text-muted-foreground">{projectData.startDate ? format(new Date(projectData.startDate), "PPP") : "N/A"}</p>
@@ -1386,7 +1386,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskDepartmentEdit" className="sm:text-right text-muted-foreground">Department:</Label>
                   <Select value={editingSelectedTaskDepartment} onValueChange={(value) => setEditingSelectedTaskDepartment(value as Department | "")} disabled={isUserMember || isUpdatingTask}><SelectTrigger id="taskDepartmentEdit" className="sm:col-span-2"><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{allPossibleDepartments.map(dept => (<SelectItem key={dept} value={dept}>{dept}</SelectItem>))}</SelectContent></Select>
-                </div>
+                </div> 
                 <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskPriorityEdit" className="sm:text-right text-muted-foreground">Priority:</Label>
                   <Select value={editingSelectedTaskPriority} onValueChange={(value) => setEditingSelectedTaskPriority(value as TaskPriority | "")} disabled={isUserMember || isUpdatingTask}><SelectTrigger id="taskPriorityEdit" className="sm:col-span-2"><SelectValue placeholder="Select priority" /></SelectTrigger><SelectContent>{allPossibleTaskPriorities.map(prio => (<SelectItem key={prio} value={prio}>{prio}</SelectItem>))}<SelectItem value="None">None</SelectItem></SelectContent></Select>
@@ -1426,7 +1426,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
             {departmentDialogTasks.length > 0 ? (
               <Table>
                 <TableHeader><TableRow><TableHead>Task Name</TableHead><TableHead>Status</TableHead><TableHead className="hidden sm:table-cell">Assignee</TableHead><TableHead className="hidden md:table-cell">Due Date</TableHead></TableRow></TableHeader>
-                <TableBody>
+                <TableBody> 
                   {departmentDialogTasks.map((task) => (
                     <TableRow key={task.id}>
                       <TableCell><Button variant="link" className="p-0 h-auto font-medium text-left whitespace-normal" onClick={() => { setIsDepartmentTasksDialogOpen(false); handleViewTaskDetails(task); }}>{task.name}</Button>{task.description && (<div className="text-xs text-muted-foreground truncate max-w-xs">{task.description}</div>)}</TableCell>
@@ -1475,4 +1475,3 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     </section>
   );
 }
-

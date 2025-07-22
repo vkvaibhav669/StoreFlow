@@ -24,7 +24,7 @@ export async function GET(
         
         if (isValidObjectId(id)) {
           const client = await clientPromise;
-          const db = client.db("storeflow");
+          const db = client.db("StoreFlow");
           const collection = db.collection("stores");
           
           const store = await collection.findOne({ _id: toObjectId(id) });
@@ -83,7 +83,7 @@ export async function PUT(
         
         if (isValidObjectId(id)) {
           const client = await clientPromise;
-          const db = client.db("storeflow");
+          const db = client.db("StoreFlow");
           const collection = db.collection("stores");
 
           // Add updatedAt timestamp

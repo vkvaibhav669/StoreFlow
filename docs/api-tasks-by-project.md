@@ -21,7 +21,7 @@ This document describes the integration of the new API endpoint for fetching tas
 
 **Example Request**:
 ```bash
-curl http://localhost:8080/api/tasks/project-1
+curl http://localhost:8000/api/tasks/project-1
 ```
 
 **Example Response**:
@@ -66,7 +66,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 NEXT_PUBLIC_API_URL=https://api.example.com/api
 ```
 
-If not specified, defaults to `http://localhost:8000/api`.
+If not specified, defaults to `http://localhost:8000/api/projects`.
 
 ## Backend Compatibility
 
@@ -156,13 +156,13 @@ The API can be tested with:
 
 ```bash
 # Test with valid project ID
-curl http://localhost:8080/api/tasks/project-1
+curl http://localhost:8000/api/tasks/project-1
 
 # Test with invalid project ID
-curl http://localhost:8080/api/tasks/invalid-project
+curl http://localhost:8000/api/tasks/invalid-project
 
 # Test error response
-curl http://localhost:8080/api/tasks/
+curl http://localhost:8000/api/tasks/
 ```
 
 ## Benefits

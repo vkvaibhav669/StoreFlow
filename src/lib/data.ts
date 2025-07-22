@@ -88,12 +88,7 @@ export let mockProjects: StoreProject[] = [
     ],
     members: [
       {
-        _id: "685d0c075656e677824a3190",
-        userId: {
-          _id: "685d0a785656e677824a3185",
-          name: "Admin User",
-          email: "admin@example.com"
-        },
+        userId: "685d0a785656e677824a3185",
         name: "Admin User",
         email: "admin@example.com",
         roleInProject: "HOD",
@@ -163,8 +158,6 @@ export let mockStores: StoreItem[] = [
     status: "Operational",
     openingDate: "2023-06-15",
     manager: "John Doe",
-    contact: "+91-9876543210",
-    address: "123 Main Street, Mumbai, Maharashtra",
     improvementPoints: [],
     tasks: []
   },
@@ -176,8 +169,6 @@ export let mockStores: StoreItem[] = [
     status: "Operational",
     openingDate: "2023-09-20",
     manager: "Jane Smith",
-    contact: "+91-9876543211",
-    address: "456 Market Road, Delhi, India",
     improvementPoints: [],
     tasks: []
   }
@@ -203,8 +194,30 @@ export async function getAllProjects(): Promise<StoreProject[]> {
   }
 }
 
+export async function updateProject(id: string, projectData: Partial<StoreProject>): Promise<StoreProject> {
+  // Note: The request specified an endpoint of `/api/stores/:id`, but `/api/projects/:id` is being used
+  // for consistency with other project-related functions in this file (e.g., getProjectById).
+  try {
+    const response = await fetch(`http://localhost:8000/api/projects/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(projectData),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating project with id ${id}:`, error);
+    throw error;
+  }
+}
+
 export async function getProjectById(id: string): Promise<StoreProject | undefined> {
   // Validate id to prevent sending invalid IDs to the API
+  console.log('getProjectById called with id:', id);
   if (!id || id === 'undefined' || id.trim() === '') {
     console.warn('getProjectById called with invalid id:', id);
     return undefined;
@@ -232,55 +245,35 @@ export function createProject(projectData: Partial<StoreProject>): StoreProject 
   throw new Error("Project creation not implemented - use API");
 }
 
-export function updateProject(id: string, projectData: Partial<StoreProject>): StoreProject {
-  const projectIndex = mockProjects.findIndex(p => p.id === id);
-  if (projectIndex === -1) throw new Error("Project not found");
-  
-  mockProjects[projectIndex] = { ...mockProjects[projectIndex], ...projectData };
-  return mockProjects[projectIndex];
-}
-
 export function addTaskToProject(projectId: string, taskData: Partial<Task>): Task {
   console.warn(`addTaskToProject called for ${projectId} - implement proper API call`);
   throw new Error("Task creation not implemented - use API");
 }
 
-export function updateTaskInProject(projectId: string, taskId: string, taskData: Partial<Task>): Task {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project) throw new Error("Project not found for updating task");
-    const taskIndex = project.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) throw new Error("Task not found in project");
+export async function updateTaskInProject(projectId: string, taskId: string, taskData: Partial<Task>): Promise<Task> {
+  // This implementation directly calls a dedicated API endpoint to update the task,
+  // which is more efficient than fetching the entire project.
+  console.log('Updating task in project ', projectId, 'with data:', taskData);
+  try {
+    // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
+    // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
+    const response = await fetch(`http://localhost:8000/api/tasks/${projectId}/${taskId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(taskData),
+    });
 
-    const oldTask = project.tasks[taskIndex];
-    const updatedTask = { ...oldTask, ...taskData };
-    project.tasks[taskIndex] = updatedTask;
-
-    // Update in department details if department changes or if task is updated
-    if (project.departments) {
-        // Remove from old department's task list if department changed
-        if (taskData.department && taskData.department !== oldTask.department) {
-            const oldDeptKey = oldTask.department.toLowerCase() as keyof StoreProject['departments'];
-            if (project.departments[oldDeptKey]) {
-                (project.departments[oldDeptKey] as DepartmentDetails).tasks = 
-                    ((project.departments[oldDeptKey] as DepartmentDetails).tasks || []).filter(dTask => dTask.id !== taskId);
-            }
-        }
-        // Add/Update in new department's task list
-        const newDeptKey = (taskData.department || oldTask.department).toLowerCase() as keyof StoreProject['departments'];
-        if (project.departments[newDeptKey]) {
-            const deptTaskIndex = ((project.departments[newDeptKey] as DepartmentDetails).tasks || []).findIndex(dTask => dTask.id === taskId);
-            if (deptTaskIndex !== -1) {
-                (project.departments[newDeptKey] as DepartmentDetails).tasks[deptTaskIndex] = updatedTask;
-            } else {
-                 (project.departments[newDeptKey] as DepartmentDetails).tasks.push(updatedTask);
-            }
-        } else { // Department might not exist yet if newly assigned
-             if (newDeptKey === "marketing") project.departments[newDeptKey] = { tasks: [updatedTask], preLaunchCampaigns: [], postLaunchCampaigns: []};
-             else project.departments[newDeptKey] = { tasks: [updatedTask] };
-        }
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    project.currentProgress = Math.round(project.tasks.filter(t => t.status === 'Completed').length / project.tasks.length * 100);
-    return updatedTask;
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating task ${taskId} in project ${projectId}:`, error);
+    throw error; // Re-throw the error to be handled by the calling UI code.
+  }
 }
 
 

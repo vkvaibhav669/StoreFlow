@@ -107,22 +107,16 @@ export interface ApprovalRequest {
   title: string;
   details: string;
   status: ApprovalStatus;
-  
   requestorId?: string; // Ref: users
   requestorName: string; // Denormalized name
   requestorEmail?: string; // Email for compatibility
   approverId?: string; // Ref: users
   approverName: string; // Denormalized name
   approverEmail?: string; // Email for compatibility
-  
   projectId?: string; // Optional Ref: projects
   projectName?: string; // Denormalized name
-  
   requestingDepartment: Department;
-  
-  // --- Embedded Array ---
   approvalComments?: Comment[];
-
   submissionDate: string; // ISO String
   lastUpdateDate?: string; // ISO String
 }

@@ -22,7 +22,7 @@ export async function GET(
     if (isValidObjectId(id)) {
       try {
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("projects");
         
         // Find the project and task
@@ -104,7 +104,7 @@ export async function POST(
     if (isValidObjectId(id)) {
       try {
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("projects");
         
         // Find and update the specific task within the project

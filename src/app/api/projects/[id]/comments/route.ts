@@ -25,7 +25,7 @@ export async function GET(
         
         if (isValidObjectId(id)) {
           const client = await clientPromise;
-          const db = client.db("storeflow");
+          const db = client.db("StoreFlow");
           const collection = db.collection("projects");
           
           const project = await collection.findOne({ _id: toObjectId(id) });
@@ -110,7 +110,7 @@ export async function POST(
         
         if (isValidObjectId(id)) {
           const client = await clientPromise;
-          const db = client.db("storeflow");
+          const db = client.db("StoreFlow");
           const collection = db.collection("projects");
           
           const project = await collection.findOne({ _id: toObjectId(id) });

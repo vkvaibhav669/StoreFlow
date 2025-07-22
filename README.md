@@ -49,7 +49,7 @@ See [docs/mongodb-id-handling.md](docs/mongodb-id-handling.md) for detailed info
    ```
 
 5. **Open your browser**
-   Navigate to [http://localhost:8080](http://localhost:8080)
+   Navigate to [http://localhost:8000](http://localhost:8000)
 
 ## Environment Variables
 

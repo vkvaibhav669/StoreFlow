@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { mockProjects } from '@/lib/data';
+//import { mockProjects } from '@/lib/data';
 
 export async function GET() {
   try {
@@ -9,7 +9,7 @@ export async function GET() {
         // Dynamic import to avoid module load errors when MONGODB_URI is not set
         const { default: clientPromise, transformMongoDocuments } = await import('@/lib/mongodb');
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("projects");
         
         const projects = await collection.find({}).toArray();
@@ -24,7 +24,7 @@ export async function GET() {
     }
     
     // Return the projects data from the existing mock data as fallback
-    return NextResponse.json(mockProjects);
+   // return NextResponse.json(mockProjects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     return NextResponse.json(
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         // Dynamic import to avoid module load errors when MONGODB_URI is not set
         const { default: clientPromise, transformMongoDocument } = await import('@/lib/mongodb');
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("projects");
         
         // Add default values and timestamps

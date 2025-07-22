@@ -9,7 +9,7 @@ export async function GET() {
         // Dynamic import to avoid module load errors when MONGODB_URI is not set
         const { default: clientPromise, transformMongoDocuments } = await import('@/lib/mongodb');
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("stores");
         
         const stores = await collection.find({}).toArray();
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         // Dynamic import to avoid module load errors when MONGODB_URI is not set
         const { default: clientPromise, transformMongoDocument } = await import('@/lib/mongodb');
         const client = await clientPromise;
-        const db = client.db("storeflow");
+        const db = client.db("StoreFlow");
         const collection = db.collection("stores");
         
         // Add default values and timestamps
