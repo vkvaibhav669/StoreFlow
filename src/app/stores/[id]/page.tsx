@@ -160,7 +160,7 @@ export default function StoreDetailsPage() {
   }, [store, isUserAdmin, isUserSuperAdmin, user?.name]);
 
 
-  const handleAddImprovementPoint = () => { // No async for mock
+  const handleAddImprovementPoint = async () => { // No async for mock
     if (!newImprovementPointText.trim() || !store || !user) {
       toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" }); return;
     }
@@ -174,12 +174,27 @@ export default function StoreDetailsPage() {
       comments: [], isResolved: false,
     };
     try {
-      addImprovementPointToStore(store.id, newPointPayload);
-      setStore(getStoreById(store.id)); // Refresh store data
+      // This POST request sends the new improvement point data to the server.
+      const response = await fetch(`/api/stores/${store.id}/improvementPoints`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newPointPayload),
+      });
+
+      if (!response.ok) {
+        // If the server responds with an error, we throw an error to be caught by the catch block.
+        const errorData = await response.json().catch(() => ({ message: 'Failed to add improvement point.' }));
+        throw new Error(errorData.message);
+      }
+
+      // After a successful API call, we reload the store data to reflect the changes in the UI.
+      await loadStore(store.id);
       toast({ title: "Improvement Point Added" });
       setNewImprovementPointText(""); setIsAddImprovementDialogOpen(false);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to add improvement point.", variant: "destructive" });
+      toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsSubmittingImprovement(false);
     }

@@ -438,7 +438,8 @@ export function createStore(storeData: Partial<StoreItem>): StoreItem {
 }
 
 export async function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
-    const store = await getStoreById(storeId);
+   console.log(storeId, pointData);   
+  const store = await getStoreById(storeId);
     if (!store) throw new Error("Store not found");
     const newPoint: ImprovementPoint = {
         id: `imp-${Date.now()}`,

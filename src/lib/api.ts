@@ -14,9 +14,9 @@ class ApiError extends Error {
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
     const url = BASE_URL ? `${BASE_URL}${endpoint}` : `${endpoint}`;
-    console.log(`try to fetch: ${url}`);
-    console.log(url)
-    console.log(`Fetching: ${url}`);
+    //console.log(`try to fetch: ${url}`);
+    //console.log(url)
+    console.log(`Fetching api endpoint: ${url}`);
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
