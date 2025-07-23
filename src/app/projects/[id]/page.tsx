@@ -122,7 +122,7 @@ function DepartmentCard({ title, icon: Icon, tasks, notes, children, onClick, is
   );
 }
 
-const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Executive Office", "Operations"];
+const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
 const allPossibleTaskPriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 const propertyStatuses = ["Identified", "Negotiating", "Finalized"] as const;
 const storeTypes: StoreType[] = ["COCO", "FOFO"];

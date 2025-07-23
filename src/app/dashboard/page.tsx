@@ -73,7 +73,7 @@ function ProjectCard({ project }: { project: StoreProject }) {
   );
 }
 
-const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
 const allStoreTypes: StoreType[] = ["COCO", "FOFO"];
 
 export default function DashboardPage() {

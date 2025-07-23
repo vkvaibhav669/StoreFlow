@@ -31,7 +31,7 @@ type TaskStatus = Task["status"];
 const KANBAN_COLUMNS: TaskStatus[] = ["Pending", "In Progress", "Blocked", "Completed"];
 const ALL_TASK_STATUSES: TaskStatus[] = ["Pending", "In Progress", "Completed", "Blocked"];
 
-const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+const allPossibleDepartments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
 const allPossiblePriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 
 export default function TaskTrackerPage() {

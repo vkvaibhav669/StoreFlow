@@ -1,0 +1,19 @@
+# Docker
+Dockerfile
+.dockerignore
+
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+npm-debug.log*
+yarn-error.log
+
+# Next.js build output
+.next
+
+# Environment files
+.env*
+!/.env.local.example

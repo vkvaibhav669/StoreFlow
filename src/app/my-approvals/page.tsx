@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 
-const allPossibleDepartmentsForRequest: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+const allPossibleDepartmentsForRequest: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
+//["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
 export default function MyApprovalsPage() {
   const { user, loading: authLoading } = useAuth();

@@ -4,7 +4,8 @@
 
 // --- Core Enums & Types ---
 
-export type Department = "Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
+export type Department = "Property" | "Project"| "Merchandising" | "HR"| "Marketing"| "IT"| "Finance"| "Executive Office"| "Operations" | "Visual Merchandising" ;
+//"Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
 export type UserRole = "Member" | "Admin" | "SuperAdmin";
 export type StoreType = "COCO" | "FOFO";
@@ -70,8 +71,12 @@ export interface StoreProject {
     hr?: DepartmentDetails;
     marketing?: DepartmentDetails;
     it?: DepartmentDetails;
+    finance?: DepartmentDetails;
+    executiveOffice?: DepartmentDetails;
+    operations?: DepartmentDetails;
+    visualMerchandising?: DepartmentDetails;
   };
-
+ //["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"]
   createdAt?: string; // ISO String - made optional
   updatedAt?: string; // ISO String - made optional
 }
@@ -238,7 +243,7 @@ export interface ImprovementPoint {
   id: string;
   text: string;
   addedById: string; // Ref: users
-  addedBy: string;   // Denormalized user name
+  addedByName: string;   // Denormalized user name
   addedAt: string;   // ISO String
   userAvatar?: string;
   isResolved: boolean;

@@ -160,7 +160,7 @@ export default function StoreDetailsPage() {
   }, [store, isUserAdmin, isUserSuperAdmin, user?.name]);
 
 
-  const handleAddImprovementPoint = async () => { // No async for mock
+  const handleAddImprovementPoint = async () => { 
     if (!newImprovementPointText.trim() || !store || !user) {
       toast({ title: "Error", description: "Improvement point text cannot be empty.", variant: "destructive" }); return;
     }
@@ -168,21 +168,27 @@ export default function StoreDetailsPage() {
       toast({ title: "Permission Denied", description: "You do not have permission to add improvement points.", variant: "destructive" }); return;
     }
     setIsSubmittingImprovement(true);
+    const pointId = crypto.randomUUID();
     const newPointPayload: Partial<ImprovementPoint> = {
-      text: newImprovementPointText, addedBy: user.name || user.email || "System",
-      addedAt: new Date().toISOString(), userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`,
-      comments: [], isResolved: false,
+      id:pointId,
+      text: newImprovementPointText, 
+      addedById: user.id,
+      //new Date().toISOString(), userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`,
+      addedByName : user.name || user.email || "System",
+      
     };
     try {
       // This POST request sends the new improvement point data to the server.
-      const response = await fetch(`/api/stores/${store.id}/improvementPoints`, {
+      const response = await fetch(`/api/stores/${store.id}/improvementPoints/${pointId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(newPointPayload),
       });
-
+      console.log("Adding improvement point:", newPointPayload);
+      console.log("Response:", response);
+      // We check if the response is OK (status 200-299).
       if (!response.ok) {
         // If the server responds with an error, we throw an error to be caught by the catch block.
         const errorData = await response.json().catch(() => ({ message: 'Failed to add improvement point.' }));
