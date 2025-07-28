@@ -60,7 +60,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Package2 } from "lucide-react";
+import { Package2, MapPin } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { isValidObjectId } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
@@ -342,7 +342,7 @@ export default function ProjectDetailsPage() {
    if (!user && !authLoading) { // If not loading and no user, redirect should have happened
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-          <p className="text-muted-foreground">Please sign in to view project details.</p>
+          <p className="text-muted-foreground">Please sign in to view project details.</p> {/* This line was causing the error */}
           <Button onClick={() => router.push('/auth/signin')} className="mt-4">Sign In</Button>
       </div>
     );
@@ -504,9 +504,7 @@ export default function ProjectDetailsPage() {
 
   const handleUpdateTaskDetails = async () => {
     if (!selectedTask || !projectData || !user) return;
-    console.log("Updating task details for:", selectedTask);
-    var re = selectedTask?._id || selectedTask?.id || selectedTask[0]?._id || selectedTask[0]?.id || selectedTask.id;
-    console.log("telling the task details for:", re);    
+    const taskIdToUpdate = selectedTask._id || selectedTask.id;
     console.log(selectedTask);
     // 1. Permission Check for members trying to change department or priority
     if (isUserMember) {
@@ -519,8 +517,6 @@ export default function ProjectDetailsPage() {
     }
 
     setIsUpdatingTask(true);
-    //const validID = selectedTask.id;
-    //console.log("Validating task ID:", validID);
     // 1. Validate the task ID format
   
     // 2. Prepare the payload with the updated data from the dialog form
@@ -533,10 +529,8 @@ export default function ProjectDetailsPage() {
 
     try {
       // 3. Invoke the PUT API call using the projectId and taskId.
-      // The `updateTask` function is imported from `lib/api.ts` and handles the fetch request.
-      //await updateTask(projectData.id, selectedTask.id, taskUpdatePayload);
-      //await updateTask(projectData.id, selectedTask.id, taskUpdatePayload);
-      await updateTask(projectData.id, re , taskUpdatePayload);
+      // The `updateTask` function is imported from `lib/api.ts` and handles the fetch request.      
+      await updateTask(projectData.id, taskIdToUpdate , taskUpdatePayload);
       // 4. Re-fetch the entire project to ensure the UI is perfectly in sync with the database.
       // This is a robust strategy that ensures any changes to the task (e.g., status, department)
       // are reflected correctly across all components on the page (progress bars, department cards, etc.).
@@ -1151,7 +1145,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         <CardHeader>
           <CardTitle id="project-overview-heading">Project Overview</CardTitle>
           <CardDescription>{projectData.location}</CardDescription>
-        </CardHeader>
+        </CardHeader> 
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm font-medium">Projected Launch Date</p>
@@ -1177,7 +1171,10 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
           {projectData.propertyDetails && (
             <div>
               <p className="text-sm font-medium">Property Status</p>
-              <p className="text-muted-foreground">{projectData.propertyDetails.status} - {projectData.propertyDetails.sqft} sqft</p>
+              <p className="text-muted-foreground flex items-center">
+                <MapPin className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                {projectData.propertyDetails.status} - {projectData.propertyDetails.sqft} sqft
+              </p>
             </div>
           )}
           {projectData.projectTimeline && (

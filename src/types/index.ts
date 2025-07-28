@@ -145,6 +145,7 @@ export interface ProjectMember {
 
 /** Represents a single task within a project's `tasks` array. */
 export interface Task {
+  _id: string;
   id: string; // Embedded documents can have their own IDs
   name: string;
   department: Department;
@@ -262,7 +263,7 @@ export interface StoreTask {
   assignedTo?: string; // e.g., "Store Manager", not a direct user ref
   status: "Pending" | "In Progress" | "Completed" | "Blocked";
   priority: TaskPriority;
-  createdById?: string; // Ref: users - made optional
+ // createdById?: string; // Ref: users - made optional
   createdBy: string;   // Denormalized user name
   createdAt: string;   // ISO String
   dueDate?: string;     // ISO String

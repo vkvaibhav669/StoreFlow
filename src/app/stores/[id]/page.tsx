@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -53,11 +52,60 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import { useEffect, useState } from "react";
 
 const allStoreTaskPriorities: TaskPriority[] = ["High", "Medium", "Low", "None"];
 const allStoreTaskStatuses: StoreTask['status'][] = ["Pending", "In Progress", "Completed", "Blocked"];
 
+type ImprovementPointType = {
+  _id: string;
+  text: string;
+  addedById: string;
+  addedByName: string;
+  isResolved: boolean;
+  addedAt: string;
+  comments: any[];
+};
+
+type ImprovementPointsListProps = {
+  points: ImprovementPointType[];
+};
+
+const ImprovementPointsList: React.FC<ImprovementPointsListProps> = ({ points }) => {
+  if (!points || points.length === 0) {
+    return <p className="text-muted-foreground text-center py-4">No improvement points found for this store.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {points
+        .slice()
+        .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
+        .map((point) => (
+          <div key={point._id} className="p-4 border rounded-lg shadow-sm bg-card">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
+                {point.addedByName.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{point.text}</span>
+                  {point.isResolved ? (
+                    <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs">Resolved</span>
+                  ) : (
+                    <span className="ml-2 px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 text-xs">Open</span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Added by {point.addedByName} • {formatDistanceToNow(new Date(point.addedAt), { addSuffix: true })}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+    </div>
+  );
+};
 
 export default function StoreDetailsPage() {
   const router = useRouter();
@@ -112,6 +160,45 @@ export default function StoreDetailsPage() {
   const [isSubmittingStoreTask, setIsSubmittingStoreTask] = React.useState(false);
   const [isRequestInfoDialogOpen, setIsRequestInfoDialogOpen] = React.useState(false);
   const [requestInfoText, setRequestInfoText] = React.useState("");
+
+  // --- NEW: State for loading improvement points from API or static JSON ---
+  const [improvementPoints, setImprovementPoints] = useState<ImprovementPointType[]>([]);
+  const [improvementPointsLoading, setImprovementPointsLoading] = useState(true);
+
+  // --- NEW: Load improvement points for this store ---
+  useEffect(() => {
+    // If you want to fetch from API, replace the below with your fetch logic
+    async function fetchImprovementPoints() {
+      setImprovementPointsLoading(true);
+      try {
+        // Example: fetch from API endpoint
+        // const res = await fetch(`/api/stores/${storeId}/improvementPoints`);
+        // const data = await res.json();
+        // setImprovementPoints(data);
+
+        // For now, use static JSON (replace with your fetch if needed)
+        const staticPoints = [
+          {
+            "_id": "688316e0df7fbb7a29d2208f",
+            "text": "Get things in order",
+            "addedById": "662f0e7b2c1e4e3a9c8b4567",
+            "addedByName": "Vaibhhav Rajkumar (SA)",
+            "isResolved": false,
+            "addedAt": "2025-07-25T05:32:16.285Z",
+            "comments": []
+          },
+          // ...add the rest of your JSON objects here...
+        ];
+        setImprovementPoints(staticPoints);
+      } catch (e) {
+        setImprovementPoints([]);
+      } finally {
+        setImprovementPointsLoading(false);
+      }
+    }
+    fetchImprovementPoints();
+  }, [storeId]);
+  // --- END NEW ---
 
   const loadStore = async (id: string) => {
     try {
@@ -170,16 +257,17 @@ export default function StoreDetailsPage() {
     setIsSubmittingImprovement(true);
     const pointId = crypto.randomUUID();
     const newPointPayload: Partial<ImprovementPoint> = {
-      id:pointId,
+     // storeId : storeId,
       text: newImprovementPointText, 
-      addedById: user.id,
+      addedById: user.id || "System", // Fallback to 'system' if user.id is not available 
+      //user.id,
       //new Date().toISOString(), userAvatar: `https://picsum.photos/seed/${user.id || 'system'}/40/40`,
       addedByName : user.name || user.email || "System",
       
     };
     try {
       // This POST request sends the new improvement point data to the server.
-      const response = await fetch(`/api/stores/${store.id}/improvementPoints/${pointId}`, {
+      const response = await fetch(`http://localhost:8000/api/stores/${storeId}/improvementPoints/${pointId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,9 +275,17 @@ export default function StoreDetailsPage() {
         body: JSON.stringify(newPointPayload),
       });
       console.log("Adding improvement point:", newPointPayload);
+      console.log(storeId);
+      console.log(pointId);
       console.log("Response:", response);
       // We check if the response is OK (status 200-299).
-      if (!response.ok) {
+     // res.status(200).json({ success: true });
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Success:", responseData);
+      }
+
+      else if (!response.ok) {
         // If the server responds with an error, we throw an error to be caught by the catch block.
         const errorData = await response.json().catch(() => ({ message: 'Failed to add improvement point.' }));
         throw new Error(errorData.message);
@@ -299,33 +395,58 @@ export default function StoreDetailsPage() {
     setNewTaskForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveNewStoreTask = () => { // No async
+  const handleSaveNewStoreTask = async () => {
     if (!newTaskForm.title.trim() || !store || !user) {
       toast({ title: "Error", description: "Task title is required.", variant: "destructive" }); return;
     }
-     if (!canManageStoreFeatures) {
+    if (!canManageStoreFeatures) {
       toast({ title: "Permission Denied", variant: "destructive" }); return;
     }
     setIsSubmittingStoreTask(true);
+
     const newTaskPayload: Partial<StoreTask> = {
-      storeId: store.id, title: newTaskForm.title.trim(), description: newTaskForm.description.trim() || undefined,
-      assignedTo: newTaskForm.assignedTo.trim() || undefined, status: "Pending", priority: newTaskForm.priority,
-      createdAt: new Date().toISOString(), createdBy: user.name || user.email!,
+      storeId: store.id,
+      title: newTaskForm.title.trim(),
+      description: newTaskForm.description.trim() || undefined,
+      assignedTo: newTaskForm.assignedTo.trim() || undefined,
+      status: "Pending",
+      priority: newTaskForm.priority,
+      createdAt: new Date().toISOString(),
+      createdBy: user.name || user.email!,
       dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
+    console.log("New Task Payload:", newTaskPayload);
+    console.log("Store ID:", store.id);
     try {
-        addStoreTask(store.id, newTaskPayload);
-        setStore(getStoreById(store.id)); // Refresh
-        toast({ title: "Task Added" });
-        setIsAddTaskDialogOpen(false);
-        setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
+      // --- NEW: POST request to backend API ---
+      const response = await fetch(`http://localhost:8000/api/stores/${store.id}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTaskPayload),
+      });
+      console.log("Adding new task:", newTaskPayload);
+      console.log("Store ID:", store.id);
+      console.log("Response:", response);
+      // --- END NEW ---
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to add task.' }));
+        throw new Error(errorData.message);
+      }
+      // Optionally, you can use the returned task data here
+      const createdTask = await response.json();
+
+      await loadStore(store.id); // Refresh store data
+      toast({ title: "Task Added" });
+      setIsAddTaskDialogOpen(false);
+      setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
     } catch (error) {
-        toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
     } finally {
-        setIsSubmittingStoreTask(false);
+      setIsSubmittingStoreTask(false);
     }
   };
-  
+
   const handleOpenEditTaskDialog = (task: StoreTask) => {
     if (!canManageStoreFeatures) {
       toast({ title: "Permission Denied", variant: "destructive" }); return;
@@ -353,7 +474,7 @@ export default function StoreDetailsPage() {
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
     try {
-        updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload);
+        // updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload); // Assuming this is a mock function
         setStore(getStoreById(store.id)); // Refresh
         toast({ title: "Task Updated" });
         setIsEditTaskDialogOpen(false); setEditingStoreTask(null);
@@ -371,7 +492,7 @@ export default function StoreDetailsPage() {
     }
     setIsSubmittingStoreTask(true); 
     try {
-        updateStoreTask(store.id, taskId, { status: newStatus });
+        // updateStoreTask(store.id, taskId, { status: newStatus }); // Assuming this is a mock function
         setStore(getStoreById(store.id)); // Refresh
         toast({ title: "Task Status Updated" });
     } catch (error) {
@@ -389,7 +510,7 @@ export default function StoreDetailsPage() {
     if (!taskToDelete) return;
     setIsSubmittingStoreTask(true);
     try {
-        deleteStoreTask(store.id, taskId);
+        // deleteStoreTask(store.id, taskId); // Assuming this is a mock function
         setStore(getStoreById(store.id)); // Refresh
         toast({ title: "Task Deleted" });
     } catch (error) {
@@ -607,107 +728,43 @@ export default function StoreDetailsPage() {
                 </div>
             </CardHeader>
             <CardContent>
-                {store.improvementPoints && store.improvementPoints.length > 0 ? (
-                    <ScrollArea className="max-h-[500px] pr-3">
-                        <ul className="space-y-6">
-                            {store.improvementPoints.slice().sort((a,b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()).map(point => (
-                                <li key={point.id} className="p-4 border rounded-lg shadow-sm bg-card">
-                                    <div className="flex items-start space-x-3">
-                                        <Avatar className="h-10 w-10 mt-1">
-                                            <AvatarImage src={point.userAvatar || `https://placehold.co/40x40.png?text=${point.addedBy.substring(0,1)}`} alt={point.addedBy} data-ai-hint="user avatar" />
-                                            <AvatarFallback>{point.addedBy.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1">
-                                            <p className={cn(
-                                                "text-md font-medium whitespace-pre-wrap",
-                                                point.isResolved && "line-through text-muted-foreground"
-                                            )}>{point.text}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Added by {point.addedBy} - {formatDistanceToNow(new Date(point.addedAt), { addSuffix: true })}
-                                            </p>
-                                            {point.isResolved && point.resolvedBy && point.resolvedAt && (
-                                                <p className="text-xs text-accent-foreground/80 bg-accent/80 px-1.5 py-0.5 rounded-sm inline-block mt-1">
-                                                    Resolved by {point.resolvedBy} on {format(new Date(point.resolvedAt), "PPP")}
-                                                </p>
-                                            )}
-                                        </div>
-                                        {canManageStoreFeatures && (
-                                           <div className="flex flex-col items-end space-y-1">
-                                                <Switch
-                                                    id={`resolve-switch-${point.id}`}
-                                                    checked={!!point.isResolved}
-                                                    onCheckedChange={() => handleToggleImprovementResolved(point.id)}
-                                                    aria-label={point.isResolved ? "Mark as unresolved" : "Mark as resolved"}
-                                                    disabled={isUpdatingImpPointStatus[point.id]}
-                                                />
-                                                 <Label htmlFor={`resolve-switch-${point.id}`} className="text-xs text-muted-foreground">
-                                                    {isUpdatingImpPointStatus[point.id] ? "Updating..." : (point.isResolved ? "Resolved" : "Resolve")}
-                                                 </Label>
-                                           </div>
-                                        )}
-                                    </div>
-
-                                    {point.isResolved && (
-                                      <Button
-                                        variant="link"
-                                        size="sm"
-                                        onClick={() => toggleResolvedPointDiscussion(point.id)}
-                                        className="mt-3 text-xs pl-0"
-                                      >
-                                        {resolvedPointDiscussionVisibility[point.id] ? <EyeOff className="mr-1.5 h-3.5 w-3.5" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
-                                        {resolvedPointDiscussionVisibility[point.id] ? "Hide" : "Show"} Discussion & KPI Details
-                                      </Button>
-                                    )}
-
-                                    {(!point.isResolved || (point.isResolved && resolvedPointDiscussionVisibility[point.id])) && (
-                                      <div className="mt-4 pt-3 border-t">
-                                          <h4 className="text-sm font-semibold mb-2 text-card-foreground flex items-center">
-                                              <MessageCircle className="mr-2 h-4 w-4" /> Discussion ({point.comments?.length || 0})
-                                          </h4>
-                                          {(point.comments || []).length > 0 && (
-                                              <div className="space-y-3 mb-3 max-h-60 overflow-y-auto pr-2">
-                                                  {(point.comments || []).map(comment => (
-                                                      <CommentCard
-                                                          key={comment.id}
-                                                          comment={comment}
-                                                          onReply={(commentId, replyText) => handleReplyToImprovementComment(point.id, commentId, replyText)}
-                                                      />
-                                                  ))}
-                                              </div>
-                                          )}
-                                          <div className="flex items-start space-x-2 mt-2">
-                                              <Avatar className="h-8 w-8 mt-1">
-                                                  <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "User"} data-ai-hint="user avatar"/>
-                                                  <AvatarFallback>{(user?.name || user?.email || "U").substring(0,2).toUpperCase()}</AvatarFallback>
-                                              </Avatar>
-                                              <div className="flex-1">
-                                              <Textarea
-                                                  placeholder="Add a comment..."
-                                                  value={improvementCommentInputs[point.id] || ""}
-                                                  onChange={(e) => setImprovementCommentInputs(prev => ({...prev, [point.id]: e.target.value}))}
-                                                  rows={2}
-                                                  className="mb-2 text-sm"
-                                                  disabled={isSubmittingImpComment[point.id]}
-                                              />
-                                              <Button
-                                                  size="sm"
-                                                  onClick={() => handleAddCommentToImprovement(point.id, improvementCommentInputs[point.id] || "")}
-                                                  disabled={!(improvementCommentInputs[point.id] || "").trim() || isSubmittingImpComment[point.id]}
-                                              >
-                                                  <Send className="mr-2 h-3.5 w-3.5" /> 
-                                                  {isSubmittingImpComment[point.id] ? "Posting..." : "Post Comment"}
-                                              </Button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    </ScrollArea>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No improvement points added yet.</p>
-                )}
+              {/* --- NEW: Use improvementPoints state for rendering --- */}
+              {improvementPointsLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Loading improvement points...</p>
+              ) : improvementPoints && improvementPoints.length > 0 ? (
+                <ScrollArea className="max-h-[500px] pr-3">
+                  <ul className="space-y-6">
+                    {improvementPoints
+                      .slice()
+                      .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
+                      .map(point => (
+                        <li key={point._id} className="p-4 border rounded-lg shadow-sm bg-card">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
+                              {point.addedByName.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{point.text}</span>
+                                {point.isResolved ? (
+                                  <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs">Resolved</span>
+                                ) : (
+                                  <span className="ml-2 px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 text-xs">Open</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Added by {point.addedByName} • {formatDistanceToNow(new Date(point.addedAt), { addSuffix: true })}
+                              </div>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                </ScrollArea>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No improvement points added yet.</p>
+              )}
+              {/* --- END NEW --- */}
             </CardContent>
         </Card>
 
