@@ -1,6 +1,6 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:8000/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // Error handling utility
 class ApiError extends Error {
