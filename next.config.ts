@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     '8000-firebase-studio-1746690261773.cluster-w5vd22whf5gmav2vgkomwtc4go.cloudworkstations.dev',
     '6000-firebase-studio-1746690261773.cluster-w5vd22whf5gmav2vgkomwtc4go.cloudworkstations.dev',
     'http://0.0.0.0:8000',
-    'http://localhost:8000',
+    'http://3.109.154.71:8000',
     'http://127.0.0.1:8000',
   ], 
   images: {

@@ -49,12 +49,12 @@ See [docs/mongodb-id-handling.md](docs/mongodb-id-handling.md) for detailed info
    ```
 
 5. **Open your browser**
-   Navigate to [http://localhost:8000](http://localhost:8000)
+   Navigate to [http://3.109.154.71:8000](http://3.109.154.71:8000)
 
 ## Environment Variables
 
 - `MONGODB_URI` - MongoDB connection string
-- `NEXT_PUBLIC_API_URL` - External backend API URL (defaults to `http://localhost:8000/api`)
+- `NEXT_PUBLIC_API_URL` - External backend API URL (defaults to `http://3.109.154.71:8000/api`)
 - Other environment variables as needed
 
 ## Testing
