@@ -181,7 +181,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [];
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('http://3.109.154.71:8000/api/projects');
+    const response = await fetch('http://0.0.0.0:8000/api/projects');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -198,7 +198,7 @@ export async function updateProject(id: string, projectData: Partial<StoreProjec
   // Note: The request specified an endpoint of `/api/stores/:id`, but `/api/projects/:id` is being used
   // for consistency with other project-related functions in this file (e.g., getProjectById).
   try {
-    const response = await fetch(`http://3.109.154.71:8000/api/projects/${id}`, {
+    const response = await fetch(`http://0.0.0.0:8000/api/projects/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -224,7 +224,7 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
   }
   
   try {
-    const response = await fetch(`http://3.109.154.71:8000/api/projects/${id}`);
+    const response = await fetch(`http://0.0.0.0:8000/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -257,7 +257,7 @@ export async function updateTaskInProject(projectId: string, taskId: string, tas
   try {
     // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
     // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
-    const response = await fetch(`http://3.109.154.71:8000/api/tasks/${projectId}/${taskId}`, {
+    const response = await fetch(`http://0.0.0.0:8000/api/tasks/${projectId}/${taskId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -389,7 +389,7 @@ export function removeMemberFromProject(projectId: string, memberEmail: string):
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('http://3.109.154.71:8000/api/stores');
+    const response = await fetch('http://0.0.0.0:8000/api/stores');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -410,7 +410,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`http://3.109.154.71:8000/api/stores/${id}`);
+    const response = await fetch(`http://0.0.0.0:8000/api/stores/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;

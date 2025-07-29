@@ -21,7 +21,7 @@ This document describes the integration of the new API endpoint for fetching tas
 
 **Example Request**:
 ```bash
-curl http://3.109.154.71:8000/api/tasks/project-1
+curl http://0.0.0.0:8000/api/tasks/project-1
 ```
 
 **Example Response**:
@@ -60,13 +60,13 @@ The API base URL can be configured for external backend services:
 
 ```bash
 # For external backend running on port 8000
-NEXT_PUBLIC_API_URL=http://3.109.154.71:8000/api
+NEXT_PUBLIC_API_URL=http://0.0.0.0:8000/api
 
 # For external backend on different host
 NEXT_PUBLIC_API_URL=https://api.example.com/api
 ```
 
-If not specified, defaults to `http://3.109.154.71:8000/api/projects`.
+If not specified, defaults to `http://0.0.0.0:8000/api/projects`.
 
 ## Backend Compatibility
 
@@ -156,13 +156,13 @@ The API can be tested with:
 
 ```bash
 # Test with valid project ID
-curl http://3.109.154.71:8000/api/tasks/project-1
+curl http://0.0.0.0:8000/api/tasks/project-1
 
 # Test with invalid project ID
-curl http://3.109.154.71:8000/api/tasks/invalid-project
+curl http://0.0.0.0:8000/api/tasks/invalid-project
 
 # Test error response
-curl http://3.109.154.71:8000/api/tasks/
+curl http://0.0.0.0:8000/api/tasks/
 ```
 
 ## Benefits

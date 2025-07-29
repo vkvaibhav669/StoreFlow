@@ -267,7 +267,7 @@ export default function StoreDetailsPage() {
     };
     try {
       // This POST request sends the new improvement point data to the server.
-      const response = await fetch(`http://3.109.154.71:8000/api/stores/${storeId}/improvementPoints/${pointId}`, {
+      const response = await fetch(`http://0.0.0.0:8000/api/stores/${storeId}/improvementPoints/${pointId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,7 +419,7 @@ export default function StoreDetailsPage() {
     console.log("Store ID:", store.id);
     try {
       // --- NEW: POST request to backend API ---
-      const response = await fetch(`http://3.109.154.71:8000/api/stores/${store.id}/tasks`, {
+      const response = await fetch(`http://0.0.0.0:8000/api/stores/${store.id}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTaskPayload),
