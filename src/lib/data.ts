@@ -181,7 +181,7 @@ export let mockApprovalRequests: ApprovalRequest[] = [];
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('/api/projects');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -257,7 +257,7 @@ export async function updateTaskInProject(projectId: string, taskId: string, tas
   try {
     // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
     // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
-    const response = await fetch(`/api/tasks/${projectId}/${taskId}`, {
+    const response = await fetch(`/tasks/${projectId}/${taskId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -389,7 +389,7 @@ export function removeMemberFromProject(projectId: string, memberEmail: string):
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('/api/stores');
+    const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/stores');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -410,7 +410,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`/api/stores/${id}`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`); // api/stores/:id
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
