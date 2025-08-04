@@ -1,4 +1,3 @@
-
 import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, ApprovalRequest, ApprovalStatus, StoreItem, ImprovementPoint, Blocker, Department, DepartmentDetails, StoreTask, TaskPriority, User, ProjectMember } from '@/types';
 import { format, addDays as dateFnsAddDays } from 'date-fns';
 
@@ -106,7 +105,7 @@ export let mockProjects: StoreProject[] = [
     updatedAt: "2025-07-07T07:43:37.849Z"
   },
   {
-    id: "project-2", 
+    id: "project-2",
     name: "Delhi Store Launch",
     location: "Delhi, India",
     status: "Execution",
@@ -163,7 +162,7 @@ export let mockStores: StoreItem[] = [
   },
   {
     id: "store-2",
-    name: "Delhi South Store", 
+    name: "Delhi South Store",
     location: "Delhi, India",
     type: "FOFO",
     status: "Operational",
@@ -360,36 +359,54 @@ export function addReplyToProjectComment(projectId: string, commentId: string, r
     return updatedParentComment; // Return the top-level comment that contained the reply
 }
 
-export function addMemberToProject(projectId: string, memberData: { email: string; name: string; roleInProject: string; department?: Department; avatarSeed?:string; isProjectHod: boolean }): ProjectMember {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project) throw new Error("Project not found for adding member");
+export async function addMemberToProject(projectId: string, memberData: { email: string; name: string; roleInProject: string; department?: Department; avatarSeed?:string; isProjectHod: boolean }): Promise<ProjectMember> {
+    console.log(`addMemberToProject called for project: ${projectId}`);
     
-    const existingMember = project.members?.find((m: ProjectMember) => m.email === memberData.email);
-    if (existingMember) throw new Error("Member already exists in this project.");
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(memberData),
+        });
 
-    const newMember: ProjectMember = {
-      email: memberData.email,
-      name: memberData.name,
-      roleInProject: memberData.roleInProject,
-      department: memberData.department,
-      avatarSeed: memberData.avatarSeed || memberData.name.split(' ').map(n=>n[0]).join('').toLowerCase(),
-      isProjectHod: memberData.isProjectHod,
-    };
-    project.members = [...(project.members || []), newMember];
-    return newMember;
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error(`Error adding member to project ${projectId}:`, error);
+        throw error;
+    }
 }
 
-export function removeMemberFromProject(projectId: string, memberEmail: string): void {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project || !project.members) throw new Error("Project or members list not found");
-    project.members = project.members.filter(m => m.email !== memberEmail);
+export async function removeMemberFromProject(projectId: string, memberEmail: string): Promise<void> {
+    console.log(`removeMemberFromProject called for project: ${projectId} and member: ${memberEmail}`);
+
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members/${memberEmail}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+    } catch (error) {
+        console.error(`Error removing member ${memberEmail} from project ${projectId}:`, error);
+        throw error;
+    }
 }
 
 
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/stores');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -425,10 +442,29 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
 }
 
-export function updateStore(id: string, storeData: Partial<StoreItem>): StoreItem {
-  // This function should use API calls in production
-  console.warn(`updateStore called for ${id} - implement proper API call`);
-  throw new Error("Store update not implemented - use API");
+export async function updateStore(id: string, storeData: Partial<StoreItem>): Promise<StoreItem> {
+  if (!id || id.trim() === '') {
+    throw new Error('Invalid store ID provided.');
+  }
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(storeData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating store with id ${id}:`, error);
+    throw error;
+  }
 }
 
 export function createStore(storeData: Partial<StoreItem>): StoreItem {
