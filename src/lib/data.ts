@@ -305,58 +305,52 @@ export function addDocumentToProject(projectId: string, documentData: FormData):
   return newDoc;
 }
 
-export function addCommentToProject(projectId: string, commentData: Partial<Comment>): Comment {
-  const project = mockProjects.find(p => p.id === projectId);
-  if (!project) throw new Error("Project not found for adding comment");
-  const newComment: Comment = {
-    id: `cmt-${Date.now()}`,
-    _id: `cmt-${Date.now()}`,
-    author: commentData.author || 'Anonymous',
-    addedByName: commentData.addedByName || commentData.author || 'Anonymous',
-    addedById: commentData.addedById,
-    timestamp: commentData.timestamp || new Date().toISOString(),
-    addedAt: commentData.addedAt || commentData.timestamp || new Date().toISOString(),
-    text: commentData.text || '',
-    avatarUrl: commentData.avatarUrl || `https://placehold.co/40x40.png?text=${(commentData.author || 'A').substring(0,1)}`,
-    replies: [],
-  };
-  project.comments = [newComment, ...(project.comments || [])];
-  return newComment;
+export async function addCommentToProject(projectId: string, commentData: Partial<Comment>): Promise<Comment> {
+  console.log('addCommentToProject called with projectId:', projectId);
+
+  try {
+    const response = await fetch(`/api/projects/${projectId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commentData),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error adding comment to project ${projectId}:`, error);
+    throw error;
+  }
 }
 
-export function addReplyToProjectComment(projectId: string, commentId: string, replyData: Partial<Comment>): Comment {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project || !project.comments) throw new Error("Project or comments not found");
+export async function addReplyToProjectComment(projectId: string, commentId: string, replyData: Partial<Comment>): Promise<Comment> {
+  console.log('addReplyToProjectComment called with projectId:', projectId, 'and commentId:', commentId);
 
-    const findAndAddReply = (comments: Comment[]): Comment | undefined => {
-        for (let comment of comments) {
-            const currentCommentId = comment.id || comment._id;
-            if (currentCommentId === commentId) {
-                const newReply: Comment = {
-                    id: `rply-${Date.now()}`,
-                    _id: `rply-${Date.now()}`,
-                    author: replyData.author || 'Anonymous',
-                    addedByName: replyData.addedByName || replyData.author || 'Anonymous',
-                    addedById: replyData.addedById,
-                    timestamp: replyData.timestamp || new Date().toISOString(),
-                    addedAt: replyData.addedAt || replyData.timestamp || new Date().toISOString(),
-                    text: replyData.text || '',
-                    avatarUrl: replyData.avatarUrl || `https://placehold.co/40x40.png?text=${(replyData.author || 'A').substring(0,1)}`,
-                    replies: [],
-                };
-                comment.replies = [newReply, ...(comment.replies || [])];
-                return comment; // Return the updated parent comment
-            }
-            if (comment.replies && comment.replies.length > 0) {
-                const updatedParent = findAndAddReply(comment.replies);
-                if (updatedParent) return comment; // Propagate the top-level parent that was modified
-            }
-        }
-        return undefined;
-    };
-    const updatedParentComment = findAndAddReply(project.comments);
-    if (!updatedParentComment) throw new Error("Parent comment not found to add reply");
-    return updatedParentComment; // Return the top-level comment that contained the reply
+  try {
+    const response = await fetch(`/api/projects/${projectId}/comments/${commentId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(replyData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error adding reply to comment ${commentId} in project ${projectId}:`, error);
+    throw error;
+  }
 }
 
 export async function addMemberToProject(projectId: string, memberData: { email: string; name: string; roleInProject: string; department?: Department; avatarSeed?:string; isProjectHod: boolean }): Promise<ProjectMember> {
@@ -474,7 +468,7 @@ export function createStore(storeData: Partial<StoreItem>): StoreItem {
 }
 
 export async function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
-   console.log(storeId, pointData);   
+   console.log(storeId, pointData);    
   const store = await getStoreById(storeId);
     if (!store) throw new Error("Store not found");
     const newPoint: ImprovementPoint = {

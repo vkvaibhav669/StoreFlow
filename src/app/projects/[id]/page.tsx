@@ -466,7 +466,7 @@ export default function ProjectDetailsPage() {
   const handleReplyToComment = async (commentId: string, replyText: string) => {
       if (!projectData || !user || !replyText.trim()) return;
       setIsSubmittingComment(true);
-
+    
       const replyPayload: Partial<Comment> = {
           author: user.name || user.email || "Anonymous User",
           addedByName: user.name || user.email || "Anonymous User",
