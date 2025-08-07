@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -240,6 +239,10 @@ export default function ProjectDetailsPage() {
   const [isRemovingMember, setIsRemovingMember] = React.useState(false);
   const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string, role?: UserRole } | null>(null);
 
+  // Add state for files and loading
+  const [projectFiles, setProjectFiles] = React.useState<DocumentFile[]>([]);
+  const [filesLoading, setFilesLoading] = React.useState(false);
+
   React.useEffect(() => {
     if (authLoading) return;
 
@@ -282,6 +285,17 @@ export default function ProjectDetailsPage() {
 
     fetchProject();
   }, [projectId, user, authLoading, router]);
+
+  // Fetch files from API when projectData.id changes
+  React.useEffect(() => {
+    if (!projectData?.id) return;
+    setFilesLoading(true);
+    fetch(`/api/projects/${projectData.id}/documents`)
+      .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
+      .then(data => setProjectFiles(data))
+      .catch(() => setProjectFiles([]))
+      .finally(() => setFilesLoading(false));
+  }, [projectData?.id]);
 
 
   const currentUserRole = user?.role;
@@ -417,7 +431,7 @@ export default function ProjectDetailsPage() {
     if (!projectData || !user) return;
 
     setIsSubmittingDocument(true);
-    const formData = new FormData(); 
+    const formData = new FormData();
     formData.append('file', newDocumentFile);
     formData.append('name', newDocumentName);
     formData.append('type', newDocumentType);
@@ -426,10 +440,26 @@ export default function ProjectDetailsPage() {
     formData.append('hodOnly', String(newDocumentHodOnly));
 
     try {
-      const addedDocument = addDocumentToProject(projectData.id, formData);
-      // Refresh project data asynchronously
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      // --- API call to POST /api/projects/:id/documents ---
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectData.id}/documents`, {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log(formData);
+      console.log("Adding document to project:", projectData.id);
+      console.log("Response from document upload:", response);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to add document.' }));
+        throw new Error(errorData.message);
+      }
+      const addedDocument = await response.json();
+      // Refresh files list after upload
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectData.id}/documents`)
+        .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
+        .then(data => setProjectFiles(data))
+        .catch(() => setProjectFiles([]));
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
       setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
       setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
@@ -1327,26 +1357,38 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         </TabsContent>
 
         {!isUserMember && (
-        <TabsContent value="files" className="mt-4">
-          <Card>
-            <CardHeader><CardTitle id="project-files-heading">Files ({visibleFiles.length})</CardTitle><CardDescription>All project-related files. Click a card to view.</CardDescription></CardHeader>
-            <CardContent>
-              {visibleFiles.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {visibleFiles.map((doc) => (
-                    <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:shadow-lg transition-shadow rounded-lg">
-                      <Card className="overflow-hidden h-full flex flex-col">
-                        {(doc.type === "3D Render" && (doc.url.startsWith("blob:") || doc.url.startsWith("https")) ) ? (<div className="relative w-full h-32"><Image src={doc.url} alt={doc.name} layout="fill" objectFit="cover" data-ai-hint={doc.dataAiHint || "office document"}/></div>) : (<div className="h-32 bg-muted flex items-center justify-center"><FileText className="w-12 h-12 text-muted-foreground" /></div>)}
-                        <CardContent className="p-3 flex-grow"><p className="font-medium text-sm truncate flex items-center" title={doc.name}>{doc.name}{doc.hodOnly && <ShieldCheck className="ml-2 h-4 w-4 text-primary shrink-0" title="HOD Only" />}</p><p className="text-xs text-muted-foreground">{doc.type} - {doc.size}</p><p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt ? format(new Date(doc.uploadedAt), "PPP") : "N/A"} by {doc.uploadedBy || "System"}</p></CardContent>
-                         <CardFooter className="p-3 border-t flex items-center justify-between"><span className="text-xs text-muted-foreground">Click to view</span><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></CardFooter>
-                      </Card>
-                    </a>
-                  ))}
-                </div>
-              ) : (<p className="text-muted-foreground text-center py-4">No files viewable by you for this project yet.</p>)}
-            </CardContent>
-          </Card>
-        </TabsContent>
+       <TabsContent value="files" className="mt-4">
+  <Card>
+    <CardHeader>
+      <CardTitle id="project-files-heading">Files ({projectFiles.length})</CardTitle>
+      <CardDescription>All project-related files. Click a card to view.</CardDescription>
+    </CardHeader>
+    <CardContent>
+      {filesLoading ? (
+        <p className="text-muted-foreground text-center py-4">Loading files...</p>
+      ) : projectFiles.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {projectFiles.map((doc) => (
+            <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:shadow-lg transition-shadow rounded-lg">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="p-3 pb-1 flex flex-row items-center gap-2">
+                  <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-base truncate">{doc.name}</CardTitle>
+                  <Badge variant="secondary" className="ml-auto">{doc.type}</Badge>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 flex-1">
+                  <p className="text-xs text-muted-foreground truncate">{doc.uploadedBy}</p>
+                </CardContent>
+              </Card>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-center py-4">No files viewable by you for this project yet.</p>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
         )}
 
         <TabsContent value="timeline" className="mt-4">
