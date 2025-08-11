@@ -1,10 +1,15 @@
+
 // IMPORTANT: This is a MOCK authentication system for prototyping.
 // DO NOT use this in a production environment.
+
 'use client'; // To use localStorage
 
-import type { User, UserRole } from '@/types';
+import type { User } from '@/types';
 
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
+
+const TOKEN_STORAGE_KEY = 'storeflow_auth_token';
+
 
 
 
@@ -36,6 +41,7 @@ const mockUsers: User[] = [
      
 ];
 
+
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
   console.log("Retrieving current user from localStorage");
@@ -63,23 +69,53 @@ function setCurrentUser(user: User | null): void {
   }
 }
 
-export async function signUp(name: string, email: string, password: string): Promise<User> {
-  const lowerEmail = email.toLowerCase();
-  if (mockUsers.find(u => u.email === lowerEmail)) {
-    throw new Error("User with this email already exists.");
+function setAuthToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
   }
-  const newUser: User = {
-    id: `user-${Date.now()}`,
-    name,
-    email: lowerEmail,
-    role: 'Member', // Default role for new sign-ups
-  };
-  mockUsers.push(newUser);
-  setCurrentUser(newUser);
-  return Promise.resolve(newUser);
+}
+
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export async function signUp(name: string, email: string, password: string): Promise<User> {
+  // Note: Sign up API is not implemented yet. This would require a separate endpoint.
+  // For now, keeping the basic validation logic but throwing an error.
+  throw new Error("Sign up functionality needs to be implemented with a dedicated API endpoint.");
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
+
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+
+    // Store both user and token
+    setCurrentUser(data.user);
+    setAuthToken(data.token);
+
+    return data.user;
+  } catch (error) {
+    console.error('Sign in error:', error);
+    throw error;
+  }
+
   const lowerEmail = email.toLowerCase();
   //console.log("Attempting to sign in user with email:", lowerEmail);
   //console.log("Mock password check for email:", password);
@@ -114,14 +150,35 @@ export async function signIn(email: string, password: string): Promise<User> {
     email: data.email,
     role: data.role,
   };
+
 }
 
 export async function signOut(): Promise<void> {
+  try {
+    const token = getAuthToken();
+    
+    if (token) {
+      // Call logout API
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Logout API error:', error);
+    // Continue with local cleanup even if API call fails
+  }
+
+  // Clear local storage
   setCurrentUser(null);
-  return Promise.resolve();
+  setAuthToken(null);
 }
 
-export function getAllMockUsers(): User[] {
-  return [...mockUsers];
+// Get auth token for API calls
+export function getAuthTokenForAPI(): string | null {
+  return getAuthToken();
 }
 
