@@ -1,4 +1,3 @@
-
 // IMPORTANT: This is a MOCK authentication system for prototyping.
 // DO NOT use this in a production environment.
 'use client'; // To use localStorage
@@ -22,7 +21,7 @@ const mockUsers: User[] = [
   { id: '192f0e3b2c6e4e7a9c0b9669', name: 'Seema Gawade (SA)', email: 'seema@kisna.com', role: 'SuperAdmin' },
   { id: '172f0e8b2c1e4e3a9c0b4661', name: 'Anita Stany Serrao (SA)', email: 'anita.d@kisna.com', role: 'SuperAdmin' },
   { id: '662f0e9b2c1e4e2a9c0b4666', name: 'Ruvin (SA)', email: 'ruvin@kisna.com', role: 'SuperAdmin' },
-  { id: '662f0e7b2c1e4e3a9c8b4669', name: 'Vaibhhav Rajkumar (SA)', email: 'vaibhhavrajkumar@gmail.com', role: 'SuperAdmin' },
+
   { id: '669f0e6b4c1e4e1a9c8b4597', name: 'Alpesh Dholakiya (SA)', email: 'alpesh@kisna.com', role: 'SuperAdmin' },
   { id: '669f0e5b4c1e4e3a9c8b4547', name: 'Sanket Lakhani (SA)', email: 'sanket.l@kisna.com', role: 'SuperAdmin' },
   { id: '669f0e4b4c1e4e5a9c8b4567', name: 'Chandresh Gor (SA)', email: 'chandresh.g@kisna.com', role: 'SuperAdmin' },
@@ -39,6 +38,8 @@ const mockUsers: User[] = [
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
+  console.log("Retrieving current user from localStorage");
+  // Retrieve the current user from localStorage
   const userJson = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
   if (userJson) {
     try {
@@ -56,6 +57,7 @@ function setCurrentUser(user: User | null): void {
   if (typeof window === 'undefined') return;
   if (user) {
     localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+    console.log("Current user set in localStorage:", user);
   } else {
     localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
   }
@@ -79,14 +81,39 @@ export async function signUp(name: string, email: string, password: string): Pro
 
 export async function signIn(email: string, password: string): Promise<User> {
   const lowerEmail = email.toLowerCase();
-  const user = mockUsers.find(u => u.email === lowerEmail);
-  // Mock password check - in a real app, this would be a hashed password comparison
-  // For these mock users, any non-empty password will work with the specified emails.
-  if (user && password) { 
-    setCurrentUser(user);
-    return Promise.resolve(user);
+  //console.log("Attempting to sign in user with email:", lowerEmail);
+  //console.log("Mock password check for email:", password);
+  // --- NEW: Use real API for authentication ---
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: lowerEmail, password }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Invalid email or password.' }));
+    throw new Error(errorData.message || 'Invalid email or password.');
   }
-  throw new Error("Invalid email or password.");
+
+  const data = await response.json();
+  // Store token for future authenticated requests
+  if (data.token) {
+    localStorage.setItem('auth_token', data.token);
+  }
+  // Optionally store user info
+  console.log("User signed in successfully:", data);
+  setCurrentUser({
+    id: data._id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+  });
+  return {
+    id: data._id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+  };
 }
 
 export async function signOut(): Promise<void> {
