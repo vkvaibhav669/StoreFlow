@@ -1,13 +1,51 @@
 
+// IMPORTANT: This is a MOCK authentication system for prototyping.
+// DO NOT use this in a production environment.
+
 'use client'; // To use localStorage
 
 import type { User } from '@/types';
 
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
+
 const TOKEN_STORAGE_KEY = 'storeflow_auth_token';
+
+
+
+
+
+// Mock users with Indian names and roles
+// Password "TestAdmin@123" will work for the specified dummy accounts in this mock setup.
+const mockUsers: User[] = [
+  { id: 'user-001', name: 'Priya Sharma', email: 'priya.sharma@example.com', role: 'Admin' },
+  { id: 'user-002', name: 'Rohan Mehra', email: 'rohan.mehra@example.com', role: 'Member' },
+   // Added dummy logins as per request:
+  { id: '592f0e9b1c2e4e5a4c0b9769', name: 'Parag Shah (SA)', email: 'parag@hk.co', role: 'SuperAdmin'},
+  { id: '892f0e9b1c6e4e5a9c0b9669', name: 'Manish Kemani (SA)', email: 'manish@kisna.com', role: 'SuperAdmin' },
+  { id: '292f0e3b1c6e4e5a9c0b9669', name: 'Trisha Paul (SA)', email: 'trisha.p@kisna.com', role: 'SuperAdmin' },
+  { id: '192f0e3b2c6e4e7a9c0b9669', name: 'Seema Gawade (SA)', email: 'seema@kisna.com', role: 'SuperAdmin' },
+  { id: '172f0e8b2c1e4e3a9c0b4661', name: 'Anita Stany Serrao (SA)', email: 'anita.d@kisna.com', role: 'SuperAdmin' },
+  { id: '662f0e9b2c1e4e2a9c0b4666', name: 'Ruvin (SA)', email: 'ruvin@kisna.com', role: 'SuperAdmin' },
+
+  { id: '669f0e6b4c1e4e1a9c8b4597', name: 'Alpesh Dholakiya (SA)', email: 'alpesh@kisna.com', role: 'SuperAdmin' },
+  { id: '669f0e5b4c1e4e3a9c8b4547', name: 'Sanket Lakhani (SA)', email: 'sanket.l@kisna.com', role: 'SuperAdmin' },
+  { id: '669f0e4b4c1e4e5a9c8b4567', name: 'Chandresh Gor (SA)', email: 'chandresh.g@kisna.com', role: 'SuperAdmin' },
+  { id: '669f0e3b4c1e4e1a9c8b4567', name: 'Mayur  (SA)', email: 'mayur.b@kisna.com', role: 'SuperAdmin' },
+  { id: '669f0e2b4c1e4e7a9c8b4567', name: 'Saideep (SA)', email: 'saideep.m_old@kisna.com', role: 'SuperAdmin' },
+  { id: '669f0e1b4c1e4e2a9c8b4567', name: 'Janak P (SA)', email: 'janakp@kisna.com', role: 'SuperAdmin' },
+  { id: '162f0e0b2c1e4e3a9c0b4667', name: 'Ashish Shrivastava (SA)', email: 'ashish.shrivastava@kisna.com', role: 'SuperAdmin' },
+  { id: '162f0e0b2c1e4e3a9c0b4444', name: 'Vipin Saini (SA)', email: 'vipin.s@kisna.com', role: 'SuperAdmin' },
+   { id: '16g0e0b2c1e4e3a9c0b4444', name: 'Vipin Saini (SA)', email: 'vipin.s@kisna.com', role: 'SuperAdmin' },
+    { id: '162re0b2c1e4e3a9c0b4444', name: 'Vipin Saini (SA)', email: 'vipin.s@kisna.com', role: 'SuperAdmin' },
+     { id: '162f0ub2c1e4e3a9c0b4444', name: 'Vipin Saini (SA)', email: 'vipin.s@kisna.com', role: 'SuperAdmin' },
+     
+];
+
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
+  console.log("Retrieving current user from localStorage");
+  // Retrieve the current user from localStorage
   const userJson = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
   if (userJson) {
     try {
@@ -25,6 +63,7 @@ function setCurrentUser(user: User | null): void {
   if (typeof window === 'undefined') return;
   if (user) {
     localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+    console.log("Current user set in localStorage:", user);
   } else {
     localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
   }
@@ -51,6 +90,7 @@ export async function signUp(name: string, email: string, password: string): Pro
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
+
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -75,6 +115,42 @@ export async function signIn(email: string, password: string): Promise<User> {
     console.error('Sign in error:', error);
     throw error;
   }
+
+  const lowerEmail = email.toLowerCase();
+  //console.log("Attempting to sign in user with email:", lowerEmail);
+  //console.log("Mock password check for email:", password);
+  // --- NEW: Use real API for authentication ---
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: lowerEmail, password }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Invalid email or password.' }));
+    throw new Error(errorData.message || 'Invalid email or password.');
+  }
+
+  const data = await response.json();
+  // Store token for future authenticated requests
+  if (data.token) {
+    localStorage.setItem('auth_token', data.token);
+  }
+  // Optionally store user info
+  console.log("User signed in successfully:", data);
+  setCurrentUser({
+    id: data._id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+  });
+  return {
+    id: data._id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+  };
+
 }
 
 export async function signOut(): Promise<void> {
