@@ -90,7 +90,6 @@ export async function signUp(name: string, email: string, password: string): Pro
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
-
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`, {
       method: 'POST',
@@ -110,47 +109,12 @@ export async function signIn(email: string, password: string): Promise<User> {
     setCurrentUser(data.user);
     setAuthToken(data.token);
 
+    console.log("User signed in successfully:", data.user);
     return data.user;
   } catch (error) {
     console.error('Sign in error:', error);
     throw error;
   }
-
-  const lowerEmail = email.toLowerCase();
-  //console.log("Attempting to sign in user with email:", lowerEmail);
-  //console.log("Mock password check for email:", password);
-  // --- NEW: Use real API for authentication ---
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: lowerEmail, password }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Invalid email or password.' }));
-    throw new Error(errorData.message || 'Invalid email or password.');
-  }
-
-  const data = await response.json();
-  // Store token for future authenticated requests
-  if (data.token) {
-    localStorage.setItem('auth_token', data.token);
-  }
-  // Optionally store user info
-  console.log("User signed in successfully:", data);
-  setCurrentUser({
-    id: data._id,
-    name: data.name,
-    email: data.email,
-    role: data.role,
-  });
-  return {
-    id: data._id,
-    name: data.name,
-    email: data.email,
-    role: data.role,
-  };
-
 }
 
 export async function signOut(): Promise<void> {
