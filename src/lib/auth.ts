@@ -106,12 +106,12 @@ export async function signIn(email: string, password: string): Promise<User> {
     }
 
     // Store both user and token
-    setCurrentUser(data.user);
+    setCurrentUser(data.name);
     setAuthToken(data.token);
     console.log('Login response:', data);
 
-    console.log("User signed in successfully:", data.user.name);
-    return data.user;
+    console.log("User signed in successfully:", data.name);
+    return data.name;
   } catch (error) {
     console.error('Sign in error:', error);
     throw error;

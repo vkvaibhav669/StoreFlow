@@ -24,7 +24,8 @@ export function verifyToken(token: string): JwtPayload | null {
   }
 }
 
-export function getTokenFromHeaders(headers: Headers): string | null {
+export function getTokenFromHeaders(headers: Headers | undefined | null): string | null {
+  if (!headers) return null;
   const authHeader = headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
