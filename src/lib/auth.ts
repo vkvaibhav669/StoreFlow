@@ -78,7 +78,7 @@ function setAuthToken(token: string | null): void {
   }
 }
 
-function getAuthToken(): string | null {
+export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TOKEN_STORAGE_KEY);
 }
@@ -106,12 +106,12 @@ export async function signIn(email: string, password: string): Promise<User> {
     }
 
     // Store both user and token
-    setCurrentUser(data.name);
+    setCurrentUser(data.user);
     setAuthToken(data.token);
-    console.log(data);
+    console.log('Login response:', data);
 
-    console.log("User signed in successfully:", data.name);
-    return data.name;
+    console.log("User signed in successfully:", data.user.name);
+    return data.user;
   } catch (error) {
     console.error('Sign in error:', error);
     throw error;
@@ -124,7 +124,7 @@ export async function signOut(): Promise<void> {
     
     if (token) {
       // Call logout API
-      await fetch('/api/auth/logout', {
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -145,5 +145,13 @@ export async function signOut(): Promise<void> {
 // Get auth token for API calls
 export function getAuthTokenForAPI(): string | null {
   return getAuthToken();
+}
+
+// Check if user is authenticated (has both token and user data)
+export function isAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
+  const token = getAuthToken();
+  const user = getCurrentUser();
+  return !!(token && user);
 }
 
