@@ -358,7 +358,7 @@ export async function addMemberToProject(projectId: string, memberData: { email:
     console.log(`addMemberToProject called for project: ${projectId}`);
     
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members`, {
+        const response = await fetch(`${config.apiUrl}/projects/${projectId}/members`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -382,7 +382,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
     console.log(`removeMemberFromProject called for project: ${projectId} and member: ${memberEmail}`);
 
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members/${memberEmail}`, {
+        const response = await fetch(`${config.apiUrl}/projects/${projectId}/members/${memberEmail}`, {
             method: 'DELETE',
         });
 
@@ -401,7 +401,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores`);
+    const response = await fetch(`${config.apiUrl}/stores`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -422,7 +422,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`); // api/stores/:id
+    const response = await fetch(`${config.apiUrl}/stores/${id}`); // api/stores/:id
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -443,7 +443,7 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
   }
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`, {
+    const response = await fetch(`${config.apiUrl}/stores/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
