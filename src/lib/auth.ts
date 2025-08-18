@@ -124,7 +124,7 @@ export async function signOut(): Promise<void> {
     
     if (token) {
       // Call logout API
-      await fetch('/api/auth/logout', {
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

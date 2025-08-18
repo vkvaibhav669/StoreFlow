@@ -294,7 +294,7 @@ export default function ProjectDetailsPage() {
   React.useEffect(() => {
     if (!projectData?.id) return;
     setFilesLoading(true);
-    fetch(`/api/projects/${projectData.id}/documents`)
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/documents`)
       .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
       .then(data => setProjectFiles(data))
       .catch(() => setProjectFiles([]))
@@ -305,7 +305,7 @@ export default function ProjectDetailsPage() {
   React.useEffect(() => {
     if (!projectData?.id) return;
     setDbCommentsLoading(true);
-    fetch(`/api/projects/${projectData.id}/comments`)
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/comments`)
       .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch comments"))
       .then(data => setDbComments(data))
       .catch(() => setDbComments([]))

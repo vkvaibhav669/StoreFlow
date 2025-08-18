@@ -197,7 +197,7 @@ export async function updateProject(id: string, projectData: Partial<StoreProjec
   // Note: The request specified an endpoint of `/api/stores/:id`, but `/api/projects/:id` is being used
   // for consistency with other project-related functions in this file (e.g., getProjectById).
   try {
-    const response = await fetch(`/api/projects/${id}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +223,7 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
   }
   
   try {
-    const response = await fetch(`/api/projects/${id}`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -256,7 +256,7 @@ export async function updateTaskInProject(projectId: string, taskId: string, tas
   try {
     // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
     // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
-    const response = await fetch(`/tasks/${projectId}/${taskId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${projectId}/${taskId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -309,7 +309,7 @@ export async function addCommentToProject(projectId: string, commentData: Partia
   console.log('addCommentToProject called with projectId:', projectId);
 
   try {
-    const response = await fetch(`/api/projects/${projectId}/comments`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectId}/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -333,7 +333,7 @@ export async function addReplyToProjectComment(projectId: string, commentId: str
   console.log('addReplyToProjectComment called with projectId:', projectId, 'and commentId:', commentId);
 
   try {
-    const response = await fetch(`/api/projects/${projectId}/comments/${commentId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectId}/comments/${commentId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
