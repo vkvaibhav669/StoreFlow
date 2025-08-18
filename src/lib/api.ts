@@ -1,12 +1,12 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
+import config from '@/lib/config';
 
 
 
 
 
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-//process.env.NEXT_PUBLIC_API_URL || "/api";
+const BASE_URL = config.apiUrl;
 
 // Error handling utility
 class ApiError extends Error {

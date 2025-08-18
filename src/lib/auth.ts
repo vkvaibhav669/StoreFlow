@@ -5,6 +5,7 @@
 'use client'; // To use localStorage
 
 import type { User } from '@/types';
+import config from '@/lib/config';
 
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
 
@@ -91,7 +92,7 @@ export async function signUp(name: string, email: string, password: string): Pro
 
 export async function signIn(email: string, password: string): Promise<User> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`, {
+    const response = await fetch(`${config.apiBaseUrl}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ export async function signOut(): Promise<void> {
     
     if (token) {
       // Call logout API
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
+      await fetch(`${config.apiBaseUrl}/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
