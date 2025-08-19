@@ -1,4 +1,5 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
+import { getAuthToken } from '@/lib/auth';
 
 
 
@@ -16,22 +17,57 @@ class ApiError extends Error {
   }
 }
 
-// Generic fetch wrapper with error handling
+// Auth error for 401/403 responses
+class AuthError extends ApiError {
+  constructor(message: string, status: number) {
+    super(message, status);
+    this.name = 'AuthError';
+  }
+}
+
+// Function to get authentication headers
+function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+}
+
+// Generic fetch wrapper with error handling and automatic authentication
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
     const url = BASE_URL ? `${BASE_URL}${endpoint}` : `${endpoint}`;
     //console.log(`try to fetch: ${url}`);
     //console.log(url)
     console.log(`Fetching api endpoint: ${url}`);
+    
+    // Merge authentication headers with any provided headers
+    const authHeaders = getAuthHeaders();
+    const mergedHeaders = {
+      ...authHeaders,
+      ...options?.headers,
+    };
+
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
       ...options,
+      headers: mergedHeaders,
     });
 
     if (!response.ok) {
+      // Handle authentication errors specifically
+      if (response.status === 401 || response.status === 403) {
+        throw new AuthError(
+          `Authentication failed: ${response.status} ${response.statusText}`,
+          response.status
+        );
+      }
+      
       throw new ApiError(
         `API request failed: ${response.status} ${response.statusText}`,
         response.status
@@ -146,3 +182,6 @@ export async function addTaskComment(taskId: string, commentData: { author: stri
     body: JSON.stringify(commentData),
   });
 }
+
+// Export error classes for external use
+export { ApiError, AuthError };
