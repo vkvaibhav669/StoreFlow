@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { mockProjects } from '@/lib/data';
 import type { Task } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ projectId: string; taskId: string }> }
@@ -183,3 +185,5 @@ export async function PUT(
     );
   }
 }
+
+    

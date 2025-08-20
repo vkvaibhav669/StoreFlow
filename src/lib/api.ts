@@ -1,10 +1,5 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
 
-
-
-
-
-
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // Error handling utility
@@ -15,24 +10,24 @@ class ApiError extends Error {
   }
 }
 
-// Generic fetch wrapper with error handling
+// Generic fetch wrapper with error handling and no-cache policy
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
     const url = BASE_URL ? `${BASE_URL}${endpoint}` : `${endpoint}`;
-    //console.log(`try to fetch: ${url}`);
-    //console.log(url)
     console.log(`Fetching api endpoint: ${url}`);
     const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
-      ...options,
+      cache: 'no-store', // Ensure fresh data is fetched on every request
     });
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: `API request failed: ${response.status} ${response.statusText}` }));
       throw new ApiError(
-        `API request failed: ${response.status} ${response.statusText}`,
+        errorData.message || `API request failed: ${response.status} ${response.statusText}`,
         response.status
       );
     }
@@ -95,9 +90,13 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
 }
 
 // Tasks API
+// Note: This endpoint is not yet defined in your API routes.
+// You might need to create `/api/tasks/user/:userId/route.ts` for this to work.
 export async function getTasksForUser(userId: string): Promise<Task[]> {
-  return apiFetch<Task[]>(`/tasks/${userId}`);
+  // Assuming an API endpoint structure like /api/tasks/user/{userId}
+  return apiFetch<Task[]>(`/tasks/user/${userId}`);
 }
+
 
 export async function getAllTasks(): Promise<Task[]> {
   return apiFetch<Task[]>('/tasks');
@@ -145,3 +144,4 @@ export async function addTaskComment(taskId: string, commentData: { author: stri
     body: JSON.stringify(commentData),
   });
 }
+    
