@@ -1,5 +1,5 @@
 
-import type { StoreProject, StoreItem, Task, User } from '@/types';
+import type { StoreProject, StoreItem, Task, User, DocumentFile } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -71,6 +71,25 @@ export async function updateProject(id: string, projectData: Partial<StoreProjec
     method: 'PUT',
     body: JSON.stringify(projectData),
   });
+}
+
+// Documents API
+export async function getAllDocuments(): Promise<(DocumentFile & { projectId: string, projectName: string })[]> {
+  return apiFetch<(DocumentFile & { projectId: string, projectName: string })[]>('/documents');
+}
+
+export async function uploadDocument(formData: FormData): Promise<DocumentFile> {
+  const url = `${BASE_URL}/documents`;
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+    // Do not set Content-Type header, browser will set it with boundary
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Failed to upload document' }));
+    throw new ApiError(errorData.message, response.status);
+  }
+  return response.json();
 }
 
 // Stores API
@@ -151,4 +170,3 @@ export async function addTaskComment(taskId: string, commentData: { author: stri
     body: JSON.stringify(commentData),
   });
 }
-    
