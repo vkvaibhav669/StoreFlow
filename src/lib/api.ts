@@ -1,4 +1,5 @@
-import type { StoreProject, StoreItem, Task } from '@/types';
+
+import type { StoreProject, StoreItem, Task, User } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -42,6 +43,12 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
     throw new ApiError(`Network error: ${(error as Error).message}`);
   }
 }
+
+// User API
+export async function getAllUsers(): Promise<User[]> {
+  return apiFetch<User[]>('/users');
+}
+
 
 // Projects API
 export async function getAllProjects(): Promise<StoreProject[]> {

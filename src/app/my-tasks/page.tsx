@@ -3,9 +3,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { mockHeadOfficeContacts, addTaskToProject } from "@/lib/data"; 
-import { getAllProjects, getTasksForUser } from "@/lib/api"; 
-import type { Task, StoreProject, Department, TaskPriority, ProjectMember as HeadOfficeContactType, UserTask } from "@/types";
+import { addTaskToProject } from "@/lib/data"; 
+import { getAllProjects, getTasksForUser, getAllUsers } from "@/lib/api"; 
+import type { Task, StoreProject, Department, TaskPriority, User, UserTask } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpRight, CalendarIcon, Users, Mail, Package2 } from "lucide-react"; 
+import { ArrowUpRight, CalendarIcon, Users, Mail, Package2, Check, ChevronsUpDown } from "lucide-react"; 
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -32,55 +32,49 @@ import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandG
 
 const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
-const isValidEmail = (email: string): boolean => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
-
 export default function MyTasksPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  // Async data fetching for projects
   const [userTasks, setUserTasks] = React.useState<UserTask[]>([]);
   const [projectsForAssignment, setProjectsForAssignment] = React.useState<StoreProject[]>([]);
-  const [headOfficeContacts, setHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(mockHeadOfficeContacts);
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [taskName, setTaskName] = React.useState("");
   const [taskDescription, setTaskDescription] = React.useState("");
-  const [assignToSearchTerm, setAssignToSearchTerm] = React.useState("");
-  const [assignToSuggestions, setAssignToSuggestions] = React.useState<(HeadOfficeContactType | { type: 'invite'; email: string })[]>([]);
-  const [isAssignToPopoverOpen, setIsAssignToPopoverOpen] = React.useState(false);
-  const [selectedAssigneeInfo, setSelectedAssigneeInfo] = React.useState<{ email: string; name: string } | null>(null);
+  
+  const [isAssigneePopoverOpen, setAssigneePopoverOpen] = React.useState(false);
+  const [selectedAssignee, setSelectedAssignee] = React.useState<User | null>(null);
+
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "">("");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
   const [taskPriority, setTaskPriority] = React.useState<TaskPriority>("Medium");
-  const assignToInputRef = React.useRef<HTMLInputElement>(null);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
 
   const canAssignTasks = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      // Auth is handled by AppLayout
-      return;
-    }
+    if (authLoading) return;
     
     const loadData = async () => {
       if (user) {
         setLoading(true);
         try {
-          const tasks = await getTasksForUser(user.email || user.id || user.name || "");
+          const [tasks, projects, users] = await Promise.all([
+            getTasksForUser(user.email || user.id || user.name || ""),
+            getAllProjects(),
+            getAllUsers()
+          ]);
           setUserTasks(tasks as UserTask[]);
-          const projects = await getAllProjects();
           setProjectsForAssignment(projects);
-          setHeadOfficeContacts(mockHeadOfficeContacts);
+          setAllUsers(users);
         } catch (error) {
-          console.error('Error loading tasks data:', error);
+          console.error('Error loading page data:', error);
           toast({
             title: "Error",
-            description: "Failed to load projects. Please try again.",
+            description: "Failed to load page data. Please try again.",
             variant: "destructive",
           });
         } finally {
@@ -93,61 +87,17 @@ export default function MyTasksPage() {
   }, [user, authLoading, toast]);
 
 
-  React.useEffect(() => {
-    if (assignToSearchTerm.trim() === "") {
-      setAssignToSuggestions([]);
-      setIsAssignToPopoverOpen(false);
-      return;
-    }
-
-    const searchTermLower = assignToSearchTerm.toLowerCase();
-    const filteredContacts = headOfficeContacts.filter( 
-      contact =>
-        contact.name.toLowerCase().includes(searchTermLower) ||
-        contact.email.toLowerCase().includes(searchTermLower)
-    );
-
-    const suggestions: (HeadOfficeContactType | { type: 'invite'; email: string })[] = [...filteredContacts];
-
-    if (filteredContacts.length === 0 && isValidEmail(assignToSearchTerm)) {
-      suggestions.push({ type: 'invite', email: assignToSearchTerm });
-    }
-
-    setAssignToSuggestions(suggestions);
-    setIsAssignToPopoverOpen(suggestions.length > 0);
-
-  }, [assignToSearchTerm, headOfficeContacts]);
-
-  const handleSelectAssignee = (item: HeadOfficeContactType | { type: 'invite'; email: string }) => {
-    if ('type' in item && item.type === 'invite') {
-      setSelectedAssigneeInfo({ email: item.email, name: item.email });
-      setAssignToSearchTerm(item.email);
-      toast({
-        title: "Mock Invitation",
-        description: `A mock invitation would be sent to ${item.email} to collaborate if backend supported it.`,
-      });
-    } else {
-      setSelectedAssigneeInfo({ email: item.email, name: item.name });
-      setAssignToSearchTerm(item.name);
-    }
-    setIsAssignToPopoverOpen(false);
-    setAssignToSuggestions([]);
-  };
-
   const resetAssignTaskForm = () => {
     setSelectedProjectId("");
     setTaskName("");
     setTaskDescription("");
-    setAssignToSearchTerm("");
-    setSelectedAssigneeInfo(null);
-    setAssignToSuggestions([]);
-    setIsAssignToPopoverOpen(false);
+    setSelectedAssignee(null);
     setSelectedDepartment("");
     setDueDate(undefined);
     setTaskPriority("Medium");
   };
 
-  const handleAssignTaskSubmit = (e: React.FormEvent) => { // No async for mock
+  const handleAssignTaskSubmit = (e: React.FormEvent) => { 
     e.preventDefault();
     setIsSubmittingTask(true);
 
@@ -157,7 +107,7 @@ export default function MyTasksPage() {
         return;
     }
 
-    if (!selectedProjectId || !taskName || !selectedDepartment || !selectedAssigneeInfo?.email) {
+    if (!selectedProjectId || !taskName || !selectedDepartment || !selectedAssignee) {
       toast({
         title: "Error",
         description: "Please fill in Project, Task Name, Department, and select an Assignee.",
@@ -169,11 +119,7 @@ export default function MyTasksPage() {
 
     const targetProject = projectsForAssignment.find(p => p.id === selectedProjectId);
     if (!targetProject) {
-      toast({
-        title: "Error",
-        description: "Selected project not found.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Selected project not found.", variant: "destructive" });
       setIsSubmittingTask(false);
       return;
     }
@@ -182,7 +128,8 @@ export default function MyTasksPage() {
       name: taskName,
       department: selectedDepartment as Department,
       description: taskDescription || undefined,
-      assignedTo: selectedAssigneeInfo.email, 
+      assignedTo: selectedAssignee.name, 
+      assignedToId: selectedAssignee.id,
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
       status: "Pending",
       priority: taskPriority,
@@ -190,12 +137,12 @@ export default function MyTasksPage() {
     };
 
     try {
-        const assignedTask = addTaskToProject(selectedProjectId, newTaskPayload); // Synchronous call
+        const assignedTask = addTaskToProject(selectedProjectId, newTaskPayload); 
         toast({
             title: "Success!",
-            description: `Task "${assignedTask.name}" assigned to ${selectedAssigneeInfo.name} for project "${targetProject.name}".`,
+            description: `Task "${assignedTask.name}" assigned to ${selectedAssignee.name} for project "${targetProject.name}".`,
         });
-        if (assignedTask.assignedTo === user?.email) {
+        if (assignedTask.assignedToId === user?.id) {
           const userTask: UserTask = {
             ...assignedTask,
             projectId: selectedProjectId,
@@ -344,73 +291,52 @@ export default function MyTasksPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="assignedTo-assign">Assign To *</Label>
-                      <Popover open={isAssignToPopoverOpen} onOpenChange={setIsAssignToPopoverOpen}>
+                       <Popover open={isAssigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
                         <PopoverTrigger asChild>
-                          <Input
-                            type="text"
-                            id="assignedTo-assign"
-                            ref={assignToInputRef}
-                            placeholder="Type name or email..."
-                            value={assignToSearchTerm}
-                            onChange={(e) => {
-                              setAssignToSearchTerm(e.target.value);
-                              setSelectedAssigneeInfo(null); 
-                              if (e.target.value.trim() !== "") {
-                                 setIsAssignToPopoverOpen(true);
-                              } else {
-                                 setIsAssignToPopoverOpen(false);
-                              }
-                            }}
-                            onFocus={() => {
-                              if (assignToSearchTerm.trim() !== "" && assignToSuggestions.length > 0) {
-                                setIsAssignToPopoverOpen(true);
-                              }
-                            }}
-                            required={!selectedAssigneeInfo?.email}
-                            className="w-full"
-                            disabled={isSubmittingTask}
-                          />
-                        </PopoverTrigger>
-                        {assignToSuggestions.length > 0 && (
-                          <PopoverContent
-                            className="p-0 w-[--radix-popover-trigger-width]"
-                            side="bottom"
-                            align="start"
-                            onOpenAutoFocus={(e) => e.preventDefault()} 
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={isAssigneePopoverOpen}
+                            className="w-full justify-between font-normal"
+                            disabled={isSubmittingTask || allUsers.length === 0}
                           >
-                            <Command>
-                              <CommandList>
-                                <CommandEmpty>{isValidEmail(assignToSearchTerm) ? "No exact match. You can invite." : "No contacts found."}</CommandEmpty>
-                                <CommandGroup>
-                                  {assignToSuggestions.map((item, index) => (
-                                    <CommandItem
-                                      key={('id' in item && item.id) ? item.id : item.email + index} 
-                                      onSelect={() => handleSelectAssignee(item)}
-                                      className="cursor-pointer"
-                                    >
-                                      {'type' in item && item.type === 'invite' ? (
-                                        <div className="flex items-center">
-                                          <Mail className="mr-2 h-4 w-4" />
-                                          <span>Invite {item.email}</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-col">
-                                          <div className="flex items-center">
-                                             <Users className="mr-2 h-4 w-4" />
-                                             <span>{(item as HeadOfficeContactType).name}</span>
-                                          </div>
-                                          <span className="text-xs text-muted-foreground ml-6">
-                                              {(item as HeadOfficeContactType).email} - {(item as HeadOfficeContactType).department || 'N/A Dept'}
-                                          </span>
-                                        </div>
+                            {selectedAssignee
+                              ? selectedAssignee.name
+                              : allUsers.length === 0 ? "No users found" : "Select user..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search users..." />
+                            <CommandEmpty>No user found.</CommandEmpty>
+                            <CommandList>
+                              <CommandGroup>
+                                {allUsers.map((u) => (
+                                  <CommandItem
+                                    key={u.id}
+                                    value={u.name}
+                                    onSelect={() => {
+                                      setSelectedAssignee(u);
+                                      setAssigneePopoverOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedAssignee?.id === u.id ? "opacity-100" : "opacity-0"
                                       )}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        )}
+                                    />
+                                    <div>
+                                      <p>{u.name}</p>
+                                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
                       </Popover>
                     </div>
 
@@ -475,7 +401,7 @@ export default function MyTasksPage() {
                       </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isSubmittingTask || (!selectedAssigneeInfo?.email && !isValidEmail(assignToSearchTerm))}>
+                  <Button type="submit" className="w-full" disabled={isSubmittingTask || !selectedAssignee}>
                     {isSubmittingTask ? "Assigning..." : "Assign Task"}
                   </Button>
                 </form>
@@ -487,3 +413,4 @@ export default function MyTasksPage() {
     </section>
   );
 }
+
