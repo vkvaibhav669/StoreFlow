@@ -97,7 +97,6 @@ export default function DashboardPage() {
   const [filterSettings, setFilterSettings] = React.useState({
     showUpcoming: true,
     showActive: true,
-    showLaunched: true,
     planningOnly: false,
     storeOwnershipFilter: "All" as StoreType | "All",
   });
@@ -125,15 +124,6 @@ export default function DashboardPage() {
     }
     return projects;
   }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly, filterSettings.storeOwnershipFilter]);
-
-  const launchedProjects = React.useMemo(() => {
-    if (!filterSettings.showLaunched) return [];
-    let projects = dashboardProjects.filter(p => p.status === "Launched");
-    if (filterSettings.storeOwnershipFilter !== "All") {
-      projects = projects.filter(p => p.franchiseType === filterSettings.storeOwnershipFilter);
-    }
-    return projects;
-  }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -274,12 +264,6 @@ export default function DashboardPage() {
                   onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showActive: !!checked }))}
                 >
                   Active (Not Upcoming)
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={filterSettings.showLaunched}
-                  onCheckedChange={(checked) => setFilterSettings(prev => ({ ...prev, showLaunched: !!checked }))}
-                >
-                  Launched
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={filterSettings.planningOnly}
@@ -466,22 +450,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {filterSettings.showLaunched && (
-        <section className="launched-projects-section">
-          <h2 className="text-xl font-semibold mb-4">Recently Launched ({launchedProjects.length})</h2>
-          {launchedProjects.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {launchedProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">No recently launched projects matching current filters.</p>
-          )}
-        </section>
-      )}
-
-      {!filterSettings.showUpcoming && !filterSettings.showActive && !filterSettings.showLaunched && (
+      {!filterSettings.showUpcoming && !filterSettings.showActive && (
          <p className="text-muted-foreground text-center py-8">Select a filter to view projects.</p>
       )}
 
@@ -496,3 +465,5 @@ export default function DashboardPage() {
     </section>
   );
 }
+
+    
