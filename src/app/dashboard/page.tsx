@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { getAllProjects, createProject } from "@/lib/api";
 import type { StoreProject, Department, StoreType } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle } from "lucide-react";
+import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle, CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -34,7 +34,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatDate, addDays } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn, formatDate, addDays } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -73,7 +75,6 @@ function ProjectCard({ project }: { project: StoreProject }) {
   );
 }
 
-const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
 const allStoreTypes: StoreType[] = ["COCO", "FOFO"];
 
 export default function DashboardPage() {
@@ -90,12 +91,7 @@ export default function DashboardPage() {
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
-  const [selectedDepartments, setSelectedDepartments] = React.useState<Record<Department, boolean>>(
-    allDepartmentKeys.reduce((acc, curr) => {
-      acc[curr] = false;
-      return acc;
-    }, {} as Record<Department, boolean>)
-  );
+  const [newProjectStartDate, setNewProjectStartDate] = React.useState<Date | undefined>(new Date());
   const [markAsUpcoming, setMarkAsUpcoming] = React.useState(false);
 
   const [filterSettings, setFilterSettings] = React.useState({
@@ -192,13 +188,9 @@ export default function DashboardPage() {
     );
   }
 
-  const handleDepartmentChange = (department: Department, checked: boolean) => {
-    setSelectedDepartments(prev => ({ ...prev, [department]: checked }));
-  };
-
   const handleAddProject = async () => {
-    if (!newProjectName.trim() || !newProjectLocation.trim()) {
-      toast({ title: "Validation Error", description: "Project Name and Location are required.", variant: "destructive" });
+    if (!newProjectName.trim() || !newProjectLocation.trim() || !newProjectStartDate) {
+      toast({ title: "Validation Error", description: "Project Name, Location, and Start Date are required.", variant: "destructive" });
       return;
     }
     if (!canAddProject) {
@@ -207,28 +199,15 @@ export default function DashboardPage() {
     }
 
     setIsSubmittingProject(true);
-    const today = new Date();
     
-    const projectDepartmentsData: Partial<StoreProject['departments']> = {};
-    allDepartmentKeys.forEach(dept => {
-      if (selectedDepartments[dept]) {
-        const deptKey = dept.toLowerCase() as keyof StoreProject['departments'];
-        if (dept === "Marketing") {
-          projectDepartmentsData[deptKey] = { tasks: [], preLaunchCampaigns: [], postLaunchCampaigns: [] };
-        } else {
-          projectDepartmentsData[deptKey] = { tasks: [] };
-        }
-      }
-    });
-
     const newProjectPayload: Partial<StoreProject> = {
       name: newProjectName,
       location: newProjectLocation,
       franchiseType: newProjectFranchiseType,
       status: "Planning",
       isUpcoming: markAsUpcoming,
-      startDate: formatDate(today),
-      projectedLaunchDate: formatDate(addDays(today, 60)),
+      startDate: formatDate(newProjectStartDate),
+      projectedLaunchDate: formatDate(addDays(newProjectStartDate, 60)),
       currentProgress: 0,
       propertyDetails: {
         address: newProjectLocation,
@@ -239,12 +218,12 @@ export default function DashboardPage() {
       projectTimeline: {
         totalDays: 60,
         currentDay: 0,
-        kickoffDate: formatDate(today),
+        kickoffDate: formatDate(newProjectStartDate),
       },
       tasks: [],
       documents: [],
       milestones: [],
-      departments: projectDepartmentsData,
+      departments: {}, // Departments can be added later
       comments: [],
     };
 
@@ -256,7 +235,7 @@ export default function DashboardPage() {
       setNewProjectName("");
       setNewProjectLocation("");
       setNewProjectFranchiseType("COCO");
-      setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
+      setNewProjectStartDate(new Date());
       setMarkAsUpcoming(false);
       setIsAddProjectDialogOpen(false);
     } catch (error) {
@@ -330,7 +309,7 @@ export default function DashboardPage() {
                       setNewProjectName("");
                       setNewProjectLocation("");
                       setNewProjectFranchiseType("COCO");
-                      setSelectedDepartments(allDepartmentKeys.reduce((acc, curr) => ({ ...acc, [curr]: false }), {} as Record<Department, boolean>));
+                      setNewProjectStartDate(new Date());
                       setMarkAsUpcoming(false);
                   }
               }}>
@@ -391,23 +370,34 @@ export default function DashboardPage() {
                           </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
-                      <Label className="sm:text-right pt-2">
-                        Departments
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                       <Label htmlFor="projectStartDate" className="sm:text-right">
+                        Start Date
                       </Label>
-                      <div className="sm:col-span-3 grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-2">
-                        {allDepartmentKeys.map(dept => (
-                          <div key={dept} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`dept-${dept}`}
-                              checked={selectedDepartments[dept]}
-                              onCheckedChange={(checked) => handleDepartmentChange(dept, !!checked)}
-                              disabled={isSubmittingProject}
-                            />
-                            <Label htmlFor={`dept-${dept}`} className="font-normal">{dept}</Label>
-                          </div>
-                        ))}
-                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="projectStartDate"
+                            variant="outline"
+                            className={cn(
+                              "sm:col-span-3 justify-start text-left font-normal",
+                              !newProjectStartDate && "text-muted-foreground"
+                            )}
+                            disabled={isSubmittingProject}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {newProjectStartDate ? formatDate(newProjectStartDate, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={newProjectStartDate}
+                            onSelect={setNewProjectStartDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                       <Label htmlFor="markUpcoming" className="sm:text-right">
