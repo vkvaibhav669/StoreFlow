@@ -37,7 +37,7 @@ export const siteConfig: SiteConfig = {
       icon: ClipboardList,
     },
     {
-      title: "All Documents",
+      title: "Files",
       href: "/documents",
       icon: FileText,
     },
