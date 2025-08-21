@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -81,12 +80,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Use async data fetching for projects
   const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
-  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false); // Keep for dialog submission UX
+  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false);
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
@@ -108,7 +106,6 @@ export default function DashboardPage() {
 
   const canAddProject = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
-  // Move useMemo hooks before any early returns to ensure consistent hook ordering
   const upcomingProjects = React.useMemo(() => {
     if (!filterSettings.showUpcoming) return [];
     let projects = dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
@@ -140,12 +137,11 @@ export default function DashboardPage() {
   }, [dashboardProjects, filterSettings.showLaunched, filterSettings.storeOwnershipFilter]);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+    if (!user) {
       router.replace("/auth/signin");
       return;
     }
-    
-    // Fetch projects asynchronously
     const fetchProjects = async () => {
       try {
         setLoading(true);
@@ -162,13 +158,9 @@ export default function DashboardPage() {
         setLoading(false);
       }
     };
-
-    if (user) {
-      fetchProjects();
-    }
+    fetchProjects();
   }, [user, authLoading, router, toast]);
 
-  // Refresh projects from API after adding one
   const refreshProjects = async () => {
     try {
       const data = await getAllProjects();
@@ -250,7 +242,7 @@ export default function DashboardPage() {
 
     try {
       const createdProject = await createProject(newProjectPayload);
-      await refreshProjects(); // Re-fetch all to include new one
+      await refreshProjects();
       toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
 
       setNewProjectName("");

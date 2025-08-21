@@ -1,4 +1,3 @@
-
 // IMPORTANT: This is a MOCK authentication system for prototyping.
 // DO NOT use this in a production environment.
 
@@ -93,25 +92,30 @@ export async function signIn(email: string, password: string): Promise<User> {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Login failed');
+      throw new Error(data.message || "Login failed");
     }
 
-    // Store both user and token
-    setCurrentUser(data.name);
-    setAuthToken(data.token);
-    console.log('Login response:', data);
+    // Store token if present
+    if (data.token) {
+      setAuthToken(data.token);
+    }
 
-    console.log("User signed in successfully:", data.name);
-    return data.name;
+    // Return a full User object
+    const user: User = {
+      id: data._id || data.id,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+    };
+    setCurrentUser(user);
+    return user;
   } catch (error) {
     console.error('Sign in error:', error);
     throw error;
