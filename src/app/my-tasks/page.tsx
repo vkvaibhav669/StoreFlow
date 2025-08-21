@@ -172,10 +172,10 @@ export default function MyTasksPage() {
     <section className="my-tasks-content flex flex-col gap-6" aria-labelledby="my-tasks-heading">
       <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl mt-4">My Tasks</h1>
       
-      <Tabs defaultValue="my-assigned-tasks" className="w-full">
+      <Tabs defaultValue={canAssignTasks ? "assign-new-task" : "my-assigned-tasks"} className="w-full">
         <TabsList className={cn("grid w-full", canAssignTasks ? "grid-cols-2" : "grid-cols-1")}>
-          <TabsTrigger value="my-assigned-tasks">My Assigned Tasks ({userTasks.length})</TabsTrigger>
           {canAssignTasks && <TabsTrigger value="assign-new-task">Assign New Task</TabsTrigger>}
+          <TabsTrigger value="my-assigned-tasks">My Assigned Tasks ({userTasks.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="my-assigned-tasks" className="mt-4">
