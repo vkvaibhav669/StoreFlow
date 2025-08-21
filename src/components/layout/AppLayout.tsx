@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react"; 
@@ -344,16 +345,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   React.useEffect(() => {
     if (user) {
-      const currentNotifications: AppNotification[] = [
-        { id: 1, text: "Task 'Review safety protocols (Mumbai)' overdue for Mumbai Phoenix Mall Flagship.", href: "/projects/proj-001", seen: false },
-        { id: 2, text: "New comment on Bangalore Orion Mall Outlet project.", href: "/projects/proj-002", seen: false },
-        { id: 3, text: "StoreFlow version 1.1 is now available.", href: "/release-notes", seen: true },
-        { id: 4, text: "Maintenance check for 'Delhi Connaught Place Express' due tomorrow.", href: "/projects/proj-003", seen: false},
-        { id: 5, text: "Marketing budget for Q3 approved.", href: "/dashboard", seen: true},
-        { id: 6, text: "New approval request: 'Vacation request - R. Sharma'", href: "/my-approvals", seen: false },
-        { id: 7, text: "Project 'Chennai Emporium' milestone 'Site Survey' completed.", href: "/projects/proj-004", seen: true },
-      ];
-      setNotifications(currentNotifications);
+      // In a real application, you would fetch notifications from an API.
+      // For now, we are removing the mock data.
+      setNotifications([]);
     } else {
       setNotifications([]); 
     }
