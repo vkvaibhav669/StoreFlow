@@ -19,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase, Globe, X } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase, Globe, X, UserCog, Languages, ShieldPlus } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -151,10 +151,10 @@ interface AppNotification {
 
 type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme" | "green-theme";
 
-function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange: (open: boolean) => void, user: User | null }) {
   const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
-  // const [selectedLanguage, setSelectedLanguage] = React.useState("en");
   const { toast } = useToast();
+  const canManageUsers = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -162,9 +162,6 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
       const initialTheme = storedTheme || "blue-theme"; 
       setCurrentTheme(initialTheme);
       applyTheme(initialTheme);
-
-      // const storedLanguage = localStorage.getItem("appLanguage") || "en";
-      // setSelectedLanguage(storedLanguage);
 
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => {
@@ -206,18 +203,6 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
     applyTheme(newTheme);
   };
   
-  // const handleLanguageChange = (langCode: string) => {
-  //   setSelectedLanguage(langCode);
-  //   if (typeof window !== "undefined") {
-  //     localStorage.setItem("appLanguage", langCode);
-  //   }
-  //   const langName = langCode === "hi" ? "Hindi" : langCode === "ta" ? "Tamil" : langCode === "bn" ? "Bengali" : langCode === "te" ? "Telugu" : langCode === "mr" ? "Marathi" : "English";
-  //   toast({
-  //     title: "Language Preference Updated",
-  //     description: `Language set to ${langName}. Full application translation is not yet implemented.`,
-  //   });
-  // };
-  
   const isCustomThemeActive = currentTheme === "blue-theme" || currentTheme === "pink-theme" || currentTheme === "green-theme";
 
   return (
@@ -235,11 +220,45 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
           </TabsList>
           <TabsContent value="account" className="pt-6 space-y-6">
-             <div>
-                <Label className="text-base font-medium">Profile Management</Label>
-                 <p className="text-sm text-muted-foreground mt-1">
-                    Account management features (e.g., change password, update profile details, language preferences) are not fully implemented in this prototype.
-                </p>
+             <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-medium">Profile Management</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage your personal account details.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                     <Button variant="outline" className="w-full justify-start" disabled>
+                        <UserCog className="mr-2 h-4 w-4"/> Update Profile Details
+                     </Button>
+                     <Button variant="outline" className="w-full justify-start" disabled>
+                        <ShieldPlus className="mr-2 h-4 w-4"/> Change Password
+                     </Button>
+                  </div>
+                </div>
+                 <div>
+                  <Label className="text-base font-medium">Preferences</Label>
+                   <p className="text-sm text-muted-foreground mt-1">
+                    Customize your experience across the application.
+                  </p>
+                   <div className="mt-3 space-y-2">
+                     <Button variant="outline" className="w-full justify-start" disabled>
+                        <Languages className="mr-2 h-4 w-4"/> Language Preferences
+                     </Button>
+                  </div>
+                </div>
+                {canManageUsers && (
+                  <div>
+                    <Label className="text-base font-medium">User Administration</Label>
+                     <p className="text-sm text-muted-foreground mt-1">
+                      Manage application users (Admin only).
+                    </p>
+                     <div className="mt-3 space-y-2">
+                       <Button variant="outline" className="w-full justify-start" disabled>
+                          <UserPlus className="mr-2 h-4 w-4"/> Add New User
+                       </Button>
+                    </div>
+                  </div>
+                )}
             </div>
           </TabsContent>
           <TabsContent value="appearance" className="pt-6">
@@ -564,7 +583,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </SidebarInset>
         </div>
       </div>
-      {user && <SettingsDialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen} />}
+      <SettingsDialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen} user={user}/>
     </SidebarProvider>
   );
 }
