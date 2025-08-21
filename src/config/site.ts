@@ -1,6 +1,6 @@
 
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText, UserCheck } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText, UserCheck, ShieldQuestion } from "lucide-react";
 
 interface SiteConfig {
   name: string;
@@ -12,7 +12,7 @@ interface SiteConfig {
 
 export const siteConfig: SiteConfig = {
   name: "StoreFlow",
-  description: "Streamline, track, and manage new store launches.",
+  description: "Streamline, track, and manage new store launch projects.",
   mainNav: [
     {
       title: "Dashboard",
@@ -57,9 +57,14 @@ export const siteConfig: SiteConfig = {
       icon: KanbanSquare,
     },
     {
-      title: "Approvals",
+      title: "My Approvals",
       href: "/my-approvals",
       icon: CheckSquare,
+    },
+    {
+      title: "Awaiting Approvals",
+      href: "/awaiting-approvals",
+      icon: ShieldQuestion,
     },
   ],
   authNav: [

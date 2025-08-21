@@ -40,7 +40,6 @@ export default function MyApprovalsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [requestsAwaitingMyAction, setRequestsAwaitingMyAction] = React.useState<ApprovalRequest[]>([]);
   const [mySubmittedRequests, setMySubmittedRequests] = React.useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = React.useState(true);
   
@@ -61,7 +60,6 @@ export default function MyApprovalsPage() {
   const refreshApprovalData = () => {
     if (user) {
       const approvalData = getApprovalRequestsForUser(user.email);
-      setRequestsAwaitingMyAction(approvalData.awaiting);
       setMySubmittedRequests(approvalData.submitted);
     }
   };
@@ -98,28 +96,6 @@ export default function MyApprovalsPage() {
     
     loadData();
   }, [user, authLoading, router, toast]);
-
-  const handleApprovalAction = (requestId: string, newStatus: ApprovalStatus) => { // No async needed for mock
-    if (!user) return;
-    try {
-      updateApprovalRequestStatus(requestId, { 
-        newStatus, 
-        actorName: user.name || user.email! 
-      }); // Synchronous call
-      toast({
-        title: `Request ${newStatus}`,
-        description: `The request has been successfully ${newStatus.toLowerCase()}.`,
-      });
-      refreshApprovalData(); // Re-fetch to update lists
-    } catch (error) {
-      console.error("Error updating approval status:", error);
-      toast({
-        title: "Error",
-        description: "Could not update the request status.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleNewRequestSubmit = (e: React.FormEvent) => { // No async needed for mock
     e.preventDefault();
@@ -206,12 +182,11 @@ export default function MyApprovalsPage() {
 
   return (
     <section className="my-approvals-content flex flex-col gap-6" aria-labelledby="my-approvals-heading">
-      <h1 id="my-approvals-heading" className="text-2xl font-semibold md:text-3xl mt-4">Approvals Center</h1>
+      <h1 id="my-approvals-heading" className="text-2xl font-semibold md:text-3xl mt-4">My Approvals</h1>
       <Tabs defaultValue="submit-new-request" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="submit-new-request">Submit New Request</TabsTrigger>
           <TabsTrigger value="my-submitted-requests">My Submitted Requests ({mySubmittedRequests.length})</TabsTrigger>
-          <TabsTrigger value="awaiting-my-action">Awaiting My Action ({requestsAwaitingMyAction.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="submit-new-request" className="mt-4">
@@ -400,45 +375,7 @@ export default function MyApprovalsPage() {
             </div>
           )}
         </TabsContent>
-
-        <TabsContent value="awaiting-my-action" className="mt-4">
-          {requestsAwaitingMyAction.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center">No requests are currently awaiting your action.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {requestsAwaitingMyAction.map(req => (
-                <Card key={req.id}>
-                  <CardHeader>
-                    <CardTitle>{req.title}</CardTitle>
-                    <CardDescription>
-                      From: {req.requestorName} ({req.requestingDepartment})
-                      {req.projectName && ` | Project: ${req.projectName}`}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">Submitted: {format(new Date(req.submissionDate), "PPP")}</p>
-                    <p className="text-sm whitespace-pre-wrap">{req.details}</p>
-                  </CardContent>
-                  <CardFooter className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleApprovalAction(req.id, "Rejected")}>
-                      <XCircle className="mr-2 h-4 w-4" /> Reject
-                    </Button>
-                    <Button size="sm" onClick={() => handleApprovalAction(req.id, "Approved")}>
-                      <CheckCircle className="mr-2 h-4 w-4" /> Approve
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
     </section>
   );
 }
-
-    
