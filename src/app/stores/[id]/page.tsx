@@ -14,13 +14,13 @@ import {
   updateStoreTask,
   deleteStoreTask
 } from "@/lib/data";
-import type { StoreItem, ImprovementPoint, Comment as CommentType, StoreTask, TaskPriority } from "@/types";
+import type { StoreItem, ImprovementPoint, Comment as CommentType, StoreTask, TaskPriority, StoreType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Package2, Store as StoreIcon, Settings, HelpCircle, PlusCircle, Edit3, MessageSquare, MoreHorizontal, ExternalLink, CheckCircle, MessageCircle, Send, CornerDownRight, Eye, EyeOff, ListFilter, Trash2, CalendarIcon, AlertTriangle, Edit, Check } from "lucide-react";
-import { format, formatDistanceToNow, isValid } from "date-fns";
+import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -142,7 +142,6 @@ export default function StoreDetailsPage() {
   const [resolvedPointDiscussionVisibility, setResolvedPointDiscussionVisibility] = React.useState<Record<string, boolean>>({});
 
   const [isSubmittingImprovement, setIsSubmittingImprovement] = React.useState(false);
-  const [isUpdatingOwnership, setIsUpdatingOwnership] = React.useState(false);
   const [isUpdatingImpPointStatus, setIsUpdatingImpPointStatus] = React.useState<Record<string, boolean>>({});
   const [isSubmittingImpComment, setIsSubmittingImpComment] = React.useState<Record<string, boolean>>({});
 
@@ -160,6 +159,10 @@ export default function StoreDetailsPage() {
   const [isSubmittingStoreTask, setIsSubmittingStoreTask] = React.useState(false);
   const [isRequestInfoDialogOpen, setIsRequestInfoDialogOpen] = React.useState(false);
   const [requestInfoText, setRequestInfoText] = React.useState("");
+
+  const [isEditStoreDialogOpen, setIsEditStoreDialogOpen] = React.useState(false);
+  const [isSavingStore, setIsSavingStore] = React.useState(false);
+  const [editStoreForm, setEditStoreForm] = React.useState<Partial<StoreItem>>({});
 
   // --- NEW: State for loading improvement points from API or static JSON ---
   const [improvementPoints, setImprovementPoints] = useState<ImprovementPointType[]>([]);
@@ -206,6 +209,15 @@ export default function StoreDetailsPage() {
       const storeData = await getStoreById(id);
       if (storeData) {
         setStore(storeData);
+        setEditStoreForm({
+          name: storeData.name,
+          location: storeData.location,
+          manager: storeData.manager,
+          sqft: storeData.sqft,
+          openingDate: storeData.openingDate,
+          status: storeData.status,
+          type: storeData.type,
+        });
         setStoreNotFound(false);
       } else {
         setStoreNotFound(true);
@@ -240,12 +252,6 @@ export default function StoreDetailsPage() {
   const isUserSuperAdmin = currentUserRole === 'SuperAdmin';
 
   const canManageStoreFeatures = isUserAdmin || isUserSuperAdmin;
-
-  const canRequestOwnershipChange = React.useMemo(() => {
-    if (!store) return false;
-    return isUserAdmin || isUserSuperAdmin || (store.type === 'FOFO' && store.manager === user?.name);
-  }, [store, isUserAdmin, isUserSuperAdmin, user?.name]);
-
 
   const handleAddImprovementPoint = async () => { 
     if (!newImprovementPointText.trim() || !store || !user) {
@@ -299,26 +305,6 @@ export default function StoreDetailsPage() {
       toast({ title: "Error", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsSubmittingImprovement(false);
-    }
-  };
-
-  const handleToggleOwnershipChangeRequest = () => { // No async for mock
-    if (!store || !canRequestOwnershipChange) {
-        toast({title: "Permission Denied", variant: "destructive"}); return;
-    }
-    setIsUpdatingOwnership(true);
-    const currentlyRequested = !!store.ownershipChangeRequested;
-    const newRequestedState = !currentlyRequested;
-    const targetType = store.type === 'COCO' ? 'FOFO' : 'COCO';
-    
-    try {
-        const updatedStoreData = updateStore(store.id, { ownershipChangeRequested: newRequestedState });
-        setStore(updatedStoreData);
-        toast({ title: newRequestedState ? "Ownership Change Requested" : "Ownership Change Request Cancelled" });
-    } catch (error) {
-        toast({ title: "Error", description: "Could not update request.", variant: "destructive" });
-    } finally {
-        setIsUpdatingOwnership(false);
     }
   };
 
@@ -527,6 +513,34 @@ export default function StoreDetailsPage() {
     toast({ title: "Information Request Sent (Simulated)" });
     setRequestInfoText(""); setIsRequestInfoDialogOpen(false);
   };
+  
+  const handleSaveStoreDetails = async () => {
+    if (!store || !canManageStoreFeatures) {
+        toast({ title: "Permission Denied", variant: "destructive" });
+        return;
+    }
+    if (!editStoreForm.name || !editStoreForm.location || !editStoreForm.openingDate) {
+        toast({ title: "Missing Fields", description: "Name, location, and opening date are required.", variant: "destructive" });
+        return;
+    }
+
+    setIsSavingStore(true);
+    try {
+        const updatedStore = await updateStore(store.id, {
+            ...editStoreForm,
+            sqft: Number(editStoreForm.sqft) || undefined,
+            openingDate: format(new Date(editStoreForm.openingDate), 'yyyy-MM-dd'),
+        });
+        setStore(updatedStore);
+        toast({ title: "Store Details Updated" });
+        setIsEditStoreDialogOpen(false);
+    } catch (error) {
+        console.error("Failed to update store:", error);
+        toast({ title: "Update Failed", description: "Could not save store details.", variant: "destructive" });
+    } finally {
+        setIsSavingStore(false);
+    }
+};
 
   const filteredStoreTasks = React.useMemo(() => {
     if (!store?.tasks) return [];
@@ -566,7 +580,6 @@ export default function StoreDetailsPage() {
       return null;
   }
 
-  const targetOwnershipType = store.type === 'COCO' ? 'FOFO' : 'COCO';
   const priorityBadgeVariant = (priority?: TaskPriority) => { /* ... */ return "outline"; };
   const statusBadgeVariant = (status: StoreTask['status']) => { /* ... */ return "outline"; };
   const statusBadgeClass = (status: StoreTask['status']) => { /* ... */ return ""; };
@@ -607,7 +620,7 @@ export default function StoreDetailsPage() {
                   </p>
                 </div>
                 <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                  A request to change ownership to {targetOwnershipType} is awaiting approval.
+                  A request to change ownership is awaiting approval.
                 </p>
               </div>
             )}
@@ -657,23 +670,45 @@ export default function StoreDetailsPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-
-                {canRequestOwnershipChange && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" disabled={isUpdatingOwnership}>
-                                <Settings className="mr-2 h-4 w-4" /> {isUpdatingOwnership ? "Updating..." : "Store Settings"}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={handleToggleOwnershipChangeRequest} disabled={isUpdatingOwnership}>
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                {store.ownershipChangeRequested
-                                ? "Cancel Ownership Change Request"
-                                : `Request Change to ${targetOwnershipType} Ownership`}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                
+                {canManageStoreFeatures && (
+                  <Dialog open={isEditStoreDialogOpen} onOpenChange={setIsEditStoreDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={isSavingStore}>
+                        <Edit3 className="mr-2 h-4 w-4" /> {isSavingStore ? "Saving..." : "Edit Store Details"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Edit Store Details</DialogTitle>
+                        <DialogDescription>Update the information for {store.name}.</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-store-name">Store Name *</Label>
+                            <Input id="edit-store-name" value={editStoreForm.name || ''} onChange={e => setEditStoreForm(p => ({...p, name: e.target.value}))} disabled={isSavingStore}/>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-store-location">Location *</Label>
+                            <Input id="edit-store-location" value={editStoreForm.location || ''} onChange={e => setEditStoreForm(p => ({...p, location: e.target.value}))} disabled={isSavingStore}/>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-store-manager">Manager</Label>
+                            <Input id="edit-store-manager" value={editStoreForm.manager || ''} onChange={e => setEditStoreForm(p => ({...p, manager: e.target.value}))} disabled={isSavingStore}/>
+                        </div>
+                         <div className="space-y-1.5">
+                            <Label htmlFor="edit-store-sqft">Square Footage</Label>
+                            <Input id="edit-store-sqft" type="number" value={editStoreForm.sqft || ''} onChange={e => setEditStoreForm(p => ({...p, sqft: Number(e.target.value)}))} disabled={isSavingStore}/>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild><Button variant="outline" disabled={isSavingStore}>Cancel</Button></DialogClose>
+                        <Button onClick={handleSaveStoreDetails} disabled={isSavingStore}>
+                          {isSavingStore ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 )}
             </div>
             {canManageStoreFeatures && (
