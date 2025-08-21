@@ -116,11 +116,9 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
 }
 
 // Tasks API
-// Note: This endpoint is not yet defined in your API routes.
-// You might need to create `/api/tasks/user/:userId/route.ts` for this to work.
 export async function getTasksForUser(userId: string): Promise<Task[]> {
-  // Assuming an API endpoint structure like /api/tasks/user/{userId}
-  return apiFetch<Task[]>(`/tasks/user/${userId}`);
+  // Use URL encoding for the userId to handle special characters in emails
+  return apiFetch<Task[]>(`/tasks/user/${encodeURIComponent(userId)}`);
 }
 
 
