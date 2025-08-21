@@ -1,6 +1,6 @@
 
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText, UserCheck, ShieldQuestion } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText, UserCheck, ShieldQuestion, StickyNote } from "lucide-react";
 
 interface SiteConfig {
   name: string;
@@ -65,6 +65,11 @@ export const siteConfig: SiteConfig = {
       title: "Awaiting Approvals",
       href: "/awaiting-approvals",
       icon: ShieldQuestion,
+    },
+    {
+      title: "Notes",
+      href: "/notes",
+      icon: StickyNote,
     },
   ],
   authNav: [

@@ -1,5 +1,6 @@
 
-import type { StoreProject, StoreItem, Task, User, DocumentFile } from '@/types';
+
+import type { StoreProject, StoreItem, Task, User, DocumentFile, Note } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -163,4 +164,25 @@ export async function addTaskComment(taskId: string, commentData: { author: stri
     method: 'POST',
     body: JSON.stringify(commentData),
   });
+}
+
+// Notes API
+export async function getVisibleNotes(userEmail: string): Promise<Note[]> {
+    // We pass the user's email in a header for mock authentication
+    return apiFetch<Note[]>('/notes', { headers: { 'x-user-email': userEmail } });
+}
+
+export async function createNote(noteData: Partial<Note>, userEmail: string): Promise<Note> {
+    return apiFetch<Note>('/notes', {
+        method: 'POST',
+        body: JSON.stringify(noteData),
+        headers: { 'x-user-email': userEmail },
+    });
+}
+
+export async function deleteNote(noteId: string, userEmail: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/notes?id=${noteId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-email': userEmail },
+    });
 }

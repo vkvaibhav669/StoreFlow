@@ -1,4 +1,5 @@
 
+
 // This file defines the TypeScript types that reflect the MongoDB schema design.
 // It serves as the single source of truth for data structures across the application.
 
@@ -10,6 +11,7 @@ export type TaskPriority = "High" | "Medium" | "Low" | "None";
 export type UserRole = "Member" | "Admin" | "SuperAdmin";
 export type StoreType = "COCO" | "FOFO";
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Withdrawn";
+export type NotePrivacy = "public" | "private" | "shared";
 
 // --- Main Document Schemas (Collections) ---
 
@@ -124,6 +126,21 @@ export interface ApprovalRequest {
   approvalComments?: Comment[];
   submissionDate: string; // ISO String
   lastUpdateDate?: string; // ISO String
+}
+
+/**
+ * Represents a note in the `notes` collection.
+ */
+export interface Note {
+    id: string;
+    content: string;
+    authorId: string; // Ref: users
+    authorName: string;
+    authorEmail: string;
+    privacy: NotePrivacy;
+    sharedWith: { userId: string; userName: string; }[]; // Array of user IDs if privacy is 'shared'
+    createdAt: string; // ISO String
+    updatedAt: string; // ISO String
 }
 
 
