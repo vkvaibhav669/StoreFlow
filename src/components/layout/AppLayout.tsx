@@ -28,6 +28,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext"; 
@@ -152,74 +156,19 @@ interface AppNotification {
 type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme" | "green-theme";
 
 function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange: (open: boolean) => void, user: User | null }) {
-  const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
   const { toast } = useToast();
   const canManageUsers = user?.role === 'Admin' || user?.role === 'SuperAdmin';
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedTheme = localStorage.getItem("theme") as Theme | null;
-      const initialTheme = storedTheme || "blue-theme"; 
-      setCurrentTheme(initialTheme);
-      applyTheme(initialTheme);
-
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = () => {
-        if (localStorage.getItem("theme") === "system") { 
-          applyTheme("system");
-        }
-      };
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-  }, []);
-
-  const applyTheme = (theme: Theme) => {
-    if (typeof window === "undefined") return;
-    const root = window.document.documentElement;
-    root.classList.remove("light", "dark", "theme-blue", "theme-pink", "theme-green");
-
-    let effectiveTheme = theme;
-    if (theme === "system") {
-      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      root.classList.add(effectiveTheme);
-    } else if (theme === "blue-theme") {
-      root.classList.add("theme-blue");
-    } else if (theme === "pink-theme") {
-      root.classList.add("theme-pink");
-    } else if (theme === "green-theme") {
-      root.classList.add("theme-green");
-    }
-     else {
-      root.classList.add(theme); 
-    }
-  };
-
-  const handleThemeChange = (newTheme: Theme) => {
-    setCurrentTheme(newTheme);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("theme", newTheme);
-    }
-    applyTheme(newTheme);
-  };
   
-  const isCustomThemeActive = currentTheme === "blue-theme" || currentTheme === "pink-theme" || currentTheme === "green-theme";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Manage your account and application appearance.
+            Manage your account and application preferences.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="appearance" className="w-full pt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          </TabsList>
-          <TabsContent value="account" className="pt-6 space-y-6">
+        <div className="pt-6 space-y-6">
              <div className="space-y-4">
                 <div>
                   <Label className="text-base font-medium">Profile Management</Label>
@@ -260,90 +209,7 @@ function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenCha
                   </div>
                 )}
             </div>
-          </TabsContent>
-          <TabsContent value="appearance" className="pt-6">
-            <div className="space-y-3">
-              <Label className="text-base font-medium block">Theme</Label>
-              <p className="text-sm text-muted-foreground">
-                Select the theme for the application.
-              </p>
-              <RadioGroup
-                value={isCustomThemeActive ? "" : currentTheme} 
-                onValueChange={(value) => handleThemeChange(value as Theme)}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
-              >
-                <div>
-                  <RadioGroupItem value="light" id="theme-light" className="peer sr-only" />
-                  <Label
-                    htmlFor="theme-light"
-                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
-                  >
-                    <Sun className="h-4 w-4" />
-                    Light
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem value="dark" id="theme-dark" className="peer sr-only" />
-                  <Label
-                    htmlFor="theme-dark"
-                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
-                  >
-                    <Moon className="h-4 w-4" />
-                    Dark
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem value="system" id="theme-system" className="peer sr-only" />
-                  <Label
-                    htmlFor="theme-system"
-                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
-                  >
-                    <Laptop className="h-4 w-4" />
-                    System
-                  </Label>
-                </div>
-              </RadioGroup>
-              <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <Button 
-                    onClick={() => handleThemeChange("blue-theme")} 
-                    variant="outline"
-                    size="default" 
-                    className={cn(
-                        "w-full", 
-                        currentTheme === "blue-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
-                    )}
-                >
-                    <Palette className="mr-2 h-4 w-4" /> 
-                    {currentTheme === "blue-theme" ? "Navy (Active)" : "Navy"}
-                </Button>
-                <Button 
-                    onClick={() => handleThemeChange("pink-theme")} 
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                        "w-full",
-                        currentTheme === "pink-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
-                    )}
-                >
-                    <Palette className="mr-2 h-4 w-4" /> 
-                     {currentTheme === "pink-theme" ? "Pink (Active)" : "Pink"}
-                </Button>
-                 <Button 
-                    onClick={() => handleThemeChange("green-theme")} 
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                        "w-full",
-                        currentTheme === "green-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
-                    )}
-                >
-                    <Palette className="mr-2 h-4 w-4" /> 
-                     {currentTheme === "green-theme" ? "Green (Active)" : "Green"}
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
         <div className="flex justify-end pt-6">
           <DialogClose asChild>
             <Button variant="outline">Close</Button>
@@ -361,11 +227,60 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<AppNotification[]>([]);
+  const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
+
+  const applyTheme = React.useCallback((theme: Theme) => {
+    if (typeof window === "undefined") return;
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark", "theme-blue", "theme-pink", "theme-green");
+
+    let effectiveTheme = theme;
+    if (theme === "system") {
+      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    
+    if (effectiveTheme === "light" || effectiveTheme === "dark") {
+        root.classList.add(effectiveTheme);
+    } else if (theme === "blue-theme") {
+      root.classList.add("theme-blue");
+    } else if (theme === "pink-theme") {
+      root.classList.add("theme-pink");
+    } else if (theme === "green-theme") {
+      root.classList.add("theme-green");
+    } else {
+        root.classList.add(effectiveTheme);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedTheme = localStorage.getItem("theme") as Theme | null;
+      const initialTheme = storedTheme || "blue-theme"; 
+      setCurrentTheme(initialTheme);
+      applyTheme(initialTheme);
+
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => {
+        if (localStorage.getItem("theme") === "system") { 
+          applyTheme("system");
+        }
+      };
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [applyTheme]);
+
+  const handleThemeChange = (newTheme: Theme) => {
+    setCurrentTheme(newTheme);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("theme", newTheme);
+    }
+    applyTheme(newTheme);
+  };
+
 
   React.useEffect(() => {
     if (user) {
-      // In a real application, you would fetch notifications from an API.
-      // For now, we are removing the mock data.
       setNotifications([]);
     } else {
       setNotifications([]); 
@@ -399,7 +314,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         ['/dashboard', '/my-stores', '/my-tasks', '/my-approvals'].includes(item.href)
       );
     }
-    // Admin and SuperAdmin see all items by default from siteConfig
     return siteConfig.sidebarNav;
   };
 
@@ -493,6 +407,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <DropdownMenuItem onClick={() => setIsSettingsDialogOpen(true)}>
                       <Settings className="mr-2 h-4 w-4" />Settings
                     </DropdownMenuItem>
+                     <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Palette className="mr-2 h-4 w-4" />
+                        <span>Theme</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem onClick={() => handleThemeChange('light')}>
+                            <Sun className="mr-2 h-4 w-4" /> Light
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleThemeChange('dark')}>
+                            <Moon className="mr-2 h-4 w-4" /> Dark
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleThemeChange('system')}>
+                            <Laptop className="mr-2 h-4 w-4" /> System
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                           <DropdownMenuItem onClick={() => handleThemeChange('blue-theme')}>Navy</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleThemeChange('pink-theme')}>Pink</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleThemeChange('green-theme')}>Green</DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <LogOut className="mr-2 h-4 w-4" /> Logout
