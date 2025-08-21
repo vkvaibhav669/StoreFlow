@@ -303,10 +303,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  const clearAllNotifications = () => {
-    setNotifications([]);
-  };
-
   const getSidebarItemsForRole = (role: UserRole | undefined): NavItem[] => {
     if (!role) return [];
     if (role === 'Member') {
@@ -326,57 +322,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarTrigger className="md:hidden" />
         <div className="ml-auto flex items-center gap-4">
           {user && (
-            <DropdownMenu onOpenChange={handleNotificationOpenChange}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full relative">
-                  <Bell className="h-5 w-5" />
-                  {unseenNotificationCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
-                      {unseenNotificationCount}
-                    </Badge>
-                  )}
-                  <span className="sr-only">Toggle notifications</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[300px] sm:w-[350px]">
-                <DropdownMenuLabel className="flex justify-between items-center">
-                  Notifications
-                  {notifications.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-1 text-xs text-muted-foreground hover:text-primary"
-                      onClick={clearAllNotifications}
-                    >
-                      <X className="mr-1 h-3 w-3" />
-                      Clear all
-                    </Button>
-                  )}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {notifications.length > 0 ? (
-                  <ScrollArea className="max-h-[300px]">
-                    {notifications.map(notification => (
-                      <DropdownMenuItem key={notification.id} asChild>
-                        <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", !notification.seen && "font-semibold")}>
-                          {notification.text}
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </ScrollArea>
-                ) : (
-                  <DropdownMenuItem disabled>
-                    <span className="text-sm p-2 text-muted-foreground">No new notifications</span>
-                  </DropdownMenuItem>
-                )}
-                {notifications.length > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuItem className="justify-center p-0">
-                  <Button variant="link" asChild className="w-full text-sm text-primary hover:underline">
-                    <Link href="/notifications">View all notifications</Link>
-                  </Button>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button asChild variant="ghost" size="icon" className="rounded-full relative">
+              <Link href="/notifications">
+                <Bell className="h-5 w-5" />
+                <span className="sr-only">View notifications</span>
+              </Link>
+            </Button>
           )}
 
           {loading ? (
