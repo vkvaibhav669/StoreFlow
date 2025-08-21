@@ -61,16 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    setLoading(true);
-    try {
-      await authService.signOut();
-      setUser(null);
-      setLoading(false);
-      router.push("/auth/signin"); // Redirect after sign out
-    } catch (error) {
-      console.error("Sign out failed:", error);
-      setLoading(false); // Still set loading to false on error
-    }
+    await authService.signOut();
+    setUser(null);
+    router.push("/auth/signin"); // Redirect after sign out
   };
 
   return (

@@ -73,12 +73,6 @@ export default function SignInPage() {
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing In..." : "Sign In"}
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link href="/auth/signup" className="font-medium text-primary hover:underline">
-                Sign Up
-              </Link>
-            </p>
           </CardFooter>
         </form>
       </Card>
