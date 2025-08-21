@@ -42,7 +42,7 @@ export const siteConfig: SiteConfig = {
       icon: FileText,
     },
     {
-      title: "My Assigned Tasks",
+      title: "Task assigned to me",
       href: "/my-assigned-tasks",
       icon: ListChecks,
     },

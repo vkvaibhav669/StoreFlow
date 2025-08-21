@@ -66,7 +66,7 @@ export default function MyAssignedTasksPage() {
 
   return (
     <section className="my-assigned-tasks-content flex flex-col gap-6" aria-labelledby="my-tasks-heading">
-      <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl mt-4">My Assigned Tasks</h1>
+      <h1 id="my-tasks-heading" className="text-2xl font-semibold md:text-3xl mt-4">Task assigned to me</h1>
       
         {userTasks.length === 0 ? (
         <Card>
