@@ -11,14 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   addDocumentToProject,
-  addCommentToProject,
   addReplyToProjectComment,
   addMemberToProject,
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
-import { getProjectById, updateProject, createTask, updateTask } from "@/lib/api";
-import { useProjectComments, useTaskComments } from "@/hooks/useComments";
+import { getProjectById, updateProject, createTask, updateTask, addProjectComment } from "@/lib/api";
+import { useTaskComments } from "@/hooks/useComments";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -157,16 +156,9 @@ export default function ProjectDetailsPage() {
   const router = useRouter();
   
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
+  const [commentsLoading, setCommentsLoading] = React.useState(false);
   const [newCommentText, setNewCommentText] = React.useState("");
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
-
-  // Use the new real-time comment hook
-  const { 
-    comments: projectComments, 
-    isLoading: commentsLoading, 
-    addComment: addProjectComment,
-    error: commentsError 
-  } = useProjectComments(projectData?.id || null);
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
@@ -240,48 +232,46 @@ export default function ProjectDetailsPage() {
   const [isRemovingMember, setIsRemovingMember] = React.useState(false);
   const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string, role?: UserRole } | null>(null);
 
+  const fetchProject = React.useCallback(async () => {
+    if (!projectId) return;
+    setCommentsLoading(true);
+    try {
+      const currentProject = await getProjectById(projectId);
+      if (currentProject) {
+          setProjectData(currentProject);
+          setEditingProjectForm({
+              name: currentProject.name, location: currentProject.location, status: currentProject.status,
+              startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
+              projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
+              franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
+          });
+          setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
+          setEditingTimelineForm(currentProject.projectTimeline || {});
+          setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
+          setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
+      } else {
+          notFound(); // Project with this ID not found
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      notFound(); // Handle fetch errors by showing not found
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [projectId]);
+
   React.useEffect(() => {
     if (authLoading) return;
-
     if (!user) {
       router.replace("/auth/signin");
       return;
     }
-
     if (!projectId) {
-      // This might happen if the URL is malformed or ID is not a string
       notFound();
       return;
     }
-
-    // Fetch project data asynchronously
-    const fetchProject = async () => {
-      try {
-        const currentProject = await getProjectById(projectId);
-        if (currentProject) {
-            setProjectData(currentProject);
-            // Comments are now handled by the useProjectComments hook
-            setEditingProjectForm({
-                name: currentProject.name, location: currentProject.location, status: currentProject.status,
-                startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
-                projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
-                franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
-            });
-            setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
-            setEditingTimelineForm(currentProject.projectTimeline || {});
-            setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
-            setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
-        } else {
-            notFound(); // Project with this ID not found
-        }
-      } catch (error) {
-        console.error('Error fetching project:', error);
-        notFound(); // Handle fetch errors by showing not found
-      }
-    };
-
     fetchProject();
-  }, [projectId, user, authLoading, router]);
+  }, [projectId, user, authLoading, router, fetchProject]);
 
 
   const currentUserRole = user?.role;
@@ -387,8 +377,7 @@ export default function ProjectDetailsPage() {
     try {
       const addedTask = await createTask(projectData.id, newTaskPayload);
       // Refresh project data asynchronously
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Task Added", description: `Task "${addedTask.name}" has been added.` });
       setNewTaskName(""); setNewTaskDepartment(""); setNewTaskDescription("");
       setNewTaskDueDate(""); setNewTaskAssignedTo(""); setNewTaskPriority("Medium");
@@ -428,8 +417,7 @@ export default function ProjectDetailsPage() {
     try {
       const addedDocument = addDocumentToProject(projectData.id, formData);
       // Refresh project data asynchronously
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
       setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
       setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
@@ -451,7 +439,8 @@ export default function ProjectDetailsPage() {
         authorId: user.id || user.email,
       };
       try {
-        await addProjectComment(commentPayload);
+        await addProjectComment(projectData.id, commentPayload);
+        await fetchProject(); // Refetch the project to get all updates
         toast({ title: "Comment Posted", description: "Your comment has been added." });
         setNewCommentText("");
       } catch (error) {
@@ -480,9 +469,7 @@ export default function ProjectDetailsPage() {
 
       try {
           addReplyToProjectComment(projectData.id, commentId, replyPayload);
-          const updatedProject = await getProjectById(projectData.id);
-          setProjectData(updatedProject || null);
-          // Comments are now handled by the real-time hook
+          await fetchProject(); // Refetch the project to get all updates
           toast({ title: "Reply Posted", description: "Your reply has been added." });
       } catch (error) {
           console.error("Error posting reply:", error);
@@ -534,9 +521,7 @@ export default function ProjectDetailsPage() {
       // 4. Re-fetch the entire project to ensure the UI is perfectly in sync with the database.
       // This is a robust strategy that ensures any changes to the task (e.g., status, department)
       // are reflected correctly across all components on the page (progress bars, department cards, etc.).
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
-      setSelectedTask(refreshedProject?.tasks.find(t => t.id === selectedTask.id) || null);
+      await fetchProject();
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
     } catch (error) {
@@ -611,10 +596,9 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         if (!addReplyFn(taskToUpdate.comments)) throw new Error("Parent comment for reply not found");
 
         updateProject(projectData.id, projectToUpdate);
-        const updatedProject = await getProjectById(projectData.id);
-        setProjectData(updatedProject || null);
+        await fetchProject();
         if (selectedTask && selectedTask.id === taskId) {
-            setSelectedTask(updatedProject?.tasks.find(t => t.id === taskId) || null);
+            setSelectedTask(projectToUpdate?.tasks.find(t => t.id === taskId) || null);
         }
         toast({ title: "Reply Posted", description: "Your reply has been added." });
     } catch (error) {
@@ -740,8 +724,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     
     try {
         updateProject(currentProject.id, { blockers: currentProject.blockers });
-        const refreshedProject = await getProjectById(currentProject.id);
-        setProjectData(refreshedProject || null);
+        await fetchProject();
         toast({ title: "Blocker Status Updated", description: `Blocker resolution status has been changed.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to update blocker status.", variant: "destructive" });
@@ -756,8 +739,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     const updatedBlockers = (currentProject.blockers || []).filter(b => b.id !== blockerId);
     try {
         updateProject(currentProject.id, { blockers: updatedBlockers });
-        const refreshedProject = await getProjectById(currentProject.id);
-        setProjectData(refreshedProject || null);
+        await fetchProject();
         toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to remove blocker.", variant: "destructive" });
@@ -781,8 +763,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     };
     try {
       addMemberToProject(projectData.id, memberPayload);
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Member Added", description: `${memberPayload.name} has been added to the project.` });
       setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false);
       setIsAddMemberDialogOpen(false);
@@ -799,8 +780,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     setIsRemovingMember(true);
     try {
       await removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Member Removed", description: `${memberToRemoveInfo.name} has been removed from the project.` });
       setMemberToRemoveInfo(null); setIsConfirmRemoveMemberDialogOpen(false); 
     } catch (error) {
@@ -824,6 +804,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     return Math.round((completedTasks / tasks.length) * 100);
   };
+
+  const projectComments = projectData.discussion || projectData.comments || [];
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">

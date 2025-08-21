@@ -1,27 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProjectComments, addProjectComment, getTaskComments, addTaskComment } from '@/lib/api';
+import { addProjectComment, getTaskComments, addTaskComment } from '@/lib/api';
 import type { Comment } from '@/types';
 
+// This hook is deprecated as project comments are now fetched with the project document.
+// Keeping it here temporarily to avoid breaking changes, but it should be removed.
 export function useProjectComments(projectId: string | null) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchComments = useCallback(async () => {
-    if (!projectId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const fetchedComments = await getProjectComments(projectId);
-      setComments(Array.isArray(fetchedComments) ? fetchedComments : []);
-    } catch (err) {
-      console.error('Error fetching project comments:', err);
-      setError('Failed to fetch comments');
-    } finally {
-      setIsLoading(false);
-    }
+    // This function is now a no-op, as comments are part of the project object.
   }, [projectId]);
 
   const addComment = useCallback(async (commentData: { author: string; text: string; authorId?: string }) => {
@@ -29,28 +18,18 @@ export function useProjectComments(projectId: string | null) {
     
     try {
       const newComment = await addProjectComment(projectId, commentData);
-      // Refresh comments after adding
-      await fetchComments();
+      // The calling component is now responsible for refetching the entire project.
       return newComment;
     } catch (err) {
       console.error('Error adding project comment:', err);
       setError('Failed to add comment');
       throw err;
     }
-  }, [projectId, fetchComments]);
+  }, [projectId]);
 
   useEffect(() => {
-    fetchComments();
+    // No initial fetch.
   }, [fetchComments]);
-
-  // Set up polling for real-time updates
-  useEffect(() => {
-    if (!projectId) return;
-    
-    const interval = setInterval(fetchComments, 5000); // Poll every 5 seconds
-    
-    return () => clearInterval(interval);
-  }, [projectId, fetchComments]);
 
   return {
     comments,
