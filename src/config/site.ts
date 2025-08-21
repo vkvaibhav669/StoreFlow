@@ -57,7 +57,7 @@ export const siteConfig: SiteConfig = {
       icon: KanbanSquare,
     },
     {
-      title: "My Approvals",
+      title: "Requests",
       href: "/my-approvals",
       icon: CheckSquare,
     },

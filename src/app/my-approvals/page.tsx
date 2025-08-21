@@ -181,8 +181,8 @@ export default function MyApprovalsPage() {
   }
 
   return (
-    <section className="my-approvals-content flex flex-col gap-6" aria-labelledby="my-approvals-heading">
-      <h1 id="my-approvals-heading" className="text-2xl font-semibold md:text-3xl mt-4">My Approvals</h1>
+    <section className="requests-content flex flex-col gap-6" aria-labelledby="requests-heading">
+      <h1 id="requests-heading" className="text-2xl font-semibold md:text-3xl mt-4">Requests</h1>
       <Tabs defaultValue="submit-new-request" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="submit-new-request">Submit New Request</TabsTrigger>
