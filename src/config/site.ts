@@ -1,6 +1,6 @@
 
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText, UserCheck } from "lucide-react";
 
 interface SiteConfig {
   name: string;
@@ -42,9 +42,14 @@ export const siteConfig: SiteConfig = {
       icon: FileText,
     },
     {
-      title: "My Tasks", // This will now be the combined page
-      href: "/my-tasks",
+      title: "My Assigned Tasks",
+      href: "/my-assigned-tasks",
       icon: ListChecks,
+    },
+    {
+      title: "Assign a Task",
+      href: "/my-tasks",
+      icon: UserCheck,
     },
     {
       title: "Task Tracker",
