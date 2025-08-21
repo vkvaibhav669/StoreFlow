@@ -12,12 +12,12 @@ import {
   getApprovalRequestsForUser, 
   updateApprovalRequestStatus, 
   getAllProjects, 
-  submitApprovalRequest, 
-  mockHeadOfficeContacts // Changed from getHeadOfficeContacts
+  submitApprovalRequest
 } from "@/lib/data";
-import type { ApprovalRequest, ApprovalStatus, Department, StoreProject, ProjectMember as HeadOfficeContactType } from "@/types";
+import { getAllUsers } from "@/lib/api"; // Import user fetching API
+import type { ApprovalRequest, ApprovalStatus, Department, StoreProject, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { Package2, CheckCircle, XCircle, Info, MessageSquare, Send, AlertTriangle } from "lucide-react";
+import { Package2, CheckCircle, XCircle, Send, ChevronsUpDown, Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,10 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const allPossibleDepartmentsForRequest: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
-//["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
 
 export default function MyApprovalsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -42,16 +44,18 @@ export default function MyApprovalsPage() {
   const [mySubmittedRequests, setMySubmittedRequests] = React.useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = React.useState(true);
   
-  // Use async data for projects
   const [allProjects, setAllProjects] = React.useState<StoreProject[]>([]);
-  const [allHeadOfficeContacts, setAllHeadOfficeContacts] = React.useState<HeadOfficeContactType[]>(mockHeadOfficeContacts); // Directly use imported mock data
+  const [allUsers, setAllUsers] = React.useState<User[]>([]); // State for all users
 
   const [requestTitle, setRequestTitle] = React.useState("");
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | undefined>(undefined);
   const [requestingDepartment, setRequestingDepartment] = React.useState<Department | "">("");
   const [details, setDetails] = React.useState("");
-  const [approverName, setApproverName] = React.useState("");
-  const [approverEmail, setApproverEmail] = React.useState("");
+
+  // New state for combobox
+  const [approver, setApprover] = React.useState<User | null>(null);
+  const [isApproverPopoverOpen, setApproverPopoverOpen] = React.useState(false);
+  
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const refreshApprovalData = () => {
@@ -73,14 +77,17 @@ export default function MyApprovalsPage() {
         setLoading(true);
         try {
           refreshApprovalData();
-          const projects = await getAllProjects();
+          const [projects, users] = await Promise.all([
+            getAllProjects(),
+            getAllUsers(),
+          ]);
           setAllProjects(projects);
-          setAllHeadOfficeContacts(mockHeadOfficeContacts);
+          setAllUsers(users);
         } catch (error) {
           console.error('Error loading data:', error);
           toast({
             title: "Error",
-            description: "Failed to load projects. Please try again.",
+            description: "Failed to load projects or users. Please try again.",
             variant: "destructive",
           });
         } finally {
@@ -90,25 +97,7 @@ export default function MyApprovalsPage() {
     };
     
     loadData();
-  }, [user, authLoading, router]);
-
-  React.useEffect(() => {
-    if (requestingDepartment && requestingDepartment !== "" && allHeadOfficeContacts.length > 0) {
-      const hod = allHeadOfficeContacts.find(
-        contact => contact.department?.toLowerCase() === requestingDepartment.toLowerCase() && contact.role?.startsWith("Head of")
-      );
-      if (hod) {
-        setApproverName(hod.name);
-        setApproverEmail(hod.email);
-      } else {
-        setApproverName(`Head of ${requestingDepartment}`);
-        setApproverEmail(`${requestingDepartment.toLowerCase().replace(/\s+/g, '')}.hod@storeflow.corp`);
-      }
-    } else if (!requestingDepartment) {
-      setApproverName("");
-      setApproverEmail("");
-    }
-  }, [requestingDepartment, allHeadOfficeContacts]);
+  }, [user, authLoading, router, toast]);
 
   const handleApprovalAction = (requestId: string, newStatus: ApprovalStatus) => { // No async needed for mock
     if (!user) return;
@@ -143,10 +132,10 @@ export default function MyApprovalsPage() {
       return;
     }
 
-    if (!requestTitle || !requestingDepartment || !details || !approverName || !approverEmail) {
+    if (!requestTitle || !requestingDepartment || !details || !approver) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields (Title, Department, Details, Approver Name and Email).",
+        description: "Please fill in all required fields (Title, Department, Details, and Approver).",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -163,8 +152,8 @@ export default function MyApprovalsPage() {
       requestorName: user.name || user.email!,
       requestorEmail: user.email!,
       details: details,
-      approverName: approverName,
-      approverEmail: approverEmail,
+      approverName: approver.name,
+      approverEmail: approver.email,
     };
 
     try {
@@ -173,14 +162,14 @@ export default function MyApprovalsPage() {
 
       toast({
         title: "Approval Request Submitted",
-        description: `Your request "${requestTitle}" has been sent to ${approverName}.`,
+        description: `Your request "${requestTitle}" has been sent to ${approver.name}.`,
       });
 
       setRequestTitle("");
       setSelectedProjectId(undefined);
       setRequestingDepartment("");
       setDetails("");
-      // Approver name/email will reset via useEffect on requestingDepartment change
+      setApprover(null);
     } catch (error) {
       console.error("Error submitting approval request:", error);
       toast({ title: "Error Submitting Request", description: (error as Error).message || "Failed to submit approval request.", variant: "destructive"});
@@ -245,38 +234,40 @@ export default function MyApprovalsPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="newRequestProject">Associated Project (Optional)</Label>
-                  <Select value={selectedProjectId} onValueChange={setSelectedProjectId} disabled={isSubmitting}>
-                    <SelectTrigger id="newRequestProject">
-                      <SelectValue placeholder="Select a project (if applicable)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="N/A">Not Applicable</SelectItem>
-                      {allProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                      {allProjects.length === 0 && <div className="p-2 text-sm text-muted-foreground text-center">No projects available.</div>}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="newRequestingDepartment">Requesting Department *</Label>
-                  <Select value={requestingDepartment} onValueChange={(value) => setRequestingDepartment(value as Department | "")} required disabled={isSubmitting}>
-                    <SelectTrigger id="newRequestingDepartment">
-                      <SelectValue placeholder="Select your department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allPossibleDepartmentsForRequest.map(dept => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="newRequestProject">Associated Project (Optional)</Label>
+                      <Select value={selectedProjectId} onValueChange={setSelectedProjectId} disabled={isSubmitting}>
+                        <SelectTrigger id="newRequestProject">
+                          <SelectValue placeholder="Select a project (if applicable)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="N/A">Not Applicable</SelectItem>
+                          {allProjects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                            </SelectItem>
+                          ))}
+                          {allProjects.length === 0 && <div className="p-2 text-sm text-muted-foreground text-center">No projects available.</div>}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="newRequestingDepartment">Requesting Department *</Label>
+                      <Select value={requestingDepartment} onValueChange={(value) => setRequestingDepartment(value as Department | "")} required disabled={isSubmitting}>
+                        <SelectTrigger id="newRequestingDepartment">
+                          <SelectValue placeholder="Select your department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allPossibleDepartmentsForRequest.map(dept => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                 </div>
 
                 <div className="space-y-2">
@@ -293,42 +284,67 @@ export default function MyApprovalsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                    <Label htmlFor="newRequestApproverName">Approver Name *</Label>
-                    <Input
-                        id="newRequestApproverName"
-                        value={approverName}
-                        onChange={(e) => {
-                            setApproverName(e.target.value);
-                            const matchedContact = allHeadOfficeContacts.find(c => c.name === e.target.value);
-                            setApproverEmail(matchedContact ? matchedContact.email : ''); 
-                        }}
-                        placeholder="Approver's full name"
-                        required
-                        disabled={isSubmitting}
-                    />
-                    </div>
-                    <div className="space-y-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="newRequestApproverName">Approver *</Label>
+                    <Popover open={isApproverPopoverOpen} onOpenChange={setApproverPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="newRequestApproverName"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isApproverPopoverOpen}
+                          className="w-full justify-between font-normal"
+                          disabled={isSubmitting || allUsers.length === 0}
+                        >
+                          {approver ? approver.name : allUsers.length === 0 ? "No users found" : "Select approver..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search users..." />
+                          <CommandEmpty>No user found.</CommandEmpty>
+                          <CommandList>
+                            <CommandGroup>
+                              {allUsers.map((u) => (
+                                <CommandItem
+                                  key={u.id}
+                                  value={u.name}
+                                  onSelect={() => {
+                                    setApprover(u);
+                                    setApproverPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", approver?.id === u.id ? "opacity-100" : "opacity-0")}/>
+                                  <div>
+                                    <p>{u.name}</p>
+                                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="newRequestApproverEmail">Approver Email *</Label>
                     <Input
-                        id="newRequestApproverEmail"
-                        type="email"
-                        value={approverEmail}
-                        onChange={(e) => setApproverEmail(e.target.value)}
-                        placeholder="Approver's email address"
-                        required
-                        disabled={isSubmitting}
+                      id="newRequestApproverEmail"
+                      type="email"
+                      value={approver ? approver.email : ""}
+                      readOnly
+                      placeholder="Approver's email will appear here"
+                      required
+                      className="bg-muted/50"
+                      disabled={isSubmitting}
                     />
-                    </div>
+                  </div>
                 </div>
-                {requestingDepartment && (
-                    <p className="text-xs text-muted-foreground">
-                        Approver defaults to Head of {requestingDepartment} if found. You can modify if needed.
-                    </p>
-                )}
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
+                <Button type="submit" className="w-full" disabled={isSubmitting || authLoading || !approver}>
                   {isSubmitting ? "Submitting..." : "Submit Request"} <Send className="ml-2 h-4 w-4" />
                 </Button>
               </CardFooter>
@@ -424,3 +440,5 @@ export default function MyApprovalsPage() {
     </section>
   );
 }
+
+    
