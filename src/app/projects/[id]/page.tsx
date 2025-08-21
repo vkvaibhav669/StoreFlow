@@ -1168,108 +1168,12 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="departments">
-        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3 md:grid-cols-6">
-          <TabsTrigger value="departments">Departments</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
+      <Tabs defaultValue="tasks">
+        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3">
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
-          {!isUserMember && <TabsTrigger value="files">Files</TabsTrigger>}
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="comments">Discussion</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="departments" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', 'Property', departments.property?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Property')} />}
-            {departments.project && <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', 'Project', departments.project?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Project')}>
-                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Project')) && projectData.threeDRenderUrl && (
-                  <div className="my-2">
-                    <p className="text-xs font-medium mb-1">3D Store Visual:</p>
-                    <a href={projectData.threeDRenderUrl} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
-                        <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render"/>
-                    </a>
-                  </div>
-                )}
-              </DepartmentCard>}
-            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', 'Merchandising', departments.merchandising?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Merchandising')} />}
-            {departments.hr && <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', 'HR', departments.hr?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'HR')}>
-                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'HR')) && departments.hr.totalNeeded && (
-                  <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
-                )}
-              </DepartmentCard>}
-            {departments.marketing && <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', 'Marketing', departments.marketing?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Marketing')}>
-                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Marketing')) && departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
-                    <ul className="space-y-0.5 text-xs">
-                      {departments.marketing.preLaunchCampaigns.slice(0, 2).map(c => <li key={c.id}>{c.name} ({c.status})</li>)}
-                      {departments.marketing.preLaunchCampaigns.length > 2 && <li>+{departments.marketing.preLaunchCampaigns.length - 2} more</li>}
-                    </ul>
-                  </div>
-                )}
-              </DepartmentCard>}
-            {departments.it && <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', 'IT', departments.it?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'IT')} />}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="members" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle id="project-members-heading">Project Members ({projectData.members?.length || 0})</CardTitle>
-                <CardDescription>Team members assigned to this project.</CardDescription>
-              </div>
-              {canEditProject && (
-                 <Dialog open={isAddMemberDialogOpen} onOpenChange={(isOpen) => {
-                    setIsAddMemberDialogOpen(isOpen);
-                    if (!isOpen) { setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false); }
-                 }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" disabled={isAddingMember}><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader><DialogTitle>Add Project Member</DialogTitle><DialogDescription>Select a person and assign their role.</DialogDescription></DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="select-member">Select Person</Label>
-                        <Select value={selectedNewMemberEmail} onValueChange={setSelectedNewMemberEmail} disabled={isAddingMember}>
-                          <SelectTrigger id="select-member"><SelectValue placeholder="Choose a person" /></SelectTrigger>
-                          <SelectContent>
-                            {availableMembersToAdd.length > 0 ? (
-                              availableMembersToAdd.map(person => (<SelectItem key={person.email} value={person.email}>{person.name} ({person.department})</SelectItem>))
-                            ) : (<div className="p-2 text-sm text-muted-foreground text-center">No unassigned contacts.</div>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2"><Label htmlFor="member-role">Role in Project</Label><Input id="member-role" value={newMemberRoleInProject} onChange={(e) => setNewMemberRoleInProject(e.target.value)} placeholder="e.g., Lead Developer" disabled={isAddingMember}/></div>
-                      <div className="flex items-center space-x-2"><Checkbox id="member-is-hod" checked={newMemberIsProjectHod} onCheckedChange={(checked) => setNewMemberIsProjectHod(!!checked)} disabled={isAddingMember}/><Label htmlFor="member-is-hod" className="text-sm font-normal text-muted-foreground">Assign HOD rights</Label></div>
-                    </div>
-                    <DialogFooter><DialogClose asChild><Button variant="outline" disabled={isAddingMember}>Cancel</Button></DialogClose><Button onClick={handleAddProjectMember} disabled={!selectedNewMemberEmail || isAddingMember}>{isAddingMember ? "Adding..." : "Add Member"}</Button></DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </CardHeader>
-            <CardContent>
-              {(projectData.members && projectData.members.length > 0) ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {projectData.members.map(member => (
-                    <Card key={member.email} className="flex flex-col">
-                      <CardHeader className="flex flex-row items-start gap-3 p-4">
-                        <Avatar className="h-12 w-12"><AvatarImage src={`https://picsum.photos/seed/${member.avatarSeed || member.email}/80/80`} alt={member.name} data-ai-hint="person portrait"/><AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{member.name}</CardTitle><CardDescription className="text-xs">{member.email}</CardDescription>
-                          {member.isProjectHod && (<Badge variant="secondary" className="mt-1 text-xs bg-amber-100 text-amber-700 border-amber-300"><Crown className="mr-1 h-3 w-3" /> Project HOD</Badge>)}
-                        </div>
-                        {canManageAnyMember && (<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => openRemoveMemberDialog(member)} aria-label={`Remove ${member.name}`} disabled={isRemovingMember}><UserX className="h-4 w-4" /></Button>)}
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0 flex-grow">{member.roleInProject && <p className="text-sm font-medium text-primary">{member.roleInProject}</p>}{member.department && <p className="text-xs text-muted-foreground">{member.department}</p>}</CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (<p className="text-muted-foreground text-center py-4">No members assigned yet.</p>)}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">
           <Card>
@@ -1307,29 +1211,6 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
             </CardContent>
           </Card>
         </TabsContent>
-
-        {!isUserMember && (
-        <TabsContent value="files" className="mt-4">
-          <Card>
-            <CardHeader><CardTitle id="project-files-heading">Files ({visibleFiles.length})</CardTitle><CardDescription>All project-related files. Click a card to view.</CardDescription></CardHeader>
-            <CardContent>
-              {visibleFiles.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {visibleFiles.map((doc) => (
-                    <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:shadow-lg transition-shadow rounded-lg">
-                      <Card className="overflow-hidden h-full flex flex-col">
-                        {(doc.type === "3D Render" && (doc.url.startsWith("blob:") || doc.url.startsWith("https")) ) ? (<div className="relative w-full h-32"><Image src={doc.url} alt={doc.name} layout="fill" objectFit="cover" data-ai-hint={doc.dataAiHint || "office document"}/></div>) : (<div className="h-32 bg-muted flex items-center justify-center"><FileText className="w-12 h-12 text-muted-foreground" /></div>)}
-                        <CardContent className="p-3 flex-grow"><p className="font-medium text-sm truncate flex items-center" title={doc.name}>{doc.name}{doc.hodOnly && <ShieldCheck className="ml-2 h-4 w-4 text-primary shrink-0" title="HOD Only" />}</p><p className="text-xs text-muted-foreground">{doc.type} - {doc.size}</p><p className="text-xs text-muted-foreground">Uploaded: {doc.uploadedAt ? format(new Date(doc.uploadedAt), "PPP") : "N/A"} by {doc.uploadedBy || "System"}</p></CardContent>
-                         <CardFooter className="p-3 border-t flex items-center justify-between"><span className="text-xs text-muted-foreground">Click to view</span><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></CardFooter>
-                      </Card>
-                    </a>
-                  ))}
-                </div>
-              ) : (<p className="text-muted-foreground text-center py-4">No files viewable by you for this project yet.</p>)}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        )}
 
         <TabsContent value="timeline" className="mt-4">
           <Card>
