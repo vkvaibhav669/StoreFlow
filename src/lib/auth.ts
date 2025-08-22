@@ -1,9 +1,9 @@
-
 // IMPORTANT: This is a MOCK authentication system for prototyping.
 // DO NOT use this in a production environment.
 'use client'; // To use localStorage
 
 import type { User, UserRole } from '@/types';
+import { Users } from 'lucide-react';
 
 const CURRENT_USER_STORAGE_KEY = 'storeflow_current_user';
 
@@ -75,14 +75,34 @@ export async function signUp(name: string, email: string, password: string): Pro
 
 export async function signIn(email: string, password: string): Promise<User> {
   const lowerEmail = email.toLowerCase();
-  const user = mockUsers.find(u => u.email === lowerEmail);
-  // Mock password check - in a real app, this would be a hashed password comparison
-  // For these mock users, any non-empty password will work with the specified emails.
-  if (user && password) { 
-    setCurrentUser(user);
-    return Promise.resolve(user);
+
+  // Call your real API endpoint for login
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: lowerEmail, password }),
+  });
+
+  const data = await response.json();
+  console.log("Sign in response:", data);
+  if (!response.ok) {
+    throw new Error(data.message || "Invalid email or password.");
   }
-  throw new Error("Invalid email or password.");
+
+  // Store token for authenticated requests
+  if (data.token) {
+    localStorage.setItem("auth_token", data.token);
+  }
+
+  // Build user object from API response
+  const user: User = {
+    id: data._id || data.id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+  };
+  setCurrentUser(user);
+  return user;
 }
 
 export async function signOut(): Promise<void> {
@@ -90,7 +110,29 @@ export async function signOut(): Promise<void> {
   return Promise.resolve();
 }
 
-export function getAllMockUsers(): User[] {
-  return [...mockUsers];
+export async function getAllUsers(): Promise<User[]> {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/users`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      // Optionally add Authorization header if needed:
+      // "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch users.");
+  }
+
+  const data = await response.json();
+  // Ensure the result is an array of User objects
+  return Array.isArray(data)
+    ? data.map((u) => ({
+        id: u._id || u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+      }))
+    : [];
 }
 

@@ -10,12 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { signIn } from "@/lib/auth";
 
 export default function SignInPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
-  const { signIn } = useAuth();
+  const { 
+    
+   } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -24,6 +27,7 @@ export default function SignInPage() {
     setIsLoading(true);
     try {
       await signIn(email, password);
+      console.log("Sign in successful");
       toast({ title: "Signed In", description: "Welcome back!" });
       router.push("/dashboard");
     } catch (error: any) {

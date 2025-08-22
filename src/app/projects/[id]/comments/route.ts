@@ -9,8 +9,6 @@ import {
   updateProject,
 } from '@/lib/api';
 
-export const dynamic = 'force-dynamic';
-
 // This GET endpoint is no longer the primary way to fetch comments.
 // They are now embedded in the main project object via /api/projects/[id].
 // This can be kept for special cases or removed if no longer needed.
@@ -19,6 +17,8 @@ export async function GET(
   request: Request,
   {params}: {params: {id: string}}
 ) {
+  // If you want to force dynamic, do it here:
+  // export const dynamic = 'force-dynamic';
   try {
     const {id} = params;
     const project = await getProjectById(id);

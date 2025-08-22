@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const signedInUser = await authService.signIn(email, password);
       setUser(signedInUser);
       setLoading(false);
+      console.log("Sign in successful");
       return signedInUser;
     } catch (error) {
       console.error("Sign in failed:", error);
