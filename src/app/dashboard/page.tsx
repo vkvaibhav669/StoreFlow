@@ -6,9 +6,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getAllProjects, createProject } from "@/lib/api";
-import type { StoreProject, Department, StoreType } from "@/types";
-import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle, CalendarIcon } from "lucide-react";
+import { getAllProjects, createProject, getAllUsers } from "@/lib/api";
+import type { StoreProject, Department, StoreType, User, ProjectMember } from "@/types";
+import { ArrowUpRight, ListFilter, PlusCircle, Package2, Store, AlertTriangle, CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -35,11 +35,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { cn, formatDate, addDays } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function ProjectCard({ project }: { project: StoreProject }) {
   return (
@@ -82,17 +84,20 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Use async data fetching for projects
   const [dashboardProjects, setDashboardProjects] = React.useState<StoreProject[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = React.useState(false);
-  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false); // Keep for dialog submission UX
+  const [isSubmittingProject, setIsSubmittingProject] = React.useState(false);
   const [newProjectName, setNewProjectName] = React.useState("");
   const [newProjectLocation, setNewProjectLocation] = React.useState("");
   const [newProjectFranchiseType, setNewProjectFranchiseType] = React.useState<StoreType>("COCO");
   const [newProjectStartDate, setNewProjectStartDate] = React.useState<Date | undefined>(new Date());
   const [markAsUpcoming, setMarkAsUpcoming] = React.useState(false);
+
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
+  const [selectedMembers, setSelectedMembers] = React.useState<ProjectMember[]>([]);
+
 
   const [filterSettings, setFilterSettings] = React.useState({
     showUpcoming: true,
@@ -103,7 +108,6 @@ export default function DashboardPage() {
 
   const canAddProject = user?.role === 'Admin' || user?.role === 'SuperAdmin';
 
-  // Move useMemo hooks before any early returns to ensure consistent hook ordering
   const upcomingProjects = React.useMemo(() => {
     if (!filterSettings.showUpcoming) return [];
     let projects = dashboardProjects.filter(p => p.isUpcoming && p.status !== "Launched");
@@ -131,17 +135,20 @@ export default function DashboardPage() {
       return;
     }
     
-    // Fetch projects asynchronously
-    const fetchProjects = async () => {
+    const fetchPageData = async () => {
       try {
         setLoading(true);
-        const data = await getAllProjects();
-        setDashboardProjects(data);
+        const [projects, users] = await Promise.all([
+            getAllProjects(),
+            canAddProject ? getAllUsers() : Promise.resolve([])
+        ]);
+        setDashboardProjects(projects);
+        setAllUsers(users);
       } catch (error) {
-        console.error('Error fetching projects:', error);
+        console.error('Error fetching page data:', error);
         toast({
           title: "Error",
-          description: "Failed to load projects. Please try again.",
+          description: "Failed to load dashboard data. Please try again.",
           variant: "destructive",
         });
       } finally {
@@ -150,11 +157,10 @@ export default function DashboardPage() {
     };
 
     if (user) {
-      fetchProjects();
+      fetchPageData();
     }
-  }, [user, authLoading, router, toast]);
+  }, [user, authLoading, router, toast, canAddProject]);
 
-  // Refresh projects from API after adding one
   const refreshProjects = async () => {
     try {
       const data = await getAllProjects();
@@ -163,20 +169,6 @@ export default function DashboardPage() {
       console.error('Error refreshing projects:', error);
     }
   };
-
-  if (authLoading || loading || (!user && !authLoading)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
-        <p className="text-muted-foreground">{authLoading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
-        {!authLoading && !user && (
-          <Button onClick={() => router.push('/auth/signin')} className="mt-4">
-            Go to Sign In
-          </Button>
-        )}
-      </div>
-    );
-  }
 
   const handleAddProject = async () => {
     if (!newProjectName.trim() || !newProjectLocation.trim() || !newProjectStartDate) {
@@ -199,6 +191,7 @@ export default function DashboardPage() {
       startDate: formatDate(newProjectStartDate),
       projectedLaunchDate: formatDate(addDays(newProjectStartDate, 60)),
       currentProgress: 0,
+      members: selectedMembers,
       propertyDetails: {
         address: newProjectLocation,
         sqft: 0,
@@ -213,21 +206,16 @@ export default function DashboardPage() {
       tasks: [],
       documents: [],
       milestones: [],
-      departments: {}, // Departments can be added later
+      departments: {},
       comments: [],
     };
 
     try {
       const createdProject = await createProject(newProjectPayload);
-      await refreshProjects(); // Re-fetch all to include new one
+      await refreshProjects();
       toast({ title: "Project Created", description: `Project "${createdProject.name}" has been successfully created.` });
-
-      setNewProjectName("");
-      setNewProjectLocation("");
-      setNewProjectFranchiseType("COCO");
-      setNewProjectStartDate(new Date());
-      setMarkAsUpcoming(false);
-      setIsAddProjectDialogOpen(false);
+      
+      setIsAddProjectDialogOpen(false); // Close dialog on success
     } catch (error) {
       console.error("Error creating project:", error);
       toast({ title: "Error", description: "Failed to create project. Please try again.", variant: "destructive" });
@@ -235,6 +223,30 @@ export default function DashboardPage() {
       setIsSubmittingProject(false);
     }
   };
+  
+  const resetAddProjectForm = () => {
+      setNewProjectName("");
+      setNewProjectLocation("");
+      setNewProjectFranchiseType("COCO");
+      setNewProjectStartDate(new Date());
+      setMarkAsUpcoming(false);
+      setSelectedMembers([]);
+  }
+
+  if (authLoading || loading || (!user && !authLoading)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Package2 className="h-12 w-12 text-primary animate-pulse mb-4" />
+        <p className="text-muted-foreground">{authLoading ? "Loading dashboard..." : "Please sign in to view the dashboard."}</p>
+        {!authLoading && !user && (
+          <Button onClick={() => router.push('/auth/signin')} className="mt-4">
+            Go to Sign In
+          </Button>
+        )}
+      </div>
+    );
+  }
+
 
   return (
     <section className="dashboard-content flex flex-col gap-6" aria-labelledby="dashboard-main-heading">
@@ -289,13 +301,7 @@ export default function DashboardPage() {
             {canAddProject && (
               <Dialog open={isAddProjectDialogOpen} onOpenChange={(isOpen) => {
                   setIsAddProjectDialogOpen(isOpen);
-                  if (!isOpen) {
-                      setNewProjectName("");
-                      setNewProjectLocation("");
-                      setNewProjectFranchiseType("COCO");
-                      setNewProjectStartDate(new Date());
-                      setMarkAsUpcoming(false);
-                  }
+                  if (!isOpen) resetAddProjectForm();
               }}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-8 gap-1" disabled={isSubmittingProject}>
@@ -312,92 +318,147 @@ export default function DashboardPage() {
                       Enter the details for your new store project.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="projectName" className="sm:text-right">
-                        Name
-                      </Label>
-                      <Input
-                        id="projectName"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        className="sm:col-span-3"
-                        placeholder="e.g., City Center Flagship"
-                        disabled={isSubmittingProject}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="projectLocation" className="sm:text-right">
-                        Location
-                      </Label>
-                      <Input
-                        id="projectLocation"
-                        value={newProjectLocation}
-                        onChange={(e) => setNewProjectLocation(e.target.value)}
-                        className="sm:col-span-3"
-                        placeholder="e.g., 789 Market St, Big City"
-                        disabled={isSubmittingProject}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="franchiseType" className="sm:text-right">
-                        Franchise Type
-                      </Label>
-                      <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)} disabled={isSubmittingProject}>
-                          <SelectTrigger id="franchiseType" className="sm:col-span-3">
-                              <SelectValue placeholder="Select franchise type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {allStoreTypes.map(type => (
-                                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                       <Label htmlFor="projectStartDate" className="sm:text-right">
-                        Start Date
-                      </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="projectStartDate"
-                            variant="outline"
-                            className={cn(
-                              "sm:col-span-3 justify-start text-left font-normal",
-                              !newProjectStartDate && "text-muted-foreground"
-                            )}
+                  <ScrollArea className="max-h-[70vh] pr-6 -mr-6">
+                    <div className="grid gap-4 py-4 pr-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                          <Label htmlFor="projectName" className="sm:text-right">
+                            Name *
+                          </Label>
+                          <Input
+                            id="projectName"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            className="sm:col-span-3"
+                            placeholder="e.g., City Center Flagship"
                             disabled={isSubmittingProject}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {newProjectStartDate ? formatDate(newProjectStartDate, "PPP") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={newProjectStartDate}
-                            onSelect={setNewProjectStartDate}
-                            initialFocus
                           />
-                        </PopoverContent>
-                      </Popover>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                          <Label htmlFor="projectLocation" className="sm:text-right">
+                            Location *
+                          </Label>
+                          <Input
+                            id="projectLocation"
+                            value={newProjectLocation}
+                            onChange={(e) => setNewProjectLocation(e.target.value)}
+                            className="sm:col-span-3"
+                            placeholder="e.g., 789 Market St, Big City"
+                            disabled={isSubmittingProject}
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                          <Label htmlFor="franchiseType" className="sm:text-right">
+                            Franchise Type
+                          </Label>
+                          <Select value={newProjectFranchiseType} onValueChange={(value) => setNewProjectFranchiseType(value as StoreType)} disabled={isSubmittingProject}>
+                              <SelectTrigger id="franchiseType" className="sm:col-span-3">
+                                  <SelectValue placeholder="Select franchise type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {allStoreTypes.map(type => (
+                                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                           <Label htmlFor="projectStartDate" className="sm:text-right">
+                            Start Date *
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                id="projectStartDate"
+                                variant="outline"
+                                className={cn(
+                                  "sm:col-span-3 justify-start text-left font-normal",
+                                  !newProjectStartDate && "text-muted-foreground"
+                                )}
+                                disabled={isSubmittingProject}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {newProjectStartDate ? formatDate(newProjectStartDate, "PPP") : <span>Pick a date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={newProjectStartDate}
+                                onSelect={setNewProjectStartDate}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                            <Label className="sm:text-right">
+                                Members
+                            </Label>
+                            <div className="sm:col-span-3">
+                                <Command className="border rounded-lg">
+                                    <CommandInput placeholder="Select members..." />
+                                    <CommandList>
+                                        <CommandEmpty>No users found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <ScrollArea className="h-32">
+                                            {allUsers.map((u) => (
+                                                <CommandItem
+                                                    key={u.id}
+                                                    value={`${u.name} ${u.email}`}
+                                                    onSelect={() => {
+                                                        setSelectedMembers(prev => {
+                                                            const isSelected = prev.some(m => m.email === u.email);
+                                                            if (isSelected) {
+                                                                return prev.filter(m => m.email !== u.email);
+                                                            } else {
+                                                                const newMember: ProjectMember = {
+                                                                    name: u.name,
+                                                                    email: u.email,
+                                                                    role: u.role,
+                                                                };
+                                                                return [...prev, newMember];
+                                                            }
+                                                        });
+                                                    }}
+                                                >
+                                                    <div className={cn(
+                                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                        selectedMembers.some(m => m.email === u.email)
+                                                        ? "bg-primary text-primary-foreground"
+                                                        : "opacity-50 [&_svg]:invisible"
+                                                    )}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                    <span>{u.name} ({u.email})</span>
+                                                </CommandItem>
+                                            ))}
+                                            </ScrollArea>
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                                {selectedMembers.length > 0 &&
+                                    <div className="mt-2 text-xs text-muted-foreground">
+                                        {selectedMembers.map(m => m.name).join(', ')}
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
+                          <Label htmlFor="markUpcoming" className="sm:text-right">
+                            Options
+                          </Label>
+                          <div className="sm:col-span-3 flex items-center space-x-2">
+                            <Checkbox
+                              id="markUpcoming"
+                              checked={markAsUpcoming}
+                              onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
+                              disabled={isSubmittingProject}
+                            />
+                            <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
+                          </div>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
-                      <Label htmlFor="markUpcoming" className="sm:text-right">
-                        Options
-                      </Label>
-                      <div className="sm:col-span-3 flex items-center space-x-2">
-                        <Checkbox
-                          id="markUpcoming"
-                          checked={markAsUpcoming}
-                          onCheckedChange={(checked) => setMarkAsUpcoming(!!checked)}
-                          disabled={isSubmittingProject}
-                        />
-                        <Label htmlFor="markUpcoming" className="font-normal">Mark as Upcoming Project</Label>
-                      </div>
-                    </div>
-                  </div>
+                  </ScrollArea>
                   <DialogFooter>
                     <DialogClose asChild>
                        <Button variant="outline" disabled={isSubmittingProject}>Cancel</Button>
@@ -465,5 +526,3 @@ export default function DashboardPage() {
     </section>
   );
 }
-
-    
