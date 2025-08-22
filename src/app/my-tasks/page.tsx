@@ -322,6 +322,9 @@ export default function AssignTaskPage() {
                             mode="single"
                             selected={dueDate}
                             onSelect={setDueDate}
+                            captionLayout="dropdown-buttons"
+                            fromYear={new Date().getFullYear() - 1}
+                            toYear={new Date().getFullYear() + 5}
                             initialFocus
                         />
                         </PopoverContent>
