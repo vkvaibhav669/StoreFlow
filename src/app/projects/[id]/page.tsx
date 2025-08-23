@@ -19,6 +19,7 @@ import {
 import { getProjectById, updateProject, createTask, updateTask } from "@/lib/api";
 import { useProjectComments, useTaskComments } from "@/hooks/useComments";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
+import config from "@/lib/config";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -294,7 +295,7 @@ export default function ProjectDetailsPage() {
   React.useEffect(() => {
     if (!projectData?.id) return;
     setFilesLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/documents`)
+    fetch(`${config.apiBaseUrl}/api/projects/${projectData.id}/documents`)
       .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
       .then(data => setProjectFiles(data))
       .catch(() => setProjectFiles([]))
@@ -305,7 +306,7 @@ export default function ProjectDetailsPage() {
   React.useEffect(() => {
     if (!projectData?.id) return;
     setDbCommentsLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/comments`)
+    fetch(`${config.apiBaseUrl}/api/projects/${projectData.id}/comments`)
       .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch comments"))
       .then(data => setDbComments(data))
       .catch(() => setDbComments([]))
@@ -455,7 +456,7 @@ export default function ProjectDetailsPage() {
 
     try {
       // --- API call to POST /api/projects/:id/documents ---
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectData.id}/documents`, {
+      const response = await fetch(`${config.apiUrl}/projects/${projectData.id}/documents`, {
         method: "POST",
         body: formData,
       });
@@ -470,7 +471,7 @@ export default function ProjectDetailsPage() {
       }
       const addedDocument = await response.json();
       // Refresh files list after upload
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectData.id}/documents`)
+      fetch(`${config.apiUrl}/projects/${projectData.id}/documents`)
         .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
         .then(data => setProjectFiles(data))
         .catch(() => setProjectFiles([]));

@@ -15,6 +15,7 @@ import {
   deleteStoreTask
 } from "@/lib/data";
 import type { StoreItem, ImprovementPoint, Comment as CommentType, StoreTask, TaskPriority } from "@/types";
+import config from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -267,7 +268,7 @@ export default function StoreDetailsPage() {
     };
     try {
       // This POST request sends the new improvement point data to the server.
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/improvementPoints/${pointId}`, {
+      const response = await fetch(`${config.apiUrl}/stores/${storeId}/improvementPoints/${pointId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,7 +420,7 @@ export default function StoreDetailsPage() {
     console.log("Store ID:", store.id);
     try {
       // --- NEW: POST request to backend API ---
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${store.id}/tasks`, {
+      const response = await fetch(`${config.apiUrl}/stores/${store.id}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTaskPayload),

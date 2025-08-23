@@ -1,12 +1,12 @@
 import type { StoreProject, StoreItem, Task } from '@/types';
+import config from '@/lib/config';
 
 
 
 
 
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-//process.env.NEXT_PUBLIC_API_URL || "/api";
+const BASE_URL = config.apiUrl;
 
 // Error handling utility
 class ApiError extends Error {
@@ -118,7 +118,7 @@ export async function createTask(projectId: string, taskData: Partial<Task>): Pr
 export async function updateTask(projectId: string, taskId: string, taskData: Partial<Task>): Promise<Task> {
   console.log('Updating task of id  ', taskId, 'with data: ', taskData);
   // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId
-  return apiFetch<Task>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${projectId}/${taskId}`, {
+  return apiFetch<Task>(`${config.apiBaseUrl}/tasks/${projectId}/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(taskData),
   });

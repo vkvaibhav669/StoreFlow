@@ -1,5 +1,6 @@
 import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, ApprovalRequest, ApprovalStatus, StoreItem, ImprovementPoint, Blocker, Department, DepartmentDetails, StoreTask, TaskPriority, User, ProjectMember } from '@/types';
 import { format, addDays as dateFnsAddDays } from 'date-fns';
+import config from '@/lib/config';
 
 export const formatDate = (date: Date): string => date.toISOString().split('T')[0];
 export const addDays = (date: Date, days: number): Date => {
@@ -180,7 +181,7 @@ export let mockStores: StoreItem[] = [
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+    const response = await fetch(`${config.apiUrl}/projects`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -197,7 +198,7 @@ export async function updateProject(id: string, projectData: Partial<StoreProjec
   // Note: The request specified an endpoint of `/api/stores/:id`, but `/api/projects/:id` is being used
   // for consistency with other project-related functions in this file (e.g., getProjectById).
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${id}`, {
+    const response = await fetch(`${config.apiBaseUrl}/api/projects/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +224,7 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
   }
   
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${id}`);
+    const response = await fetch(`${config.apiBaseUrl}/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -256,7 +257,7 @@ export async function updateTaskInProject(projectId: string, taskId: string, tas
   try {
     // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
     // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${projectId}/${taskId}`, {
+    const response = await fetch(`${config.apiBaseUrl}/tasks/${projectId}/${taskId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -309,7 +310,7 @@ export async function addCommentToProject(projectId: string, commentData: Partia
   console.log('addCommentToProject called with projectId:', projectId);
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectId}/comments`, {
+    const response = await fetch(`${config.apiBaseUrl}/api/projects/${projectId}/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -333,7 +334,7 @@ export async function addReplyToProjectComment(projectId: string, commentId: str
   console.log('addReplyToProjectComment called with projectId:', projectId, 'and commentId:', commentId);
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectId}/comments/${commentId}`, {
+    const response = await fetch(`${config.apiBaseUrl}/api/projects/${projectId}/comments/${commentId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -357,7 +358,7 @@ export async function addMemberToProject(projectId: string, memberData: { email:
     console.log(`addMemberToProject called for project: ${projectId}`);
     
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members`, {
+        const response = await fetch(`${config.apiUrl}/projects/${projectId}/members`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -381,7 +382,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
     console.log(`removeMemberFromProject called for project: ${projectId} and member: ${memberEmail}`);
 
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members/${memberEmail}`, {
+        const response = await fetch(`${config.apiUrl}/projects/${projectId}/members/${memberEmail}`, {
             method: 'DELETE',
         });
 
@@ -400,7 +401,7 @@ export async function removeMemberFromProject(projectId: string, memberEmail: st
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores`);
+    const response = await fetch(`${config.apiUrl}/stores`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -421,7 +422,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`); // api/stores/:id
+    const response = await fetch(`${config.apiUrl}/stores/${id}`); // api/stores/:id
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -442,7 +443,7 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
   }
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`, {
+    const response = await fetch(`${config.apiUrl}/stores/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
