@@ -12,6 +12,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<User | null>;
   signUp: (name: string, email: string, password: string) => Promise<User | null>;
   signOut: () => Promise<void>;
+  isAuthenticated: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,7 +25,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkUser = () => {
       const currentUser = authService.getCurrentUser();
-      setUser(currentUser);
+      const isAuth = authService.isAuthenticated();
+      
+      // Only set user if they are properly authenticated (both user data and token exist)
+      if (isAuth && currentUser) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+        // Clear any partial auth data
+        if (currentUser && !isAuth) {
+          authService.signOut().catch(console.error);
+        }
+      }
       setLoading(false);
     };
     checkUser();
@@ -35,6 +47,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const signedInUser = await authService.signIn(email, password);
       setUser(signedInUser);
+      
+      // Add a small delay to ensure token is properly stored before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       setLoading(false);
       return signedInUser;
     } catch (error) {
@@ -69,12 +85,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       router.push("/auth/signin"); // Redirect after sign out
     } catch (error) {
       console.error("Sign out failed:", error);
-      setLoading(false); // Still set loading to false on error
+      // Even if sign out fails, clear local state and redirect
+      setUser(null);
+      setLoading(false);
+      router.push("/auth/signin");
     }
   };
 
+  const isAuthenticated = () => {
+    return authService.isAuthenticated();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

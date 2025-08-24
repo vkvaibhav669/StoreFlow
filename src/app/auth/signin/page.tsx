@@ -25,6 +25,10 @@ export default function SignInPage() {
     try {
       await signIn(email, password);
       toast({ title: "Signed In", description: "Welcome back!" });
+      
+      // Additional small delay to ensure everything is properly set up
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       router.push("/dashboard");
     } catch (error: any) {
       toast({
@@ -32,6 +36,7 @@ export default function SignInPage() {
         description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -50,7 +55,7 @@ export default function SignInPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="m@kisna.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
