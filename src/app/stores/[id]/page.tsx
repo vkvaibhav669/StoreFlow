@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -6,14 +7,14 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   getStoreById, 
-  updateStore,
+  updateStore as apiUpdateStore,
   addImprovementPointToStore,
   updateImprovementPointInStore,
   addCommentToImprovementPoint,
   addStoreTask,
   updateStoreTask,
   deleteStoreTask
-} from "@/lib/data";
+} from "@/lib/api";
 import type { StoreItem, ImprovementPoint, Comment as CommentType, StoreTask, TaskPriority, StoreType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -203,7 +204,7 @@ export default function StoreDetailsPage() {
   }, [storeId]);
   // --- END NEW ---
 
-  const loadStore = async (id: string) => {
+  const loadStore = React.useCallback(async (id: string) => {
     try {
       setStoreLoading(true);
       const storeData = await getStoreById(id);
@@ -228,7 +229,7 @@ export default function StoreDetailsPage() {
     } finally {
       setStoreLoading(false);
     }
-  };
+  }, []);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -245,7 +246,7 @@ export default function StoreDetailsPage() {
     if (storeId && user) {
       loadStore(storeId);
     }
-  }, [storeId, user, authLoading, router]);
+  }, [storeId, user, authLoading, router, loadStore]);
 
   const currentUserRole = user?.role;
   const isUserAdmin = currentUserRole === 'Admin';
@@ -312,7 +313,7 @@ export default function StoreDetailsPage() {
     setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: !prev[pointId] }));
   };
 
-  const handleToggleImprovementResolved = (pointId: string) => { // No async
+  const handleToggleImprovementResolved = async (pointId: string) => {
     if (!store || !user || !canManageStoreFeatures) {
         toast({title: "Permission Denied", variant: "destructive"}); return;
     }
@@ -327,8 +328,8 @@ export default function StoreDetailsPage() {
         resolvedAt: newResolvedState ? new Date().toISOString() : undefined,
     };
     try {
-        updateImprovementPointInStore(store.id, pointId, updatePayload);
-        setStore(getStoreById(store.id)); // Refresh
+        await apiUpdateStore(store.id, { improvementPoints: store.improvementPoints.map(p => p.id === pointId ? {...p, ...updatePayload} : p) });
+        await loadStore(store.id);
         if (newResolvedState) setResolvedPointDiscussionVisibility(prev => ({ ...prev, [pointId]: false }));
         toast({ title: "Improvement Point Updated" });
     } catch (error) {
@@ -338,7 +339,7 @@ export default function StoreDetailsPage() {
     }
   };
 
-  const handleAddCommentToImprovement = (pointId: string, text: string) => { // No async
+  const handleAddCommentToImprovement = async (pointId: string, text: string) => {
     if (!text.trim() || !store || !user) return;
     setIsSubmittingImpComment(prev => ({...prev, [pointId]: true}));
     const newCommentPayload: Partial<CommentType> = { 
@@ -347,8 +348,11 @@ export default function StoreDetailsPage() {
       timestamp: new Date().toISOString(), text: text, replies: [],
     };
     try {
-        addCommentToImprovementPoint(store.id, pointId, newCommentPayload);
-        setStore(getStoreById(store.id)); // Refresh
+        const point = store.improvementPoints?.find(p => p.id === pointId);
+        if (!point) throw new Error("Point not found");
+        const updatedPoint = { ...point, comments: [newCommentPayload as CommentType, ...(point.comments || [])]};
+        await apiUpdateStore(store.id, { improvementPoints: store.improvementPoints.map(p => p.id === pointId ? updatedPoint : p) });
+        await loadStore(store.id); 
         setImprovementCommentInputs(prev => ({...prev, [pointId]: ""}));
         toast({ title: "Comment Added" });
     } catch (error) {
@@ -358,18 +362,36 @@ export default function StoreDetailsPage() {
     }
   };
 
-  const handleReplyToImprovementComment = (pointId: string, commentId: string, replyText: string) => { // No async
+  const handleReplyToImprovementComment = async (pointId: string, commentId: string, replyText: string) => {
     if (!replyText.trim() || !store || !user) return;
     setIsSubmittingImpComment(prev => ({...prev, [`${pointId}-${commentId}`]: true}));
-    const newReplyPayload: Partial<CommentType> & { parentCommentId?: string } = { 
+    const newReplyPayload: Partial<CommentType> = { 
+      id: `imp-reply-${Date.now()}`,
       author: user.name || user.email || "System", 
       avatarUrl: `https://picsum.photos/seed/${user.id || 'replyUser'}/40/40`, 
-      timestamp: new Date().toISOString(), text: replyText, parentCommentId: commentId 
+      timestamp: new Date().toISOString(), text: replyText
     };
+
+    const findAndAddReply = (comments: CommentType[]): CommentType[] => {
+      return comments.map(c => {
+        if (c.id === commentId) {
+          return { ...c, replies: [newReplyPayload as CommentType, ...(c.replies || [])]};
+        }
+        if (c.replies) {
+          return {...c, replies: findAndAddReply(c.replies)};
+        }
+        return c;
+      });
+    };
+
     try {
-      addCommentToImprovementPoint(store.id, pointId, newReplyPayload);
-      setStore(getStoreById(store.id)); // Refresh
-      toast({ title: "Reply Posted" });
+        const point = store.improvementPoints?.find(p => p.id === pointId);
+        if (!point) throw new Error("Point not found");
+        const updatedPoint = {...point, comments: findAndAddReply(point.comments)};
+
+        await apiUpdateStore(store.id, { improvementPoints: store.improvementPoints.map(p => p.id === pointId ? updatedPoint : p) });
+        await loadStore(store.id); 
+        toast({ title: "Reply Posted" });
     } catch (error) {
         toast({ title: "Error", description: "Failed to post reply.", variant: "destructive" });
     } finally {
@@ -391,6 +413,7 @@ export default function StoreDetailsPage() {
     setIsSubmittingStoreTask(true);
 
     const newTaskPayload: Partial<StoreTask> = {
+      id: `stask-${Date.now()}`,
       storeId: store.id,
       title: newTaskForm.title.trim(),
       description: newTaskForm.description.trim() || undefined,
@@ -401,28 +424,11 @@ export default function StoreDetailsPage() {
       createdBy: user.name || user.email!,
       dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
-    console.log("New Task Payload:", newTaskPayload);
-    console.log("Store ID:", store.id);
+
     try {
-      // --- NEW: POST request to backend API ---
-      const response = await fetch(`/api/stores/${store.id}/tasks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTaskPayload),
-      });
-      console.log("Adding new task:", newTaskPayload);
-      console.log("Store ID:", store.id);
-      console.log("Response:", response);
-      // --- END NEW ---
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to add task.' }));
-        throw new Error(errorData.message);
-      }
-      // Optionally, you can use the returned task data here
-      const createdTask = await response.json();
-
-      await loadStore(store.id); // Refresh store data
+      const updatedTasks = [...(store.tasks || []), newTaskPayload as StoreTask];
+      await apiUpdateStore(store.id, { tasks: updatedTasks });
+      await loadStore(store.id); 
       toast({ title: "Task Added" });
       setIsAddTaskDialogOpen(false);
       setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
@@ -446,7 +452,7 @@ export default function StoreDetailsPage() {
     setIsEditTaskDialogOpen(true);
   };
 
-  const handleSaveEditedStoreTask = () => { // No async
+  const handleSaveEditedStoreTask = async () => {
     if (!editingStoreTask || !newTaskForm.title.trim() || !store || !user) {
         toast({ title: "Error", variant: "destructive" }); return;
     }
@@ -460,8 +466,9 @@ export default function StoreDetailsPage() {
         dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
     try {
-        // updateStoreTask(store.id, editingStoreTask.id, updatedTaskPayload); // Assuming this is a mock function
-        setStore(getStoreById(store.id)); // Refresh
+        const updatedTasks = store.tasks.map(t => t.id === editingStoreTask.id ? { ...t, ...updatedTaskPayload} : t);
+        await apiUpdateStore(store.id, { tasks: updatedTasks });
+        await loadStore(store.id); 
         toast({ title: "Task Updated" });
         setIsEditTaskDialogOpen(false); setEditingStoreTask(null);
         setNewTaskForm({ title: "", description: "", assignedTo: "", dueDate: undefined, priority: "Medium" });
@@ -472,14 +479,15 @@ export default function StoreDetailsPage() {
     }
   };
 
-  const handleUpdateStoreTaskStatus = (taskId: string, newStatus: StoreTask['status']) => { // No async
+  const handleUpdateStoreTaskStatus = async (taskId: string, newStatus: StoreTask['status']) => {
     if (!store || !canManageStoreFeatures) { 
         toast({title: "Permission Denied", variant: "destructive"}); return;
     }
     setIsSubmittingStoreTask(true); 
     try {
-        // updateStoreTask(store.id, taskId, { status: newStatus }); // Assuming this is a mock function
-        setStore(getStoreById(store.id)); // Refresh
+        const updatedTasks = store.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+        await apiUpdateStore(store.id, { tasks: updatedTasks });
+        await loadStore(store.id); 
         toast({ title: "Task Status Updated" });
     } catch (error) {
         toast({ title: "Error", description: "Could not update status.", variant: "destructive" });
@@ -488,7 +496,7 @@ export default function StoreDetailsPage() {
     }
   };
 
-  const handleDeleteStoreTask = (taskId: string) => { // No async
+  const handleDeleteStoreTask = async (taskId: string) => {
     if (!store || !canManageStoreFeatures) {
         toast({title: "Permission Denied", variant: "destructive"}); return;
     }
@@ -496,8 +504,9 @@ export default function StoreDetailsPage() {
     if (!taskToDelete) return;
     setIsSubmittingStoreTask(true);
     try {
-        // deleteStoreTask(store.id, taskId); // Assuming this is a mock function
-        setStore(getStoreById(store.id)); // Refresh
+        const updatedTasks = store.tasks.filter(t => t.id !== taskId);
+        await apiUpdateStore(store.id, { tasks: updatedTasks });
+        await loadStore(store.id);
         toast({ title: "Task Deleted" });
     } catch (error) {
         toast({ title: "Error", description: "Could not delete task.", variant: "destructive" });
@@ -526,7 +535,7 @@ export default function StoreDetailsPage() {
 
     setIsSavingStore(true);
     try {
-        const updatedStore = await updateStore(store.id, {
+        const updatedStore = await apiUpdateStore(store.id, {
             ...editStoreForm,
             sqft: Number(editStoreForm.sqft) || undefined,
             openingDate: format(new Date(editStoreForm.openingDate), 'yyyy-MM-dd'),

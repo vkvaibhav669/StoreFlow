@@ -412,7 +412,7 @@ export function removeMemberFromProject(projectId: string, memberEmail: string):
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('/api/stores');
+    const response = await fetch('/api/store');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -433,7 +433,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`/api/stores/${id}`);
+    const response = await fetch(`/api/store/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
