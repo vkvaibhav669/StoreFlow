@@ -24,6 +24,7 @@ export interface User {
   name: string;
   email: string; // This should be unique
   role: UserRole;
+  department?: Department;
   // Note: Password hash is never sent to the client.
 }
 
@@ -261,7 +262,7 @@ export interface ImprovementPoint {
   id: string;
   text: string;
   addedById: string; // Ref: users
-  addedByName: string;   // Denormalized user name
+  addedBy: string;   // Denormalized user name
   addedAt: string;   // ISO String
   userAvatar?: string;
   isResolved: boolean;

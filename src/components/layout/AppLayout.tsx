@@ -41,9 +41,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { User, UserRole } from "@/types";
+import type { User, UserRole, Department } from "@/types";
 import type { NavItem } from "@/types/nav";
-
+import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { registerUser } from "@/lib/auth";
 
 interface SidebarNavProps {
   items: NavItem[];
@@ -155,12 +157,94 @@ interface AppNotification {
 
 type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme" | "green-theme";
 
+function AddUserForm({ setDialogOpen }: { setDialogOpen: (open: boolean) => void }) {
+    const { toast } = useToast();
+    const [name, setName] = React.useState('');
+    const [department, setDepartment] = React.useState('');
+    const [email, setEmail] = React.useState('');
+    const [role, setRole] = React.useState<UserRole>('Member');
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    const departments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations", "Visual Merchandising"];
+    const roles: UserRole[] = ["Member", "Admin", "SuperAdmin"];
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, role, department, password: "password" }), // Default password
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to add user');
+            }
+            
+            toast({
+                title: "User Added",
+                description: `Successfully added ${name} to the application.`,
+            });
+            setDialogOpen(false);
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: (error as Error).message,
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required disabled={isLoading} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoading} />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Select value={department} onValueChange={setDepartment} required disabled={isLoading}>
+                    <SelectTrigger><SelectValue placeholder="Select a department" /></SelectTrigger>
+                    <SelectContent>
+                        {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={(value) => setRole(value as UserRole)} required disabled={isLoading}>
+                    <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
+                    <SelectContent>
+                         {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isLoading}>Cancel</Button>
+                <Button type="submit" disabled={isLoading}>{isLoading ? 'Adding...' : 'Add User'}</Button>
+            </div>
+        </form>
+    );
+}
+
+
 function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange: (open: boolean) => void, user: User | null }) {
   const { toast } = useToast();
   const canManageUsers = user?.role === 'Admin' || user?.role === 'SuperAdmin';
+  const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open && !isAddUserOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
@@ -202,7 +286,7 @@ function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenCha
                       Manage application users (Admin only).
                     </p>
                      <div className="mt-3 space-y-2">
-                       <Button variant="outline" className="w-full justify-start" disabled>
+                       <Button variant="outline" className="w-full justify-start" onClick={() => setIsAddUserOpen(true)}>
                           <UserPlus className="mr-2 h-4 w-4"/> Add New User
                        </Button>
                     </div>
@@ -217,6 +301,19 @@ function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenCha
         </div>
       </DialogContent>
     </Dialog>
+
+     <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add New User</DialogTitle>
+                <DialogDescription>
+                    Fill in the form to add a new user to the application. A default password will be set.
+                </DialogDescription>
+            </DialogHeader>
+            <AddUserForm setDialogOpen={setIsAddUserOpen} />
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
