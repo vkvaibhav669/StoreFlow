@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { addTaskToProject } from "@/lib/data"; 
+import { createTask } from "@/lib/api"; 
 import { getAllProjects, getAllUsers } from "@/lib/api"; 
 import type { Task, StoreProject, Department, TaskPriority, User } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup } from "@/components/ui/command";
 import { useRouter } from "next/navigation";
 
-const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT"];
+const allDepartmentKeys: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations" , "Visual Merchandising"];
 
 export default function AssignTaskPage() {
   const { user, loading: authLoading } = useAuth();
@@ -100,7 +100,7 @@ export default function AssignTaskPage() {
     setTaskPriority("Medium");
   };
 
-  const handleAssignTaskSubmit = (e: React.FormEvent) => { 
+  const handleAssignTaskSubmit = async (e: React.FormEvent) => { 
     e.preventDefault();
     setIsSubmittingTask(true);
 
@@ -134,7 +134,7 @@ export default function AssignTaskPage() {
     };
 
     try {
-        const assignedTask = addTaskToProject(selectedProjectId, newTaskPayload); 
+        const assignedTask = await createTask(selectedProjectId, newTaskPayload); 
         toast({
             title: "Success!",
             description: `Task "${assignedTask.name}" assigned to ${selectedAssignee.name} for project "${targetProject.name}".`,
