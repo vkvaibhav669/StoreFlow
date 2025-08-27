@@ -268,17 +268,6 @@ function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenCha
                      </Button>
                   </div>
                 </div>
-                 <div>
-                  <Label className="text-base font-medium">Preferences</Label>
-                   <p className="text-sm text-muted-foreground mt-1">
-                    Customize your experience across the application.
-                  </p>
-                   <div className="mt-3 space-y-2">
-                     <Button variant="outline" className="w-full justify-start" disabled>
-                        <Languages className="mr-2 h-4 w-4"/> Language Preferences
-                     </Button>
-                  </div>
-                </div>
                 {canManageUsers && (
                   <div>
                     <Label className="text-base font-medium">User Administration</Label>
