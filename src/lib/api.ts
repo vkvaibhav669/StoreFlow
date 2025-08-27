@@ -1,6 +1,6 @@
 
 
-import type { StoreProject, StoreItem, Task, User, DocumentFile, Note } from '@/types';
+import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -155,16 +155,32 @@ export async function addProjectComment(projectId: string, commentData: { author
   });
 }
 
+// DEPRECATED - Use getCommentsForTaskInProject
 export async function getTaskComments(taskId: string) {
   return apiFetch(`/task-comments/${taskId}`);
 }
 
+// DEPRECATED - Use addCommentToTaskInProject
 export async function addTaskComment(taskId: string, commentData: { author: string; text: string; authorId?: string }) {
   return apiFetch(`/task-comments/${taskId}`, {
     method: 'POST',
     body: JSON.stringify(commentData),
   });
 }
+
+
+// New Task Comment Functions
+export async function getCommentsForTaskInProject(projectId: string, taskId: string): Promise<Comment[]> {
+  return apiFetch<Comment[]>(`/projects/${projectId}/tasks/${taskId}/comments`);
+}
+
+export async function addCommentToTaskInProject(projectId: string, taskId: string, commentData: { author: string; text: string; authorId?: string }): Promise<Comment> {
+  return apiFetch<Comment>(`/projects/${projectId}/tasks/${taskId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(commentData),
+  });
+}
+
 
 // Notes API
 export async function getVisibleNotes(userEmail: string): Promise<Note[]> {

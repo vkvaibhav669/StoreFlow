@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { addProjectComment, getTaskComments, addTaskComment } from '@/lib/api';
+import { addProjectComment, getCommentsForTaskInProject, addCommentToTaskInProject } from '@/lib/api';
 import type { Comment } from '@/types';
 
 // This hook is deprecated as project comments are now fetched with the project document.
@@ -40,19 +40,22 @@ export function useProjectComments(projectId: string | null) {
   };
 }
 
-export function useTaskComments(taskId: string | null) {
+export function useTaskComments(projectId: string | null, taskId: string | null) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchComments = useCallback(async () => {
-    if (!taskId) return;
+    if (!projectId || !taskId) {
+        setComments([]); // Clear comments if no ID
+        return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const fetchedComments = await getTaskComments(taskId);
+      const fetchedComments = await getCommentsForTaskInProject(projectId, taskId);
       setComments(Array.isArray(fetchedComments) ? fetchedComments : []);
     } catch (err) {
       console.error('Error fetching task comments:', err);
@@ -60,13 +63,13 @@ export function useTaskComments(taskId: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [taskId]);
+  }, [projectId, taskId]);
 
   const addComment = useCallback(async (commentData: { author: string; text: string; authorId?: string }) => {
-    if (!taskId) return;
+    if (!projectId || !taskId) return;
     
     try {
-      const newComment = await addTaskComment(taskId, commentData);
+      const newComment = await addCommentToTaskInProject(projectId, taskId, commentData);
       // Refresh comments after adding
       await fetchComments();
       return newComment;
@@ -75,7 +78,7 @@ export function useTaskComments(taskId: string | null) {
       setError('Failed to add comment');
       throw err;
     }
-  }, [taskId, fetchComments]);
+  }, [projectId, taskId, fetchComments]);
 
   useEffect(() => {
     fetchComments();
@@ -83,12 +86,13 @@ export function useTaskComments(taskId: string | null) {
 
   // Set up polling for real-time updates
   useEffect(() => {
-    if (!taskId) return;
+    if (!projectId || !taskId) return;
     
     const interval = setInterval(fetchComments, 5000); // Poll every 5 seconds
     
     return () => clearInterval(interval);
-  }, [taskId, fetchComments]);
+  }, [projectId, taskId, fetchComments]);
+
 
   return {
     comments,

@@ -16,7 +16,7 @@ import {
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
-import { getProjectById, updateProject, createTask, updateTask, addProjectComment } from "@/lib/api";
+import { getProjectById, updateProject, createTask, updateTask, addProjectComment, getAllUsers } from "@/lib/api";
 import { useTaskComments } from "@/hooks/useComments";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
@@ -178,6 +178,7 @@ export default function ProjectDetailsPage() {
   const [newDocumentHodOnly, setNewDocumentHodOnly] = React.useState(false);
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
   
   // Task comment hooks for the selected task (must be after selectedTask is declared)
   const { 
@@ -185,7 +186,7 @@ export default function ProjectDetailsPage() {
     isLoading: taskCommentsLoading, 
     addComment: addTaskComment,
     error: taskCommentsError 
-  } = useTaskComments(selectedTask?.id || null);
+  } = useTaskComments(projectId, selectedTask?.id || null);
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [isUpdatingTask, setIsUpdatingTask] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
@@ -236,9 +237,14 @@ export default function ProjectDetailsPage() {
     if (!projectId) return;
     setCommentsLoading(true);
     try {
-      const currentProject = await getProjectById(projectId);
+      const [currentProject, users] = await Promise.all([
+        getProjectById(projectId),
+        getAllUsers(),
+      ]);
+
       if (currentProject) {
           setProjectData(currentProject);
+          setAllUsers(users); // Store all users
           setEditingProjectForm({
               name: currentProject.name, location: currentProject.location, status: currentProject.status,
               startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
@@ -492,8 +498,7 @@ export default function ProjectDetailsPage() {
   const handleUpdateTaskDetails = async () => {
     if (!selectedTask || !projectData || !user) return;
     const taskIdToUpdate = selectedTask._id || selectedTask.id;
-    console.log(selectedTask);
-    // 1. Permission Check for members trying to change department or priority
+
     if (isUserMember) {
         const departmentChanged = (editingSelectedTaskDepartment as Department || selectedTask.department) !== selectedTask.department;
         const priorityChanged = (editingSelectedTaskPriority as TaskPriority || selectedTask.priority || "Medium") !== (selectedTask.priority || "Medium");
@@ -503,10 +508,12 @@ export default function ProjectDetailsPage() {
         }
     }
 
+    if (!isUserAdmin && !isUserSuperAdmin && editingTaskAssignedTo !== (selectedTask.assignedTo || "")) {
+      toast({ title: "Permission Denied", description: "Only Admins can change task assignee.", variant: "destructive" });
+      return;
+    }
+    
     setIsUpdatingTask(true);
-    // 1. Validate the task ID format
-  
-    // 2. Prepare the payload with the updated data from the dialog form
     const taskUpdatePayload: Partial<Task> = {
       status: (editingTaskStatus as Task['status']) || selectedTask.status,
       assignedTo: editingTaskAssignedTo || selectedTask.assignedTo,
@@ -515,12 +522,7 @@ export default function ProjectDetailsPage() {
     };
 
     try {
-      // 3. Invoke the PUT API call using the projectId and taskId.
-      // The `updateTask` function is imported from `lib/api.ts` and handles the fetch request.      
       await updateTask(projectData.id, taskIdToUpdate , taskUpdatePayload);
-      // 4. Re-fetch the entire project to ensure the UI is perfectly in sync with the database.
-      // This is a robust strategy that ensures any changes to the task (e.g., status, department)
-      // are reflected correctly across all components on the page (progress bars, department cards, etc.).
       await fetchProject();
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
@@ -1281,7 +1283,12 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 {selectedTask.dueDate && (<div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2"><Label className="sm:text-right text-muted-foreground">Due Date:</Label><div className="sm:col-span-2">{format(new Date(selectedTask.dueDate), "PPP")}</div></div>)}
                 <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskAssignedToEdit" className="sm:text-right text-muted-foreground">Assigned To:</Label>
-                  <Input id="taskAssignedToEdit" value={editingTaskAssignedTo} onChange={(e) => setEditingTaskAssignedTo(e.target.value)} className="sm:col-span-2" placeholder="Assignee name" disabled={(isUserMember && !( (selectedTask.assignedTo === user?.email || selectedTask.assignedTo === user?.name) || (!selectedTask.assignedTo && currentUserProjectMembership?.department === selectedTask.department) )) || isUpdatingTask}/>
+                  <Select value={editingTaskAssignedTo} onValueChange={setEditingTaskAssignedTo} disabled={isUpdatingTask || !(isUserAdmin || isUserSuperAdmin)}>
+                      <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                      <SelectContent>
+                          {allUsers.map(u => (<SelectItem key={u.id} value={u.name}>{u.name} ({u.email})</SelectItem>))}
+                      </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="mt-6 pt-4 border-t">
