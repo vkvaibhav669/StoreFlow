@@ -323,7 +323,7 @@ export default function AssignTaskPage() {
                             selected={dueDate}
                             onSelect={setDueDate}
                             captionLayout="dropdown-buttons"
-                            fromYear={new Date().getFullYear() - 1}
+                            fromYear={new Date().getFullYear()}
                             toYear={new Date().getFullYear() + 5}
                             initialFocus
                         />
