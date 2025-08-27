@@ -1,10 +1,12 @@
 
 "use client";
 
-import type { Task } from "@/types";
+import type { Task, TaskPriority } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -17,42 +19,43 @@ interface KanbanTaskCardProps {
 }
 
 export function KanbanTaskCard({ task, onViewTask }: KanbanTaskCardProps) {
-  const priorityColors: Record<string, string> = {
-    High: "bg-red-500/20 text-red-700 border-red-500/50",
-    Medium: "bg-yellow-500/20 text-yellow-700 border-yellow-500/50",
-    Low: "bg-green-500/20 text-green-700 border-green-500/50",
-    None: "bg-gray-500/20 text-gray-700 border-gray-500/50",
+  const priorityClasses: Record<TaskPriority, string> = {
+    High: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
+    Medium: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
+    Low: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700",
+    None: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700",
   };
 
   return (
-    <Card className="mb-3 shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-sm font-medium leading-tight">{task.name}</CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">
-          Project: {task.projectName}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-3 pt-1">
-        {task.assignedTo && (
-          <p className="text-xs text-muted-foreground mb-1">
-            Assigned to: {task.assignedTo}
-          </p>
-        )}
-        {task.priority && (
-          <Badge 
-            variant="outline" 
-            className={`text-xs mb-2 ${priorityColors[task.priority] || priorityColors.None}`}
-          >
-            {task.priority} Priority
-          </Badge>
-        )}
-        {task.dueDate && (
-          <p className="text-xs text-muted-foreground">Due: {task.dueDate}</p>
-        )}
-         <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1" onClick={() => onViewTask(task)}>
-            View Task
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="mb-3">
+        <button className="w-full text-left" onClick={() => onViewTask(task)} aria-label={`View task: ${task.name}`}>
+            <Card className="shadow-sm hover:shadow-md hover:bg-accent/50 transition-shadow">
+                <CardHeader className="p-3 pb-1">
+                    <CardTitle className="text-sm font-medium leading-tight">{task.name}</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">
+                    Project: {task.projectName}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 pt-1 space-y-1.5">
+                    {task.priority && (
+                    <Badge
+                        variant="outline"
+                        className={cn("text-xs font-normal", priorityClasses[task.priority] || priorityClasses.None)}
+                    >
+                        {task.priority} Priority
+                    </Badge>
+                    )}
+                    {task.assignedTo && (
+                    <p className="text-xs text-muted-foreground truncate">
+                        To: {task.assignedTo}
+                    </p>
+                    )}
+                    {task.dueDate && (
+                    <p className="text-xs text-muted-foreground">Due: {format(new Date(task.dueDate), "dd MMM")}</p>
+                    )}
+                </CardContent>
+            </Card>
+      </button>
+    </div>
   );
 }

@@ -2,8 +2,9 @@
 "use client";
 
 import * as React from "react";
-import { getAllProjects, updateTaskInProject } from "@/lib/data";
-import type { Task, StoreProject, Department, TaskPriority } from "@/types";
+import { getAllProjects } from "@/lib/api";
+import { updateTask } from "@/lib/api"; 
+import type { Task, StoreProject, Department, TaskPriority, User } from "@/types";
 import { KanbanTaskCard } from "@/components/kanban/KanbanTaskCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,9 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useTaskComments } from "@/hooks/useComments";
 import { CommentCard } from "@/components/comments/CommentCard";
+import { addCommentToTaskInProject, getAllUsers } from "@/lib/api";
 
 interface KanbanTask extends Task {
   projectName: string;
@@ -42,6 +45,7 @@ export default function TaskTrackerPage() {
 
   const [projects, setProjects] = React.useState<StoreProject[]>([]);
   const [tasksWithProjectInfo, setTasksWithProjectInfo] = React.useState<KanbanTask[]>([]);
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const [selectedDepartment, setSelectedDepartment] = React.useState<Department | "All">("All");
@@ -53,12 +57,22 @@ export default function TaskTrackerPage() {
   const [isUpdatingTask, setIsUpdatingTask] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<TaskStatus | "">("");
   const [editingTaskAssignedTo, setEditingTaskAssignedTo] = React.useState<string>("");
-  const [showTaskComments, setShowTaskComments] = React.useState(false);
+  const [newTaskCommentText, setNewTaskCommentText] = React.useState("");
+  const [isSubmittingTaskComment, setIsSubmittingTaskComment] = React.useState(false);
+  const { comments: taskComments, isLoading: taskCommentsLoading, refetch: refetchTaskComments } = useTaskComments(selectedTask?.projectId || null, selectedTask?.id || null);
 
-  const refreshTasks = async () => {
+  const refreshTasks = React.useCallback(async () => {
+    if (!user) return;
     try {
-      const updatedProjects = await getAllProjects();
+      setLoading(true);
+      const [updatedProjects, users] = await Promise.all([
+        getAllProjects(),
+        getAllUsers(),
+      ]);
+
       setProjects(updatedProjects);
+      setAllUsers(users);
+
       const updatedTasks: KanbanTask[] = [];
       updatedProjects.forEach((project) => {
         (project.tasks || []).forEach((task) => {
@@ -73,8 +87,10 @@ export default function TaskTrackerPage() {
         description: "Failed to load tasks. Please try again.",
         variant: "destructive",
       });
+    } finally {
+        setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -82,26 +98,20 @@ export default function TaskTrackerPage() {
       return;
     }
     
-    const loadTasks = async () => {
-      if (user) {
-        setLoading(true);
-        await refreshTasks();
-        setLoading(false);
-      }
-    };
-    
-    loadTasks();
-  }, [user, authLoading, router]);
+    if (user) {
+        refreshTasks();
+    }
+  }, [user, authLoading, router, refreshTasks]);
 
   const handleViewTaskDetails = (task: KanbanTask) => {
     setSelectedTask(task);
     setEditingTaskStatus(task.status);
     setEditingTaskAssignedTo(task.assignedTo || "");
-    setShowTaskComments(false); // Reset comments visibility on opening
+    setNewTaskCommentText("");
     setIsViewTaskDialogOpen(true);
   };
 
-  const handleUpdateTask = () => {
+  const handleUpdateTask = async () => {
     if (!selectedTask || !user) return;
     
     const canChangeAssignee = user.role === 'Admin' || user.role === 'SuperAdmin';
@@ -117,8 +127,8 @@ export default function TaskTrackerPage() {
     };
 
     try {
-      updateTaskInProject(selectedTask.projectId, selectedTask.id, taskUpdatePayload);
-      refreshTasks();
+      await updateTask(selectedTask.projectId, selectedTask.id, taskUpdatePayload);
+      await refreshTasks();
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
       setSelectedTask(null);
@@ -126,6 +136,29 @@ export default function TaskTrackerPage() {
       toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
     } finally {
       setIsUpdatingTask(false);
+    }
+  };
+
+  const handlePostNewTaskComment = async () => {
+    if (!selectedTask || !newTaskCommentText.trim() || !user) return;
+    setIsSubmittingTaskComment(true);
+    
+    const commentPayload = {
+      author: user.name || user.email || "Anonymous User",
+      text: newTaskCommentText,
+      authorId: user.id || user.email,
+    };
+
+    try {
+      await addCommentToTaskInProject(selectedTask.projectId, selectedTask.id, commentPayload);
+      setNewTaskCommentText("");
+      refetchTaskComments(); // Manually refetch comments
+      toast({ title: "Comment Added", description: "Your comment has been posted." });
+    } catch (error) {
+      console.error("Error posting task comment:", error);
+      toast({ title: "Error", description: "Failed to post task comment.", variant: "destructive" });
+    } finally {
+      setIsSubmittingTaskComment(false);
     }
   };
 
@@ -316,39 +349,47 @@ export default function TaskTrackerPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="taskAssignedToEdit">Assigned To</Label>
-                        <Input 
-                          id="taskAssignedToEdit" 
-                          value={editingTaskAssignedTo} 
-                          onChange={(e) => setEditingTaskAssignedTo(e.target.value)} 
-                          disabled={isUpdatingTask || !canEditAssignee}
-                        />
+                        <Select value={editingTaskAssignedTo} onValueChange={setEditingTaskAssignedTo} disabled={isUpdatingTask || !canEditAssignee}>
+                            <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                            <SelectContent>
+                                {allUsers.map(u => (<SelectItem key={u.id} value={u.name}>{u.name} ({u.email})</SelectItem>))}
+                            </SelectContent>
+                        </Select>
                         {!canEditAssignee && <p className="text-xs text-muted-foreground">Only Admins can change assignee.</p>}
                     </div>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowTaskComments(!showTaskComments)}
-                  className="w-full"
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  {showTaskComments ? 'Hide' : 'Show'} Comments ({(selectedTask.comments || []).length})
-                </Button>
+                <h3 className="font-semibold text-md mb-2">Comments ({(taskComments || []).length})</h3>
+                <div className="flex items-start space-x-3 mb-4">
+                    <div className="flex-1">
+                        <Textarea 
+                            placeholder="Write a comment..." 
+                            value={newTaskCommentText} 
+                            onChange={(e) => setNewTaskCommentText(e.target.value)}
+                            disabled={isSubmittingTaskComment}
+                        />
+                        <div className="flex justify-end mt-2">
+                            <Button size="sm" onClick={handlePostNewTaskComment} disabled={isSubmittingTaskComment || !newTaskCommentText.trim()}>
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                {isSubmittingTaskComment ? "Posting..." : "Post Comment"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
 
-                {showTaskComments && (
-                  <div className="mt-4 space-y-4">
-                    {(selectedTask.comments && selectedTask.comments.length > 0) ? (
-                      selectedTask.comments.map(comment => (
-                        <CommentCard key={comment.id} comment={comment} />
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No comments on this task yet.
-                      </p>
-                    )}
+                {taskCommentsLoading ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Loading comments...</p>
+                ) : (taskComments && taskComments.length > 0) ? (
+                  <div className="space-y-4">
+                    {taskComments.map(comment => (
+                      <CommentCard key={comment.id} comment={comment} />
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No comments on this task yet.
+                  </p>
                 )}
               </div>
             </ScrollArea>
