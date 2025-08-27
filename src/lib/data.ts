@@ -269,6 +269,19 @@ export function createProject(projectData: Partial<StoreProject>): StoreProject 
 }
 
 export function addTaskToProject(projectId: string, taskData: Partial<Task>): Task {
+
+/*   const newTask = {
+    id: `task-${Date.now()}`,
+    title: taskData.title || "New Task",
+    description: taskData.description || "No description",
+    status: taskData.status || "Not Started",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }; */
+
+
+
+
   console.warn(`addTaskToProject called for ${projectId} - implement proper API call`);
   throw new Error("Task creation not implemented - use API");
 }

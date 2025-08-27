@@ -111,7 +111,7 @@ export async function signOut(): Promise<void> {
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/users`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/auth/users`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
