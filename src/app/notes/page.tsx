@@ -15,8 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StickyNote, Package2, PlusCircle, Trash2, Users, Lock, Globe, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 export default function NotesPage() {
@@ -95,7 +94,7 @@ export default function NotesPage() {
     const notePayload: Partial<Note> = {
       content: newNoteContent,
       privacy: newNotePrivacy,
-      sharedWith: newNotePrivacy === 'shared' ? newNoteSharedWith.map(u => ({ userId: u.id, userName: u.name })) : [],
+      sharedWith: newNotePrivacy === 'shared' ? newNoteSharedWith.map(u => ({ userId: u.id, userName: u.name, email: u.email })) : [],
     };
 
     try {
@@ -187,26 +186,28 @@ export default function NotesPage() {
                 {newNotePrivacy === 'shared' && (
                   <div className="space-y-2 pt-2">
                     <Label>Share with</Label>
-                     <Card className="max-h-48 overflow-y-auto">
-                        <CardContent className="p-2 space-y-1">
-                            {allUsers.length > 0 ? allUsers.map(u => (
-                                <div key={u.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-accent">
-                                    <Checkbox 
-                                        id={`user-${u.id}`}
-                                        checked={newNoteSharedWith.some(su => su.id === u.id)}
-                                        onCheckedChange={(checked) => {
-                                            if (checked) {
-                                                setNewNoteSharedWith(prev => [...prev, u]);
-                                            } else {
-                                                setNewNoteSharedWith(prev => prev.filter(su => su.id !== u.id));
-                                            }
-                                        }}
-                                        disabled={isSubmitting}
-                                    />
-                                    <Label htmlFor={`user-${u.id}`} className="font-normal flex-1 cursor-pointer">{u.name} <span className="text-muted-foreground">({u.email})</span></Label>
-                                </div>
-                            )) : <p className="text-sm text-muted-foreground text-center p-2">No other users to share with.</p>}
-                        </CardContent>
+                     <Card className="border">
+                        <ScrollArea className="h-48">
+                            <CardContent className="p-2 space-y-1">
+                                {allUsers.length > 0 ? allUsers.map(u => (
+                                    <div key={u.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-accent">
+                                        <Checkbox 
+                                            id={`user-${u.id}`}
+                                            checked={newNoteSharedWith.some(su => su.id === u.id)}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setNewNoteSharedWith(prev => [...prev, u]);
+                                                } else {
+                                                    setNewNoteSharedWith(prev => prev.filter(su => su.id !== u.id));
+                                                }
+                                            }}
+                                            disabled={isSubmitting}
+                                        />
+                                        <Label htmlFor={`user-${u.id}`} className="font-normal flex-1 cursor-pointer">{u.name} <span className="text-muted-foreground">({u.email})</span></Label>
+                                    </div>
+                                )) : <p className="text-sm text-muted-foreground text-center p-2">No other users to share with.</p>}
+                            </CardContent>
+                        </ScrollArea>
                      </Card>
                   </div>
                 )}

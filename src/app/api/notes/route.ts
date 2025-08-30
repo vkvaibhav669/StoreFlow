@@ -37,7 +37,7 @@ let mockNotes: Note[] = [
         authorEmail: 'priya.sharma@example.com',
         privacy: 'shared',
         sharedWith: [
-            { userId: 'user-002', userName: 'Rohan Mehra' }
+            { userId: 'user-002', userName: 'Rohan Mehra', email: 'rohan.mehra@example.com' }
         ],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -55,7 +55,7 @@ function getMockCurrentUser(): User | null {
 }
 
 
-export async function GET() {
+export async function GET(request: Request) {
   const currentUser = getMockCurrentUser();
   if (!currentUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -139,7 +139,7 @@ export interface Note {
     authorName: string;
     authorEmail: string;
     privacy: NotePrivacy;
-    sharedWith: { userId: string; userName: string; }[]; // Array of user IDs if privacy is 'shared'
+    sharedWith: { userId: string; userName: string; email: string }[]; // Array of user IDs if privacy is 'shared'
     createdAt: string; // ISO String
     updatedAt: string; // ISO String
 }
