@@ -175,7 +175,7 @@ function AddUserForm({ setDialogOpen }: { setDialogOpen: (open: boolean) => void
             const response = await fetch('http://3.109.154.71:8000/api/auth/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, role, department, password: "password" }), // Default password
+                body: JSON.stringify({ name, email, role, department, password: "TestAdmin@123" }),
             });
 
             const result = await response.json();
