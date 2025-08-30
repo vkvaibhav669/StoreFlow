@@ -6,13 +6,13 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000/api  # Adjust as needed
-        MONGODB_URI: mongodb://mongodb:27017/storeflow?authSource=admin # Add this line to pass the build argument
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api  # Correctly set the API URL for build time
     ports:
       - "8000:8000"
     environment:
       NODE_ENV: production
       PORT: 8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api # Set for runtime as well
       # You can keep MONGODB_URI here as well for runtime, although it should be set during build now
       MONGODB_URI: mongodb://mongodb:27017/storeflow?authSource=admin 
     depends_on:

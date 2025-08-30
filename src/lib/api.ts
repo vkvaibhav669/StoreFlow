@@ -2,7 +2,7 @@
 
 import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // Error handling utility
 class ApiError extends Error {
@@ -15,7 +15,7 @@ class ApiError extends Error {
 // Generic fetch wrapper with error handling and no-cache policy
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
-    const url = BASE_URL ? `${BASE_URL}${endpoint}` : `${endpoint}`;
+    const url = `${BASE_URL}${endpoint}`;
     console.log(`Fetching api endpoint: ${url}`);
     const response = await fetch(url, {
       ...options,

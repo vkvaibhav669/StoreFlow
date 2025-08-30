@@ -374,7 +374,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [user]);
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
   };
   
   const unseenNotificationCount = notifications.filter(n => !n.seen).length;
