@@ -15,7 +15,7 @@ class ApiError extends Error {
 // Generic fetch wrapper with error handling and no-cache policy
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
-    const url = `${BASE_URL}${endpoint}`;
+    const url = `${BASE_URL}/api${endpoint}`;
     console.log(`Fetching api endpoint: ${url}`);
     const response = await fetch(url, {
       ...options,
@@ -119,7 +119,7 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
 // Tasks API
 export async function getTasksForUser(userId: string): Promise<Task[]> {
   // Use URL encoding for the userId to handle special characters in emails
-  return apiFetch<Task[]>(`/tasks/user/${encodeURIComponent(userId)}`);
+  return apiFetch<Task[]>(`/users/${encodeURIComponent(userId)}/tasks-assigned`);
 }
 
 
@@ -200,5 +200,47 @@ export async function deleteNote(noteId: string, userEmail: string): Promise<{ m
     return apiFetch<{ message: string }>(`/notes?id=${noteId}`, {
         method: 'DELETE',
         headers: { 'x-user-email': userEmail },
+    });
+}
+
+// Improvement Points & Store Tasks
+export async function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
+  return apiFetch<ImprovementPoint>(`/stores/${storeId}/improvementPoints`, {
+    method: 'POST',
+    body: JSON.stringify(pointData),
+  });
+}
+
+export async function updateImprovementPointInStore(storeId: string, pointId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
+    return apiFetch<ImprovementPoint>(`/stores/${storeId}/improvementPoints/${pointId}`, {
+        method: 'PUT',
+        body: JSON.stringify(pointData),
+    });
+}
+
+export async function addCommentToImprovementPoint(storeId: string, pointId: string, commentData: Partial<Comment>): Promise<Comment> {
+    return apiFetch<Comment>(`/stores/${storeId}/improvementPoints/${pointId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify(commentData),
+    });
+}
+
+export async function addStoreTask(storeId: string, taskData: Partial<StoreTask>): Promise<StoreTask> {
+    return apiFetch<StoreTask>(`/stores/${storeId}/tasks`, {
+        method: 'POST',
+        body: JSON.stringify(taskData),
+    });
+}
+
+export async function updateStoreTask(storeId: string, taskId: string, taskData: Partial<StoreTask>): Promise<StoreTask> {
+    return apiFetch<StoreTask>(`/stores/${storeId}/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify(taskData),
+    });
+}
+
+export async function deleteStoreTask(storeId: string, taskId: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/stores/${storeId}/tasks/${taskId}`, {
+        method: 'DELETE',
     });
 }
