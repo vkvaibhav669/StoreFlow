@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import type { Note, User, NotePrivacy } from "@/types";
-import { getVisibleNotes, createNote, deleteNote, getAllUsers } from "@/lib/api";
+import { getVisibleNotes, createNote, updateNote, deleteNote, getAllUsers } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { StickyNote, Package2, PlusCircle, Trash2, Users, Lock, Globe, User as UserIcon } from "lucide-react";
+import { StickyNote, Package2, PlusCircle, Trash2, Users, Lock, Globe, User as UserIcon, Edit, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -41,12 +41,16 @@ export default function NotesPage() {
   const [allUsers, setAllUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  // New Note Dialog State
-  const [isNewNoteDialogOpen, setIsNewNoteDialogOpen] = React.useState(false);
+  // Dialog State
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogMode, setDialogMode] = React.useState<"new" | "edit">("new");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [newNoteContent, setNewNoteContent] = React.useState("");
-  const [newNotePrivacy, setNewNotePrivacy] = React.useState<NotePrivacy>("private");
-  const [newNoteSharedWith, setNewNoteSharedWith] = React.useState<User[]>([]);
+
+  // Form State
+  const [noteContent, setNoteContent] = React.useState("");
+  const [notePrivacy, setNotePrivacy] = React.useState<NotePrivacy>("private");
+  const [noteSharedWith, setNoteSharedWith] = React.useState<User[]>([]);
+  const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
 
   // Delete Confirmation Dialog State
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = React.useState(false);
@@ -78,33 +82,59 @@ export default function NotesPage() {
       }
     }
   }, [user, authLoading, router, fetchNotesAndUsers]);
-
-  const resetNewNoteForm = () => {
-    setNewNoteContent("");
-    setNewNotePrivacy("private");
-    setNewNoteSharedWith([]);
+  
+  const resetForm = () => {
+    setNoteContent("");
+    setNotePrivacy("private");
+    setNoteSharedWith([]);
+    setEditingNoteId(null);
+  };
+  
+  const openNewNoteDialog = () => {
+    resetForm();
+    setDialogMode("new");
+    setDialogOpen(true);
   };
 
-  const handleCreateNote = async () => {
-    if (!newNoteContent.trim() || !user) {
+  const openEditNoteDialog = (note: Note) => {
+    resetForm();
+    setDialogMode("edit");
+    setEditingNoteId(note.id);
+    setNoteContent(note.content);
+    setNotePrivacy(note.privacy);
+    if (note.privacy === 'shared' && note.sharedWith) {
+      const sharedWithUsers = allUsers.filter(u => note.sharedWith.some(sw => sw.userId === u.id));
+      setNoteSharedWith(sharedWithUsers);
+    }
+    setDialogOpen(true);
+  };
+
+  const handleFormSubmit = async () => {
+    if (!noteContent.trim() || !user) {
       toast({ title: "Error", description: "Note content cannot be empty.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
+    
     const notePayload: Partial<Note> = {
-      content: newNoteContent,
-      privacy: newNotePrivacy,
-      sharedWith: newNotePrivacy === 'shared' ? newNoteSharedWith.map(u => ({ userId: u.id, userName: u.name, email: u.email })) : [],
+      id: editingNoteId || undefined,
+      content: noteContent,
+      privacy: notePrivacy,
+      sharedWith: notePrivacy === 'shared' ? noteSharedWith.map(u => ({ userId: u.id, userName: u.name, email: u.email })) : [],
     };
 
     try {
-      await createNote(notePayload, user.email);
-      toast({ title: "Note Created", description: "Your new note has been saved." });
+      if (dialogMode === "edit" && editingNoteId) {
+        await updateNote(notePayload, user.email);
+        toast({ title: "Note Updated", description: "Your note has been saved." });
+      } else {
+        await createNote(notePayload, user.email);
+        toast({ title: "Note Created", description: "Your new note has been saved." });
+      }
       await fetchNotesAndUsers();
-      setIsNewNoteDialogOpen(false);
-      resetNewNoteForm();
+      setDialogOpen(false);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to create note.", variant: "destructive" });
+      toast({ title: "Error", description: `Failed to ${dialogMode === 'edit' ? 'update' : 'create'} note.`, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -117,17 +147,17 @@ export default function NotesPage() {
   
   const confirmDeleteNote = async () => {
     if (!noteToDelete || !user) return;
-    setIsSubmitting(true); // Reuse submitting state for deletion
+    setIsSubmitting(true);
     try {
       await deleteNote(noteToDelete.id, user.email);
       toast({ title: "Note Deleted", description: "The note has been successfully deleted." });
       setNotes(prev => prev.filter(n => n.id !== noteToDelete.id));
-      setNoteToDelete(null);
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete note. You may not have permission.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
       setIsConfirmDeleteDialogOpen(false);
+      setNoteToDelete(null);
     }
   };
 
@@ -156,70 +186,9 @@ export default function NotesPage() {
           <h1 id="notes-heading" className="text-2xl font-semibold md:text-3xl flex items-center gap-2">
             <StickyNote className="h-7 w-7" /> Notes
           </h1>
-          <Dialog open={isNewNoteDialogOpen} onOpenChange={(isOpen) => {
-              setIsNewNoteDialogOpen(isOpen);
-              if (!isOpen) resetNewNoteForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button size="sm" disabled={isSubmitting}>
-                <PlusCircle className="mr-2 h-4 w-4" /> New Note
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Create New Note</DialogTitle>
-                <DialogDescription>Write your note and set its privacy level.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="note-content">Content</Label>
-                  <Textarea id="note-content" rows={6} value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)} placeholder="Type your note here..." disabled={isSubmitting} />
-                </div>
-                <div className="space-y-3">
-                  <Label>Privacy</Label>
-                  <RadioGroup value={newNotePrivacy} onValueChange={(val) => setNewNotePrivacy(val as NotePrivacy)} className="flex space-x-4" disabled={isSubmitting}>
-                    <div className="flex items-center space-x-2"><RadioGroupItem value="private" id="r1" /><Label htmlFor="r1">Private</Label></div>
-                    <div className="flex items-center space-x-2"><RadioGroupItem value="public" id="r2" /><Label htmlFor="r2">Public</Label></div>
-                    <div className="flex items-center space-x-2"><RadioGroupItem value="shared" id="r3" /><Label htmlFor="r3">Shared</Label></div>
-                  </RadioGroup>
-                </div>
-                {newNotePrivacy === 'shared' && (
-                  <div className="space-y-2 pt-2">
-                    <Label>Share with</Label>
-                     <Card className="border">
-                        <ScrollArea className="h-48">
-                            <CardContent className="p-2 space-y-1">
-                                {allUsers.length > 0 ? allUsers.map(u => (
-                                    <div key={u.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-accent">
-                                        <Checkbox 
-                                            id={`user-${u.id}`}
-                                            checked={newNoteSharedWith.some(su => su.id === u.id)}
-                                            onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                    setNewNoteSharedWith(prev => [...prev, u]);
-                                                } else {
-                                                    setNewNoteSharedWith(prev => prev.filter(su => su.id !== u.id));
-                                                }
-                                            }}
-                                            disabled={isSubmitting}
-                                        />
-                                        <Label htmlFor={`user-${u.id}`} className="font-normal flex-1 cursor-pointer">{u.name} <span className="text-muted-foreground">({u.email})</span></Label>
-                                    </div>
-                                )) : <p className="text-sm text-muted-foreground text-center p-2">No other users to share with.</p>}
-                            </CardContent>
-                        </ScrollArea>
-                     </Card>
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <DialogClose asChild><Button variant="outline" disabled={isSubmitting}>Cancel</Button></DialogClose>
-                <Button onClick={handleCreateNote} disabled={isSubmitting || !newNoteContent.trim()}>
-                  {isSubmitting ? "Saving..." : "Save Note"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button size="sm" onClick={openNewNoteDialog}>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Note
+          </Button>
         </div>
 
         {notes.length === 0 ? (
@@ -246,11 +215,17 @@ export default function NotesPage() {
                         </CardDescription>
                       </div>
                     </div>
-                    {(user?.id === note.authorId || user?.role !== "Member") && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteRequest(note)}>
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete note</span>
-                        </Button>
+                    {user?.id === note.authorId && (
+                        <div className="flex items-center">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => openEditNoteDialog(note)}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit note</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteRequest(note)}>
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete note</span>
+                            </Button>
+                        </div>
                     )}
                   </div>
                 </CardHeader>
@@ -271,6 +246,61 @@ export default function NotesPage() {
           </div>
         )}
       </section>
+      
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "edit" ? "Edit Note" : "Create New Note"}</DialogTitle>
+            <DialogDescription>{dialogMode === 'edit' ? 'Modify your note and its privacy level.' : 'Write your note and set its privacy level.'}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="note-content">Content</Label>
+              <Textarea id="note-content" rows={6} value={noteContent} onChange={e => setNoteContent(e.target.value)} placeholder="Type your note here..." disabled={isSubmitting} />
+            </div>
+            <div className="space-y-3">
+              <Label>Privacy</Label>
+              <RadioGroup value={notePrivacy} onValueChange={(val) => setNotePrivacy(val as NotePrivacy)} className="flex space-x-4" disabled={isSubmitting}>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="private" id="r-pvt" /><Label htmlFor="r-pvt">Private</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="public" id="r-pub" /><Label htmlFor="r-pub">Public</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="shared" id="r-shr" /><Label htmlFor="r-shr">Shared</Label></div>
+              </RadioGroup>
+            </div>
+            {notePrivacy === 'shared' && (
+              <div className="space-y-2 pt-2">
+                <Label>Share with</Label>
+                 <Card className="border">
+                    <ScrollArea className="h-48">
+                        <CardContent className="p-2 space-y-1">
+                            {allUsers.length > 0 ? allUsers.map(u => (
+                                <div key={u.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-accent">
+                                    <Checkbox 
+                                        id={`user-${u.id}`}
+                                        checked={noteSharedWith.some(su => su.id === u.id)}
+                                        onCheckedChange={(checked) => {
+                                            setNoteSharedWith(prev => 
+                                                checked ? [...prev, u] : prev.filter(su => su.id !== u.id)
+                                            );
+                                        }}
+                                        disabled={isSubmitting}
+                                    />
+                                    <Label htmlFor={`user-${u.id}`} className="font-normal flex-1 cursor-pointer">{u.name} <span className="text-muted-foreground">({u.email})</span></Label>
+                                </div>
+                            )) : <p className="text-sm text-muted-foreground text-center p-2">No other users to share with.</p>}
+                        </CardContent>
+                    </ScrollArea>
+                 </Card>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline" disabled={isSubmitting}>Cancel</Button></DialogClose>
+            <Button onClick={handleFormSubmit} disabled={isSubmitting || !noteContent.trim()}>
+              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : "Save Note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
         <AlertDialogContent>
@@ -281,9 +311,9 @@ export default function NotesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setNoteToDelete(null)} disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteNote} className="bg-destructive hover:bg-destructive/90" disabled={isSubmitting}>
-              {isSubmitting ? "Deleting..." : "Delete"}
+              {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Deleting...</> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

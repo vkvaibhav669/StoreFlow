@@ -112,6 +112,47 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PUT(request: Request) {
+    const currentUser = getMockCurrentUser();
+    if (!currentUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const body = await request.json();
+        const { id, content, privacy, sharedWith } = body;
+
+        if (!id || !content || !privacy) {
+            return NextResponse.json({ error: 'ID, content, and privacy are required' }, { status: 400 });
+        }
+
+        const noteIndex = mockNotes.findIndex(n => n.id === id);
+
+        if (noteIndex === -1) {
+            return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+        }
+
+        const noteToUpdate = mockNotes[noteIndex];
+
+        if (noteToUpdate.authorId !== currentUser.id) {
+            return NextResponse.json({ error: 'Permission denied. You can only edit your own notes.' }, { status: 403 });
+        }
+
+        noteToUpdate.content = content;
+        noteToUpdate.privacy = privacy;
+        noteToUpdate.sharedWith = privacy === 'shared' ? sharedWith || [] : [];
+        noteToUpdate.updatedAt = new Date().toISOString();
+
+        mockNotes[noteIndex] = noteToUpdate;
+
+        return NextResponse.json(noteToUpdate, { status: 200 });
+
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
+    }
+}
+
+
 export async function DELETE(request: Request) {
     const currentUser = getMockCurrentUser();
     if (!currentUser) {

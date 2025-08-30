@@ -196,6 +196,14 @@ export async function createNote(noteData: Partial<Note>, userEmail: string): Pr
     });
 }
 
+export async function updateNote(noteData: Partial<Note>, userEmail: string): Promise<Note> {
+    return apiFetch<Note>('/notes', {
+        method: 'PUT',
+        body: JSON.stringify(noteData),
+        headers: { 'x-user-email': userEmail },
+    });
+}
+
 export async function deleteNote(noteId: string, userEmail: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/notes?id=${noteId}`, {
         method: 'DELETE',
