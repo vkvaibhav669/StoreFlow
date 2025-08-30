@@ -1,6 +1,6 @@
 
 
-import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment } from '@/types';
+import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment, ApprovalRequest } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -242,5 +242,28 @@ export async function updateStoreTask(storeId: string, taskId: string, taskData:
 export async function deleteStoreTask(storeId: string, taskId: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/stores/${storeId}/tasks/${taskId}`, {
         method: 'DELETE',
+    });
+}
+
+// Approval Requests API
+export async function getApprovalRequestsForUser(userEmail: string): Promise<{ awaiting: ApprovalRequest[], submitted: ApprovalRequest[] }> {
+    return apiFetch<{ awaiting: ApprovalRequest[], submitted: ApprovalRequest[] }>(`/approval-requests`, {
+        headers: { 'x-user-email': userEmail },
+    });
+}
+
+export async function submitApprovalRequest(requestData: Partial<ApprovalRequest>, userEmail: string): Promise<ApprovalRequest> {
+    return apiFetch<ApprovalRequest>('/approval-requests', {
+        method: 'POST',
+        body: JSON.stringify(requestData),
+        headers: { 'x-user-email': userEmail },
+    });
+}
+
+export async function updateApprovalRequest(requestId: string, updateData: { status: 'Approved' | 'Rejected'; actorEmail: string; comment?: string }): Promise<ApprovalRequest> {
+    return apiFetch<ApprovalRequest>(`/approval-requests/${requestId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+        headers: { 'x-user-email': updateData.actorEmail },
     });
 }

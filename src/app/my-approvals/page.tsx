@@ -8,13 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { 
-  getApprovalRequestsForUser, 
-  updateApprovalRequestStatus, 
-  getAllProjects, 
-  submitApprovalRequest
-} from "@/lib/data";
-import { getAllUsers } from "@/lib/api"; // Import user fetching API
+import { getAllProjects, getAllUsers, getApprovalRequestsForUser, submitApprovalRequest } from "@/lib/api";
 import type { ApprovalRequest, ApprovalStatus, Department, StoreProject, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { Package2, CheckCircle, XCircle, Send, ChevronsUpDown, Check } from "lucide-react";
@@ -57,12 +51,16 @@ export default function MyApprovalsPage() {
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const refreshApprovalData = () => {
+  const refreshApprovalData = React.useCallback(async () => {
     if (user) {
-      const approvalData = getApprovalRequestsForUser(user.email);
-      setMySubmittedRequests(approvalData.submitted);
+      try {
+        const approvalData = await getApprovalRequestsForUser(user.email);
+        setMySubmittedRequests(approvalData.submitted);
+      } catch (error) {
+        console.error("Error refreshing approval data:", error);
+      }
     }
-  };
+  }, [user]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -74,13 +72,13 @@ export default function MyApprovalsPage() {
       if (user) {
         setLoading(true);
         try {
-          refreshApprovalData();
+          await refreshApprovalData();
           const [projects, users] = await Promise.all([
             getAllProjects(),
             getAllUsers(),
           ]);
           setAllProjects(projects);
-          setAllUsers(users);
+          setAllUsers(users.filter(u => u.id !== user.id)); // Exclude self from approver list
         } catch (error) {
           console.error('Error loading data:', error);
           toast({
@@ -95,9 +93,9 @@ export default function MyApprovalsPage() {
     };
     
     loadData();
-  }, [user, authLoading, router, toast]);
+  }, [user, authLoading, router, toast, refreshApprovalData]);
 
-  const handleNewRequestSubmit = (e: React.FormEvent) => { // No async needed for mock
+  const handleNewRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -120,21 +118,19 @@ export default function MyApprovalsPage() {
     
     const selectedProject = selectedProjectId ? allProjects.find(p => p.id === selectedProjectId) : undefined;
 
-    const newRequestPayload: Omit<ApprovalRequest, 'id' | 'submissionDate' | 'status' | 'lastUpdateDate' | 'approvalComments'> = {
+    const newRequestPayload: Partial<ApprovalRequest> = {
       title: requestTitle,
       projectId: selectedProjectId === "N/A" || !selectedProjectId ? undefined : selectedProjectId,
       projectName: selectedProject?.name,
       requestingDepartment: requestingDepartment as Department,
-      requestorName: user.name || user.email!,
-      requestorEmail: user.email!,
       details: details,
       approverName: approver.name,
       approverEmail: approver.email,
     };
 
     try {
-      submitApprovalRequest(newRequestPayload); // Synchronous call
-      refreshApprovalData(); // Re-fetch to update list
+      await submitApprovalRequest(newRequestPayload, user.email);
+      await refreshApprovalData(); // Re-fetch to update list
 
       toast({
         title: "Approval Request Submitted",
