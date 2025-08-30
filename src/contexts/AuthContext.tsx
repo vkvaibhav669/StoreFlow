@@ -30,19 +30,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkUser();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const signedInUser = await authService.signIn(email, password);
-      setUser(signedInUser);
-      setLoading(false);
-      return signedInUser;
-    } catch (error) {
-      console.error("Sign in failed:", error);
-      setUser(null);
-      setLoading(false);
-      throw error; // Re-throw for the form to handle
-    }
+  const signIn = (email: string, password: string): Promise<User | null> => {
+    return new Promise((resolve, reject) => {
+      setLoading(true);
+      authService.signIn(email, password)
+        .then(signedInUser => {
+          setUser(signedInUser);
+          setLoading(false);
+          resolve(signedInUser);
+        })
+        .catch(error => {
+          console.error("Sign in failed:", error);
+          setUser(null);
+          setLoading(false);
+          reject(error); // Re-throw for the form to handle
+        });
+    });
   };
 
   const signUp = async (name: string, email: string, password: string) => {
