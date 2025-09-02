@@ -95,22 +95,22 @@ export async function uploadDocument(formData: FormData): Promise<DocumentFile> 
 
 // Stores API
 export async function getAllStores(): Promise<StoreItem[]> {
-  return apiFetch<StoreItem[]>('/store');
+  return apiFetch<StoreItem[]>('/stores');
 }
 
 export async function getStoreById(id: string): Promise<StoreItem> {
-  return apiFetch<StoreItem>(`/store/${id}`);
+  return apiFetch<StoreItem>(`/stores/${id}`);
 }
 
 export async function createStore(storeData: Partial<StoreItem>): Promise<StoreItem> {
-  return apiFetch<StoreItem>('/store', {
+  return apiFetch<StoreItem>('/stores', {
     method: 'POST',
     body: JSON.stringify(storeData),
   });
 }
 
 export async function updateStore(id: string, storeData: Partial<StoreItem>): Promise<StoreItem> {
-  return apiFetch<StoreItem>(`/store/${id}`, {
+  return apiFetch<StoreItem>(`/stores/${id}`, {
     method: 'PUT',
     body: JSON.stringify(storeData),
   });

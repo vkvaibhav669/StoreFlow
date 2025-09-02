@@ -75,7 +75,7 @@ node tests/mongodb/mongodb-demo.js
 ## API Routes
 
 - `/api/projects` - Project management endpoints
-- `/api/store` - Store management endpoints  
+- `/api/stores` - Store management endpoints  
 - `/api/tasks` - Task management endpoints
 - `/api/tasks/:projectId` - Get tasks for a specific project
 

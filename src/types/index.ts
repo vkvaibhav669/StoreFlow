@@ -5,7 +5,7 @@
 
 // --- Core Enums & Types ---
 
-export type Department = "Property" | "Project"| "Merchandising" | "HR"| "Marketing"| "IT"| "Finance"| "Executive Office"| "Operations" | "Visual Merchandising" ;
+export type Department = "Property" | "Project"| "Merchandising" | "HR"| "Marketing"| "IT"| "Finance"| "Executive Office"| "Operations" | "Visual Merchandising" | "L&D" | "Legal" ;
 //"Property" | "Project" | "Merchandising" | "HR" | "Marketing" | "IT" | "Executive Office" | "Operations";
 export type TaskPriority = "High" | "Medium" | "Low" | "None";
 export type UserRole = "Member" | "Admin" | "SuperAdmin";
