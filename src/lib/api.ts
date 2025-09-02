@@ -1,5 +1,3 @@
-
-
 import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment, ApprovalRequest } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -119,7 +117,7 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
 // Tasks API
 export async function getTasksForUser(userId: string): Promise<Task[]> {
   // Use URL encoding for the userId to handle special characters in emails
-  return apiFetch<Task[]>(`/users/${encodeURIComponent(userId)}/tasks-assigned`);
+  return apiFetch<Task>(`/users/${encodeURIComponent(userId)}/tasks-assigned`);
 }
 
 
@@ -180,7 +178,6 @@ export async function addCommentToTaskInProject(projectId: string, taskId: strin
     body: JSON.stringify(commentData),
   });
 }
-
 
 // Notes API
 export async function getVisibleNotes(userEmail: string): Promise<Note[]> {
@@ -260,12 +257,30 @@ export async function getApprovalRequestsForUser(userEmail: string): Promise<{ a
     });
 }
 
-export async function submitApprovalRequest(requestData: Partial<ApprovalRequest>, userEmail: string): Promise<ApprovalRequest> {
-    return apiFetch<ApprovalRequest>('/approval-requests', {
-        method: 'POST',
-        body: JSON.stringify(requestData),
-        headers: { 'x-user-email': userEmail },
-    });
+export async function submitApprovalRequest(
+  payload: Partial<ApprovalRequest> & { requesterId?: string },
+  currentUser: { id?: string; email: string; name?: string }
+): Promise<ApprovalRequest> {
+  const requesterId = payload.requesterId ?? currentUser.id ?? currentUser.email;
+  const body = { ...payload, requesterId }; // send requesterId, not requester object
+
+  const response = await fetch(`${BASE_URL}/api/approval-requests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-email': currentUser.email,
+      'x-user-name': currentUser.name ?? '',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Failed to submit approval request' }));
+    throw new ApiError(err.message || 'Failed to submit approval request', response.status);
+  }
+
+  return (await response.json()) as ApprovalRequest;
 }
 
 export async function updateApprovalRequest(requestId: string, updateData: { status: 'Approved' | 'Rejected'; actorEmail: string; comment?: string }): Promise<ApprovalRequest> {
@@ -274,4 +289,20 @@ export async function updateApprovalRequest(requestId: string, updateData: { sta
         body: JSON.stringify(updateData),
         headers: { 'x-user-email': updateData.actorEmail },
     });
+}
+
+export async function getMyApprovalRequests(currentUser?: { id?: string; email?: string }) : Promise<ApprovalRequest[]> {
+  const headers: Record<string,string> = { "Content-Type": "application/json" };
+  if (currentUser?.email) headers["x-user-email"] = currentUser.email;
+  if (currentUser?.id) headers["x-user-id"] = currentUser.id;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/approval-requests/mine`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Failed to fetch requests" }));
+    throw new Error(err.message || "Failed to fetch requests");
+  }
+  return (await res.json()) as ApprovalRequest[];
 }

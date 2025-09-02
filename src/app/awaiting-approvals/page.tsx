@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -44,7 +43,7 @@ export default function AwaitingApprovalsPage() {
       setLoading(true);
       try {
         const approvalData = await getApprovalRequestsForUser(user.email);
-        setRequestsAwaitingMyAction(approvalData.awaiting);
+        setRequestsAwaitingMyAction(Array.isArray(approvalData?.awaiting) ? approvalData.awaiting : []);
       } catch (error) {
         console.error('Error loading data:', error);
         toast({
@@ -52,6 +51,7 @@ export default function AwaitingApprovalsPage() {
           description: "Failed to load requests. Please try again.",
           variant: "destructive",
         });
+        setRequestsAwaitingMyAction([]); // fallback to empty array on error
       } finally {
         setLoading(false);
       }
@@ -146,7 +146,7 @@ export default function AwaitingApprovalsPage() {
     <section className="awaiting-approvals-content flex flex-col gap-6" aria-labelledby="awaiting-approvals-heading">
       <h1 id="awaiting-approvals-heading" className="text-2xl font-semibold md:text-3xl mt-4">Awaiting My Approval</h1>
       
-      {requestsAwaitingMyAction.length === 0 ? (
+      {(!Array.isArray(requestsAwaitingMyAction) || requestsAwaitingMyAction.length === 0) ? (
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-center">No requests are currently awaiting your action.</p>

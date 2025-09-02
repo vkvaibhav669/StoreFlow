@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { getAllProjects, getAllUsers, getApprovalRequestsForUser, submitApprovalRequest } from "@/lib/api";
+import { getAllProjects, getAllUsers, getApprovalRequestsForUser, getMyApprovalRequests, submitApprovalRequest } from "@/lib/api";
 import type { ApprovalRequest, ApprovalStatus, Department, StoreProject, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { Package2, CheckCircle, XCircle, Send, ChevronsUpDown, Check } from "lucide-react";
@@ -52,13 +51,17 @@ export default function MyApprovalsPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const refreshApprovalData = React.useCallback(async () => {
-    if (user) {
-      try {
-        const approvalData = await getApprovalRequestsForUser(user.email);
-        setMySubmittedRequests(approvalData.submitted);
-      } catch (error) {
-        console.error("Error refreshing approval data:", error);
-      }
+    if (!user) return;
+    setLoading(true);
+    try {
+      // fetch only current user's submitted requests
+      const myRequests = await getMyApprovalRequests({ id: (user as any).id, email: user.email });
+      setMySubmittedRequests(Array.isArray(myRequests) ? myRequests : []);
+    } catch (error) {
+      console.error("Error refreshing approval data:", error);
+      setMySubmittedRequests([]);
+    } finally {
+      setLoading(false);
     }
   }, [user]);
 
@@ -106,6 +109,20 @@ export default function MyApprovalsPage() {
       return;
     }
 
+    // Read requestor id from localStorage (fallback to auth user id)
+    let requestorId: string | undefined;
+    try {
+      const stored = localStorage.getItem('storeflow_current_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        requestorId = parsed?.id || parsed?._id || undefined;
+      }
+    } catch (err) {
+      console.warn('Failed to parse storeflow_current_user from localStorage', err);
+    }
+    // final fallback to auth user id if available
+    requestorId = requestorId || (user as any).id || (user as any)._id;
+
     if (!requestTitle || !requestingDepartment || !details || !approver) {
       toast({
         title: "Missing Information",
@@ -115,7 +132,7 @@ export default function MyApprovalsPage() {
       setIsSubmitting(false);
       return;
     }
-    
+
     const selectedProject = selectedProjectId ? allProjects.find(p => p.id === selectedProjectId) : undefined;
 
     const newRequestPayload: Partial<ApprovalRequest> = {
@@ -126,10 +143,17 @@ export default function MyApprovalsPage() {
       details: details,
       approverName: approver.name,
       approverEmail: approver.email,
+      requestorId, // keep if needed
+      requester: {      // <-- ensure backend-required `requester` is present
+        id: requestorId,
+        name: user.name,
+        email: user.email,
+      },
     };
 
     try {
-      await submitApprovalRequest(newRequestPayload, user.email);
+      // pass the full current user so submitApprovalRequest can set headers and requester
+      await submitApprovalRequest(newRequestPayload, { id: (user as any).id, email: user.email, name: user.name });
       await refreshApprovalData(); // Re-fetch to update list
 
       toast({
@@ -182,7 +206,7 @@ export default function MyApprovalsPage() {
       <Tabs defaultValue="submit-new-request" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="submit-new-request">Submit New Request</TabsTrigger>
-          <TabsTrigger value="my-submitted-requests">My Submitted Requests ({mySubmittedRequests.length})</TabsTrigger>
+          <TabsTrigger value="my-submitted-requests">My Submitted Requests ({mySubmittedRequests?.length ?? 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="submit-new-request" className="mt-4">
@@ -360,7 +384,7 @@ export default function MyApprovalsPage() {
                             {req.approvalComments.map(comment => (
                                 <div key={comment.id} className="text-xs p-2 bg-muted rounded-md">
                                     <p className="italic">"{comment.text}"</p>
-                                    <p className="text-right text-muted-foreground/80">- {comment.author || comment.addedByName} on {comment.timestamp || comment.addedAt ? format(new Date(comment.timestamp || comment.addedAt!), "PP") : "Unknown date"}</p>
+                                    <p className="text-right text-muted-foreground/80">- {comment.author || comment.addedByName} on {comment.timestamp || comment.addedAt ? format(new Date(comment.timestamp || comment.addedByName!), "PP") : "Unknown date"}</p>
                                 </div>
                             ))}
                         </div>

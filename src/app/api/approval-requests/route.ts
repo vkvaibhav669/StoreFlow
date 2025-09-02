@@ -1,8 +1,8 @@
-
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import type { ApprovalRequest, User } from '@/types';
 import { getAllMockUsers } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
 
 // In-memory mock database for approval requests
 let mockApprovalRequests: ApprovalRequest[] = [
@@ -101,14 +101,13 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, details, approverEmail, approverName, projectId, projectName, requestingDepartment } = body;
+    const { title, details, approverEmail, approverName, projectId, projectName, requestingDepartment, requesterId } = body;
 
     if (!title || !details || !approverEmail || !approverName || !requestingDepartment) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const newRequest: ApprovalRequest = {
-      id: `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    const newRequest: any = {
       title,
       details,
       status: 'Pending',
@@ -122,6 +121,14 @@ export async function POST(request: Request) {
       submissionDate: new Date().toISOString(),
       approvalComments: [],
     };
+
+    // if requesterId provided, store as ObjectId reference
+    if (requesterId && ObjectId.isValid(requesterId)) {
+      newRequest.requester = new ObjectId(requesterId);
+    } else if (requesterId) {
+      // fallback: keep string
+      newRequest.requester = requesterId;
+    }
 
     mockApprovalRequests.unshift(newRequest);
 
