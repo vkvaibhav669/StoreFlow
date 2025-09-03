@@ -1,6 +1,24 @@
 import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment, ApprovalRequest } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// Normalise the base URL coming from env
+const RAW_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  '';
+export const API_BASE = RAW_BASE.replace(/\/+$/, ''); // remove trailing slash(es)
+
+// Backwards-compatible alias used in older code
+const BASE_URL = API_BASE;
+
+// Build a canonical API URL. Call with '/projects' or 'projects' or '/api/projects' — it will return
+// '<API_BASE>/api/projects' with exactly one '/api' prefix.
+export function buildApiUrl(path: string) {
+  // remove leading slashes
+  path = path.replace(/^\/+/, '');
+  // ensure a single 'api/' prefix
+  if (!path.startsWith('api/')) path = `api/${path}`;
+  return `${API_BASE}/${path}`;
+}
 
 // Error handling utility
 class ApiError extends Error {
@@ -13,7 +31,8 @@ class ApiError extends Error {
 // Generic fetch wrapper with error handling and no-cache policy
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
-    const url = `${BASE_URL}/api${endpoint}`;
+    // Build full URL using buildApiUrl to avoid double /api and undefined BASE_URL
+    const url = buildApiUrl(endpoint);
     console.log(`Fetching api endpoint: ${url}`);
     const response = await fetch(url, {
       ...options,
@@ -51,11 +70,15 @@ export async function getAllUsers(): Promise<User[]> {
 
 // Projects API
 export async function getAllProjects(): Promise<StoreProject[]> {
-  return apiFetch<StoreProject[]>('/projects');
+  const res = await fetch(buildApiUrl('/projects'), { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to fetch projects');
+  return (await res.json()) as StoreProject[];
 }
 
 export async function getProjectById(id: string): Promise<StoreProject> {
-  return apiFetch<StoreProject>(`/projects/${id}`);
+  const res = await fetch(buildApiUrl(`/projects/${id}`), { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to fetch project');
+  return (await res.json()) as StoreProject;
 }
 
 export async function createProject(projectData: Partial<StoreProject>): Promise<StoreProject> {
@@ -78,11 +101,12 @@ export async function getAllDocuments(): Promise<(DocumentFile & { projectId: st
 }
 
 export async function uploadDocument(formData: FormData): Promise<DocumentFile> {
-  const url = `${BASE_URL}/documents`;
+  const url = buildApiUrl('/documents');
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
     // Do not set Content-Type header, browser will set it with boundary
+    cache: 'no-store',
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Failed to upload document' }));
@@ -264,7 +288,7 @@ export async function submitApprovalRequest(
   const requesterId = payload.requesterId ?? currentUser.id ?? currentUser.email;
   const body = { ...payload, requesterId }; // send requesterId, not requester object
 
-  const response = await fetch(`${BASE_URL}/api/approval-requests`, {
+  const response = await fetch(buildApiUrl('/approval-requests'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -295,7 +319,7 @@ export async function getMyApprovalRequests(currentUser?: { id?: string; email?:
   const headers: Record<string,string> = { "Content-Type": "application/json" };
   if (currentUser?.email) headers["x-user-email"] = currentUser.email;
   if (currentUser?.id) headers["x-user-id"] = currentUser.id;
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/approval-requests/mine`, {
+  const res = await fetch(buildApiUrl('/approval-requests/mine'), {
     method: "GET",
     headers,
     cache: "no-store",
