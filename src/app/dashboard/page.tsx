@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -130,12 +129,15 @@ export default function DashboardPage() {
   }, [dashboardProjects, filterSettings.showActive, filterSettings.planningOnly, filterSettings.storeOwnershipFilter]);
 
   React.useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+    if (!user) {
       router.replace("/auth/signin");
       return;
     }
+
     
     const fetchPageData = async () => {
+
       try {
         setLoading(true);
         const [projects, users] = await Promise.all([
@@ -156,10 +158,12 @@ export default function DashboardPage() {
       }
     };
 
+
     if (user) {
       fetchPageData();
     }
   }, [user, authLoading, router, toast, canAddProject]);
+
 
   const refreshProjects = async () => {
     try {

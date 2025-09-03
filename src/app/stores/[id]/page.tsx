@@ -274,7 +274,7 @@ export default function StoreDetailsPage() {
     };
     try {
       // This POST request sends the new improvement point data to the server.
-      const response = await fetch(`/api/stores/${storeId}/improvementPoints/${pointId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/improvementPoints/${pointId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -424,6 +424,8 @@ export default function StoreDetailsPage() {
       createdBy: user.name || user.email!,
       dueDate: newTaskForm.dueDate ? format(newTaskForm.dueDate, "yyyy-MM-dd") : undefined,
     };
+
+
 
     try {
       const updatedTasks = [...(store.tasks || []), newTaskPayload as StoreTask];

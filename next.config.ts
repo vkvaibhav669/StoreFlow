@@ -1,14 +1,13 @@
+/** @type {import('next').NextConfig} */
 
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
+
   async rewrites() {
     return [
       {
@@ -17,6 +16,7 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+
   images: {
     remotePatterns: [
       {
@@ -33,6 +33,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb', // Adjust as needed
+      maxDuration: 60, // Adjust as needed
+    },
+  },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
+
+
+

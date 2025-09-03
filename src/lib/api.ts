@@ -10,6 +10,7 @@ export const API_BASE = RAW_BASE.replace(/\/+$/, ''); // remove trailing slash(e
 // Backwards-compatible alias used in older code
 const BASE_URL = API_BASE;
 
+
 // Build a canonical API URL. Call with '/projects' or 'projects' or '/api/projects' — it will return
 // '<API_BASE>/api/projects' with exactly one '/api' prefix.
 export function buildApiUrl(path: string) {
@@ -162,8 +163,8 @@ export async function createTask(projectId: string, taskData: Partial<Task>): Pr
 
 export async function updateTask(projectId: string, taskId: string, taskData: Partial<Task>): Promise<Task> {
   console.log('Updating task of id  ', taskId, 'with data: ', taskData);
-  // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskq
-  return apiFetch<Task>(`/tasks/${projectId}/${taskId}`, {
+  // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId
+  return apiFetch<Task>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${projectId}/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(taskData),
   });

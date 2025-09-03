@@ -7,12 +7,24 @@ StoreFlow is a comprehensive project and store management application built with
 - **Project Management**: Track store launch projects from planning to completion
 - **Store Operations**: Manage operational stores with tasks and improvement tracking
 - **MongoDB Integration**: Seamless support for MongoDB with proper ObjectId handling
+- **Database Authentication**: Secure JWT-based authentication with password hashing
 - **User Management**: Role-based access control (Member, Admin, SuperAdmin)
 - **Task Tracking**: Comprehensive task management across departments
 - **Document Management**: File uploads and document sharing
 - **Real-time Comments**: Discussion threads on projects and improvement points
 
 ## Recent Updates
+
+### Database Authentication Implementation
+Implemented secure JWT-based authentication system with database integration:
+
+- **API Authentication**: Login/logout via `/api/auth/login` and `/api/auth/logout`
+- **Session Management**: JWT tokens stored in browser localStorage
+- **Password Security**: bcrypt hashing for secure password storage
+- **Token Cleanup**: Proper token deletion on logout
+- **Error Handling**: Graceful authentication error management
+
+See [AUTHENTICATION_IMPLEMENTATION.md](AUTHENTICATION_IMPLEMENTATION.md) for detailed information.
 
 ### MongoDB ID Handling Fix
 Fixed the issue where dynamic URLs were getting "undefined" when fetching from MongoDB backend. The solution includes:
@@ -40,7 +52,15 @@ See [docs/mongodb-id-handling.md](docs/mongodb-id-handling.md) for detailed info
 3. **Set up environment variables**
    ```bash
    cp .env.local.example .env.local
-   # Edit .env.local with your MongoDB connection string
+   # Edit .env.local with your configuration:
+   # MONGODB_URI - MongoDB connection string
+   # JWT_SECRET - Secret key for JWT token signing
+   # JWT_EXPIRES_IN - Token expiration time (e.g., "7d")
+   ```
+
+4. **Set up test users** (optional, for development)
+   ```bash
+   node scripts/setup-test-users.js
    ```
 
 4. **Run the development server**
@@ -49,13 +69,14 @@ See [docs/mongodb-id-handling.md](docs/mongodb-id-handling.md) for detailed info
    ```
 
 5. **Open your browser**
-   Navigate to [http://:8000](http://:8000)
+   Navigate to [http://localhost:8000](http://localhost:8000)
 
 ## Environment Variables
 
 - `MONGODB_URI` - MongoDB connection string
+- `JWT_SECRET` - Secret key for JWT token signing (keep secure!)
+- `JWT_EXPIRES_IN` - Token expiration time (e.g., "7d", "24h")
 - `NEXT_PUBLIC_API_URL` - External backend API URL (defaults to `/api`)
-- Other environment variables as needed
 
 ## Testing
 
@@ -72,8 +93,23 @@ node tests/mongodb/test-api-logic.js
 node tests/mongodb/mongodb-demo.js
 ```
 
+Test the authentication system:
+
+```bash
+# Test authentication modules
+node scripts/test-auth.js
+
+# Test API endpoints (requires server running)
+node scripts/test-api.js
+```
+
 ## API Routes
 
+### Authentication
+- `/api/auth/login` - User authentication endpoint
+- `/api/auth/logout` - Session termination endpoint
+
+### Data Management
 - `/api/projects` - Project management endpoints
 - `/api/stores` - Store management endpoints  
 - `/api/tasks` - Task management endpoints
@@ -85,8 +121,8 @@ Each endpoint supports both MongoDB ObjectIds and simple string IDs for backward
 
 - **Frontend**: Next.js with TypeScript
 - **Database**: MongoDB with ObjectId support
+- **Authentication**: JWT-based with bcrypt password hashing
 - **Styling**: Tailwind CSS with Radix UI components
-- **Authentication**: Firebase Auth integration
 - **State Management**: React hooks and context
 
 ## Contributing

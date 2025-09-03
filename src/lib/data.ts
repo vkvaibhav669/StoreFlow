@@ -1,5 +1,3 @@
-
-
 import type { StoreProject, Task, DocumentFile, Milestone, MarketingCampaign, Comment, ApprovalRequest, ApprovalStatus, StoreItem, ImprovementPoint, Blocker, Department, DepartmentDetails, StoreTask, TaskPriority, User, ProjectMember } from '@/types';
 import { format, addDays as dateFnsAddDays } from 'date-fns';
 
@@ -107,7 +105,7 @@ export let mockProjects: StoreProject[] = [
     updatedAt: "2025-07-07T07:43:37.849Z"
   },
   {
-    id: "project-2", 
+    id: "project-2",
     name: "Delhi Store Launch",
     location: "Delhi, India",
     status: "Execution",
@@ -164,7 +162,7 @@ export let mockStores: StoreItem[] = [
   },
   {
     id: "store-2",
-    name: "Delhi South Store", 
+    name: "Delhi South Store",
     location: "Delhi, India",
     type: "FOFO",
     status: "Operational",
@@ -175,14 +173,14 @@ export let mockStores: StoreItem[] = [
   }
 ];
 
-export let mockApprovalRequests: ApprovalRequest[] = [];
+//export let mockApprovalRequests: ApprovalRequest[] = [];
 
 
 // --- Synchronous Data Functions ---
 
 export async function getAllProjects(): Promise<StoreProject[]> {
   try {
-    const response = await fetch('/api/projects');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -199,7 +197,7 @@ export async function updateProject(id: string, projectData: Partial<StoreProjec
   // Note: The request specified an endpoint of `/api/stores/:id`, but `/api/projects/:id` is being used
   // for consistency with other project-related functions in this file (e.g., getProjectById).
   try {
-    const response = await fetch(`/api/projects/${id}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -225,7 +223,7 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
   }
   
   try {
-    const response = await fetch(`/api/projects/${id}`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -280,7 +278,7 @@ export async function updateTaskInProject(projectId: string, taskId: string, tas
   try {
     // The API endpoint should ideally be something like `/api/projects/:projectId/tasks/:taskId`
     // or `/api/tasks/:taskId` if tasks are globally unique. /api/tasks/:projectId/:taskId
-    const response = await fetch(`/api/tasks/${projectId}/${taskId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/tasks/${projectId}/${taskId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -329,90 +327,102 @@ export function addDocumentToProject(projectId: string, documentData: FormData):
   return newDoc;
 }
 
-export function addCommentToProject(projectId: string, commentData: Partial<Comment>): Comment {
-  const project = mockProjects.find(p => p.id === projectId);
-  if (!project) throw new Error("Project not found for adding comment");
-  const newComment: Comment = {
-    id: `cmt-${Date.now()}`,
-    _id: `cmt-${Date.now()}`,
-    author: commentData.author || 'Anonymous',
-    addedByName: commentData.addedByName || commentData.author || 'Anonymous',
-    addedById: commentData.addedById,
-    timestamp: commentData.timestamp || new Date().toISOString(),
-    addedAt: commentData.addedAt || commentData.timestamp || new Date().toISOString(),
-    text: commentData.text || '',
-    avatarUrl: commentData.avatarUrl || `https://placehold.co/40x40.png?text=${(commentData.author || 'A').substring(0,1)}`,
-    replies: [],
-  };
-  project.comments = [newComment, ...(project.comments || [])];
-  return newComment;
-}
+export async function addCommentToProject(projectId: string, commentData: Partial<Comment>): Promise<Comment> {
+  console.log('addCommentToProject called with projectId:', projectId);
 
-export function addReplyToProjectComment(projectId: string, commentId: string, replyData: Partial<Comment>): Comment {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project || !project.comments) throw new Error("Project or comments not found");
-
-    const findAndAddReply = (comments: Comment[]): Comment | undefined => {
-        for (let comment of comments) {
-            const currentCommentId = comment.id || comment._id;
-            if (currentCommentId === commentId) {
-                const newReply: Comment = {
-                    id: `rply-${Date.now()}`,
-                    _id: `rply-${Date.now()}`,
-                    author: replyData.author || 'Anonymous',
-                    addedByName: replyData.addedByName || replyData.author || 'Anonymous',
-                    addedById: replyData.addedById,
-                    timestamp: replyData.timestamp || new Date().toISOString(),
-                    addedAt: replyData.addedAt || replyData.timestamp || new Date().toISOString(),
-                    text: replyData.text || '',
-                    avatarUrl: replyData.avatarUrl || `https://placehold.co/40x40.png?text=${(replyData.author || 'A').substring(0,1)}`,
-                    replies: [],
-                };
-                comment.replies = [newReply, ...(comment.replies || [])];
-                return comment; // Return the updated parent comment
-            }
-            if (comment.replies && comment.replies.length > 0) {
-                const updatedParent = findAndAddReply(comment.replies);
-                if (updatedParent) return comment; // Propagate the top-level parent that was modified
-            }
-        }
-        return undefined;
-    };
-    const updatedParentComment = findAndAddReply(project.comments);
-    if (!updatedParentComment) throw new Error("Parent comment not found to add reply");
-    return updatedParentComment; // Return the top-level comment that contained the reply
-}
-
-export function addMemberToProject(projectId: string, memberData: { email: string; name: string; roleInProject: string; department?: Department; avatarSeed?:string; isProjectHod: boolean }): ProjectMember {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project) throw new Error("Project not found for adding member");
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commentData),
+    });
     
-    const existingMember = project.members?.find((m: ProjectMember) => m.email === memberData.email);
-    if (existingMember) throw new Error("Member already exists in this project.");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
 
-    const newMember: ProjectMember = {
-      email: memberData.email,
-      name: memberData.name,
-      roleInProject: memberData.roleInProject,
-      department: memberData.department,
-      avatarSeed: memberData.avatarSeed || memberData.name.split(' ').map(n=>n[0]).join('').toLowerCase(),
-      isProjectHod: memberData.isProjectHod,
-    };
-    project.members = [...(project.members || []), newMember];
-    return newMember;
+    return await response.json();
+  } catch (error) {
+    console.error(`Error adding comment to project ${projectId}:`, error);
+    throw error;
+  }
 }
 
-export function removeMemberFromProject(projectId: string, memberEmail: string): void {
-    const project = mockProjects.find(p => p.id === projectId);
-    if (!project || !project.members) throw new Error("Project or members list not found");
-    project.members = project.members.filter(m => m.email !== memberEmail);
+export async function addReplyToProjectComment(projectId: string, commentId: string, replyData: Partial<Comment>): Promise<Comment> {
+  console.log('addReplyToProjectComment called with projectId:', projectId, 'and commentId:', commentId);
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectId}/comments/${commentId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(replyData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error adding reply to comment ${commentId} in project ${projectId}:`, error);
+    throw error;
+  }
+}
+
+export async function addMemberToProject(projectId: string, memberData: { email: string; name: string; roleInProject: string; department?: Department; avatarSeed?:string; isProjectHod: boolean }): Promise<ProjectMember> {
+    console.log(`addMemberToProject called for project: ${projectId}`);
+    
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(memberData),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error(`Error adding member to project ${projectId}:`, error);
+        throw error;
+    }
+}
+
+export async function removeMemberFromProject(projectId: string, memberEmail: string): Promise<void> {
+    console.log(`removeMemberFromProject called for project: ${projectId} and member: ${memberEmail}`);
+
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectId}/members/${memberEmail}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+    } catch (error) {
+        console.error(`Error removing member ${memberEmail} from project ${projectId}:`, error);
+        throw error;
+    }
 }
 
 
 // --- Store Functions ---
 export async function getAllStores(): Promise<StoreItem[]> {
   try {
-    const response = await fetch('/api/stores');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -433,7 +443,7 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
   
   try {
-    const response = await fetch(`/api/stores/${id}`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`); // api/stores/:id
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -448,10 +458,29 @@ export async function getStoreById(id: string): Promise<StoreItem | undefined> {
   }
 }
 
-export function updateStore(id: string, storeData: Partial<StoreItem>): StoreItem {
-  // This function should use API calls in production
-  console.warn(`updateStore called for ${id} - implement proper API call`);
-  throw new Error("Store update not implemented - use API");
+export async function updateStore(id: string, storeData: Partial<StoreItem>): Promise<StoreItem> {
+  if (!id || id.trim() === '') {
+    throw new Error('Invalid store ID provided.');
+  }
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stores/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(storeData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating store with id ${id}:`, error);
+    throw error;
+  }
 }
 
 export function createStore(storeData: Partial<StoreItem>): StoreItem {
@@ -461,7 +490,7 @@ export function createStore(storeData: Partial<StoreItem>): StoreItem {
 }
 
 export async function addImprovementPointToStore(storeId: string, pointData: Partial<ImprovementPoint>): Promise<ImprovementPoint> {
-   console.log(storeId, pointData);   
+   console.log(storeId, pointData);    
   const store = await getStoreById(storeId);
     if (!store) throw new Error("Store not found");
     const newPoint: ImprovementPoint = {

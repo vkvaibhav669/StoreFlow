@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -233,6 +232,7 @@ export default function ProjectDetailsPage() {
   const [isRemovingMember, setIsRemovingMember] = React.useState(false);
   const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string, role?: UserRole } | null>(null);
 
+
   const fetchProject = React.useCallback(async () => {
     if (!projectId) return;
     setCommentsLoading(true);
@@ -266,6 +266,7 @@ export default function ProjectDetailsPage() {
     }
   }, [projectId]);
 
+
   React.useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -279,6 +280,27 @@ export default function ProjectDetailsPage() {
     fetchProject();
   }, [projectId, user, authLoading, router, fetchProject]);
 
+  // Fetch files from API when projectData.id changes
+  React.useEffect(() => {
+    if (!projectData?.id) return;
+    setFilesLoading(true);
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/documents`)
+      .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
+      .then(data => setProjectFiles(data))
+      .catch(() => setProjectFiles([]))
+      .finally(() => setFilesLoading(false));
+  }, [projectData?.id]);
+
+  // Fetch comments from API when projectData.id changes
+  React.useEffect(() => {
+    if (!projectData?.id) return;
+    setDbCommentsLoading(true);
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/comments`)
+      .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch comments"))
+      .then(data => setDbComments(data))
+      .catch(() => setDbComments([]))
+      .finally(() => setDbCommentsLoading(false));
+  }, [projectData?.id]);
 
   const currentUserRole = user?.role;
   const isUserSuperAdmin = currentUserRole === 'SuperAdmin';
@@ -412,7 +434,7 @@ export default function ProjectDetailsPage() {
     if (!projectData || !user) return;
 
     setIsSubmittingDocument(true);
-    const formData = new FormData(); 
+    const formData = new FormData();
     formData.append('file', newDocumentFile);
     formData.append('name', newDocumentName);
     formData.append('type', newDocumentType);
@@ -421,9 +443,11 @@ export default function ProjectDetailsPage() {
     formData.append('hodOnly', String(newDocumentHodOnly));
 
     try {
+
       const addedDocument = addDocumentToProject(projectData.id, formData);
       // Refresh project data asynchronously
       await fetchProject();
+
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
       setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
       setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
@@ -461,7 +485,7 @@ export default function ProjectDetailsPage() {
   const handleReplyToComment = async (commentId: string, replyText: string) => {
       if (!projectData || !user || !replyText.trim()) return;
       setIsSubmittingComment(true);
-
+    
       const replyPayload: Partial<Comment> = {
           author: user.name || user.email || "Anonymous User",
           addedByName: user.name || user.email || "Anonymous User",
@@ -1042,7 +1066,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                   <Label htmlFor="taskPriority" className="sm:text-right">Priority</Label>
                   <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as TaskPriority)} disabled={isSubmittingTask}>
                     <SelectTrigger className="sm:col-span-3"><SelectValue placeholder="Select priority" /></SelectTrigger>
-                    <SelectContent>{allPossibleTaskPriorities.map(prio => <SelectItem key={prio} value={prio}>{prio}</SelectItem>)}</SelectContent>
+                    <SelectContent>{allPossibleTaskPriorities.map((prio) => (<SelectItem key={prio} value={prio}>{prio}</SelectItem>))}<SelectItem value="None">None</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-x-4 gap-y-2">
@@ -1219,6 +1243,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
           </Card>
         </TabsContent>
 
+
+
         <TabsContent value="timeline" className="mt-4">
           <Card>
             <CardHeader><CardTitle id="project-timeline-heading">Project Milestones &amp; Timeline</CardTitle><CardDescription>Key dates and progress over the {projectData.projectTimeline?.totalDays}-day plan.</CardDescription></CardHeader>
@@ -1251,14 +1277,48 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
 
         <TabsContent value="comments" className="mt-4">
           <Card>
-            <CardHeader><CardTitle id="project-comments-heading">Project Discussion ({projectComments.length})</CardTitle><CardDescription>Share updates, ask questions, and collaborate.</CardDescription></CardHeader>
+            <CardHeader>
+              <CardTitle id="project-comments-heading">
+                Project Discussion ({dbComments.length})
+              </CardTitle>
+              <CardDescription>Share updates, ask questions, and collaborate.</CardDescription>
+            </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-start space-x-3">
-                <Avatar className="h-10 w-10 mt-1 flex-shrink-0"><AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/><AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                <div className="flex-1"><Textarea placeholder="Write a comment..." value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)} className="mb-2" rows={3} disabled={isSubmittingComment}/><div className="flex justify-end"><Button onClick={handleAddComment} disabled={!newCommentText.trim() || isSubmittingComment}>{isSubmittingComment ? "Posting..." : "Post Comment"}</Button></div></div>
+                <Avatar className="h-10 w-10 mt-1 flex-shrink-0">
+                  <AvatarImage src={`https://picsum.photos/seed/${user?.id || 'currentUser'}/40/40`} alt={user?.name || "Current User"} data-ai-hint="user avatar"/>
+                  <AvatarFallback>{(user?.name || user?.email || "CU").substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Textarea
+                    placeholder="Write a comment..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    className="mb-2"
+                    rows={3}
+                    disabled={isSubmittingComment}
+                  />
+                  <div className="flex justify-end">
+                    <Button onClick={handleAddComment} disabled={!newCommentText.trim() || isSubmittingComment}>
+                      {isSubmittingComment ? "Posting..." : "Post Comment"}
+                    </Button>
+                  </div>
+                </div>
               </div>
-              {commentsLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading comments...</p>}
-              {projectComments.length > 0 ? (<div className="space-y-0">{projectComments.map((comment, index) => (<CommentCard key={comment.id || comment._id || index} comment={comment} onReply={handleReplyToComment} />))}</div>) : (!commentsLoading && <p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>)}
+              {dbCommentsLoading && (
+                <p className="text-sm text-muted-foreground text-center py-8">Loading comments...</p>
+              )}
+              {dbComments.length > 0 ? (
+                <div className="space-y-0">
+                  {dbComments.map((comment, index) => (
+                    <CommentCard key={comment.id || comment._id || index} comment={comment} onReply={handleReplyToComment} />
+                  ))}
+                </div>
+              ) : (
+                !dbCommentsLoading && (
+                  <p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>
+                )
+              )}
             </CardContent>
           </Card>
         </TabsContent>
