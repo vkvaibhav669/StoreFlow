@@ -239,9 +239,31 @@ export async function getProjectById(id: string): Promise<StoreProject | undefin
 }
 
 export function createProject(projectData: Partial<StoreProject>): StoreProject {
-  // This function should use API calls in production
-  console.warn('createProject called - implement proper API call');
-  throw new Error("Project creation not implemented - use API");
+  const newProject: StoreProject = {
+    id: `project-${Date.now()}`,
+    name: projectData.name || "Unnamed Project",
+    location: projectData.location || "Unspecified Location",
+    status: projectData.status || "Planning",
+    startDate: projectData.startDate || formatDate(new Date()),
+    projectedLaunchDate: projectData.projectedLaunchDate || formatDate(addDays(new Date(), 90)),
+    currentProgress: 0,
+    isUpcoming: projectData.isUpcoming || false,
+    franchiseType: projectData.franchiseType,
+    propertyDetails: projectData.propertyDetails,
+    projectTimeline: projectData.projectTimeline || { totalDays: 90, currentDay: 0, kickoffDate: formatDate(new Date())},
+    tasks: [],
+    members: projectData.members || [],
+    documents: [],
+    comments: [],
+    milestones: [],
+    blockers: [],
+    discussion: [],
+    departments: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  mockProjects.unshift(newProject);
+  return newProject;
 }
 
 export function addTaskToProject(projectId: string, taskData: Partial<Task>): Task {

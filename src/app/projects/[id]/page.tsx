@@ -10,14 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   addDocumentToProject,
-  addCommentToProject,
   addReplyToProjectComment,
   addMemberToProject,
   removeMemberFromProject,
   mockHeadOfficeContacts
 } from "@/lib/data";
-import { getProjectById, updateProject, createTask, updateTask } from "@/lib/api";
-import { useProjectComments, useTaskComments } from "@/hooks/useComments";
+import { getProjectById, updateProject, createTask, updateTask, addProjectComment, getAllUsers } from "@/lib/api";
+import { useTaskComments } from "@/hooks/useComments";
 import type { Task, DocumentFile, Comment, StoreProject, Department, DepartmentDetails, TaskPriority, User, StoreType, Milestone, Blocker, ProjectMember, UserRole } from "@/types";
 import { ArrowLeft, CalendarDays, CheckCircle, FileText, Landmark, Milestone as MilestoneIcon, Paintbrush, Paperclip, PlusCircle, Target, Users as UsersIcon, Volume2, Clock, UploadCloud, MessageSquare, ShieldCheck, ListFilter, Building, ExternalLink, Edit, Trash2, AlertTriangle, GripVertical, Eye, EyeOff, UserPlus, UserX, Crown, Lock } from "lucide-react";
 import Link from "next/link";
@@ -156,16 +155,9 @@ export default function ProjectDetailsPage() {
   const router = useRouter();
   
   const [projectData, setProjectData] = React.useState<StoreProject | null>(null);
+  const [commentsLoading, setCommentsLoading] = React.useState(false);
   const [newCommentText, setNewCommentText] = React.useState("");
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
-
-  // Use the new real-time comment hook
-  const { 
-    comments: projectComments, 
-    isLoading: commentsLoading, 
-    addComment: addProjectComment,
-    error: commentsError 
-  } = useProjectComments(projectData?.id || null);
 
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
@@ -185,6 +177,7 @@ export default function ProjectDetailsPage() {
   const [newDocumentHodOnly, setNewDocumentHodOnly] = React.useState(false);
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
   
   // Task comment hooks for the selected task (must be after selectedTask is declared)
   const { 
@@ -192,7 +185,7 @@ export default function ProjectDetailsPage() {
     isLoading: taskCommentsLoading, 
     addComment: addTaskComment,
     error: taskCommentsError 
-  } = useTaskComments(selectedTask?.id || null);
+  } = useTaskComments(projectId, selectedTask?.id || null);
   const [isViewTaskDialogOpen, setIsViewTaskDialogOpen] = React.useState(false);
   const [isUpdatingTask, setIsUpdatingTask] = React.useState(false);
   const [editingTaskStatus, setEditingTaskStatus] = React.useState<Task['status'] | "">("");
@@ -239,56 +232,53 @@ export default function ProjectDetailsPage() {
   const [isRemovingMember, setIsRemovingMember] = React.useState(false);
   const [memberToRemoveInfo, setMemberToRemoveInfo] = React.useState<{ email: string, name: string, role?: UserRole } | null>(null);
 
-  // Add state for files and loading
-  const [projectFiles, setProjectFiles] = React.useState<DocumentFile[]>([]);
-  const [filesLoading, setFilesLoading] = React.useState(false);
 
-  // Add state for comments and loading
-  const [dbComments, setDbComments] = React.useState<Comment[]>([]);
-  const [dbCommentsLoading, setDbCommentsLoading] = React.useState(false);
+  const fetchProject = React.useCallback(async () => {
+    if (!projectId) return;
+    setCommentsLoading(true);
+    try {
+      const [currentProject, users] = await Promise.all([
+        getProjectById(projectId),
+        getAllUsers(),
+      ]);
+
+      if (currentProject) {
+          setProjectData(currentProject);
+          setAllUsers(users); // Store all users
+          setEditingProjectForm({
+              name: currentProject.name, location: currentProject.location, status: currentProject.status,
+              startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
+              projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
+              franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
+          });
+          setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
+          setEditingTimelineForm(currentProject.projectTimeline || {});
+          setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
+          setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
+      } else {
+          notFound(); // Project with this ID not found
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      notFound(); // Handle fetch errors by showing not found
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [projectId]);
+
 
   React.useEffect(() => {
     if (authLoading) return;
-
     if (!user) {
       router.replace("/auth/signin");
       return;
     }
-
     if (!projectId) {
-      // This might happen if the URL is malformed or ID is not a string
       notFound();
       return;
     }
-
-    // Fetch project data asynchronously
-    const fetchProject = async () => {
-      try {
-        const currentProject = await getProjectById(projectId);
-        if (currentProject) {
-            setProjectData(currentProject);
-            // Comments are now handled by the useProjectComments hook
-            setEditingProjectForm({
-                name: currentProject.name, location: currentProject.location, status: currentProject.status,
-                startDate: currentProject.startDate ? utilFormatDate(new Date(currentProject.startDate)) : "",
-                projectedLaunchDate: currentProject.projectedLaunchDate ? utilFormatDate(new Date(currentProject.projectedLaunchDate)) : "",
-                franchiseType: currentProject.franchiseType, threeDRenderUrl: currentProject.threeDRenderUrl,
-            });
-            setEditingPropertyDetailsForm(currentProject.propertyDetails || {});
-            setEditingTimelineForm(currentProject.projectTimeline || {});
-            setEditingMilestones(currentProject.milestones ? currentProject.milestones.map(m => ({...m})) : []);
-            setEditingBlockers(currentProject.blockers ? currentProject.blockers.map(b => ({...b})) : []);
-        } else {
-            notFound(); // Project with this ID not found
-        }
-      } catch (error) {
-        console.error('Error fetching project:', error);
-        notFound(); // Handle fetch errors by showing not found
-      }
-    };
-
     fetchProject();
-  }, [projectId, user, authLoading, router]);
+  }, [projectId, user, authLoading, router, fetchProject]);
 
   // Fetch files from API when projectData.id changes
   React.useEffect(() => {
@@ -415,8 +405,7 @@ export default function ProjectDetailsPage() {
     try {
       const addedTask = await createTask(projectData.id, newTaskPayload);
       // Refresh project data asynchronously
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Task Added", description: `Task "${addedTask.name}" has been added.` });
       setNewTaskName(""); setNewTaskDepartment(""); setNewTaskDescription("");
       setNewTaskDueDate(""); setNewTaskAssignedTo(""); setNewTaskPriority("Medium");
@@ -454,26 +443,11 @@ export default function ProjectDetailsPage() {
     formData.append('hodOnly', String(newDocumentHodOnly));
 
     try {
-      // --- API call to POST /api/projects/:id/documents ---
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectData.id}/documents`, {
-        method: "POST",
-        body: formData,
-      });
 
-      console.log(formData);
-      console.log("Adding document to project:", projectData.id);
-      console.log("Response from document upload:", response);
+      const addedDocument = addDocumentToProject(projectData.id, formData);
+      // Refresh project data asynchronously
+      await fetchProject();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to add document.' }));
-        throw new Error(errorData.message);
-      }
-      const addedDocument = await response.json();
-      // Refresh files list after upload
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/${projectData.id}/documents`)
-        .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
-        .then(data => setProjectFiles(data))
-        .catch(() => setProjectFiles([]));
       toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
       setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
       setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
@@ -495,7 +469,8 @@ export default function ProjectDetailsPage() {
         authorId: user.id || user.email,
       };
       try {
-        await addProjectComment(commentPayload);
+        await addProjectComment(projectData.id, commentPayload);
+        await fetchProject(); // Refetch the project to get all updates
         toast({ title: "Comment Posted", description: "Your comment has been added." });
         setNewCommentText("");
       } catch (error) {
@@ -524,9 +499,7 @@ export default function ProjectDetailsPage() {
 
       try {
           addReplyToProjectComment(projectData.id, commentId, replyPayload);
-          const updatedProject = await getProjectById(projectData.id);
-          setProjectData(updatedProject || null);
-          // Comments are now handled by the real-time hook
+          await fetchProject(); // Refetch the project to get all updates
           toast({ title: "Reply Posted", description: "Your reply has been added." });
       } catch (error) {
           console.error("Error posting reply:", error);
@@ -549,8 +522,7 @@ export default function ProjectDetailsPage() {
   const handleUpdateTaskDetails = async () => {
     if (!selectedTask || !projectData || !user) return;
     const taskIdToUpdate = selectedTask._id || selectedTask.id;
-    console.log(selectedTask);
-    // 1. Permission Check for members trying to change department or priority
+
     if (isUserMember) {
         const departmentChanged = (editingSelectedTaskDepartment as Department || selectedTask.department) !== selectedTask.department;
         const priorityChanged = (editingSelectedTaskPriority as TaskPriority || selectedTask.priority || "Medium") !== (selectedTask.priority || "Medium");
@@ -560,10 +532,12 @@ export default function ProjectDetailsPage() {
         }
     }
 
+    if (!isUserAdmin && !isUserSuperAdmin && editingTaskAssignedTo !== (selectedTask.assignedTo || "")) {
+      toast({ title: "Permission Denied", description: "Only Admins can change task assignee.", variant: "destructive" });
+      return;
+    }
+    
     setIsUpdatingTask(true);
-    // 1. Validate the task ID format
-  
-    // 2. Prepare the payload with the updated data from the dialog form
     const taskUpdatePayload: Partial<Task> = {
       status: (editingTaskStatus as Task['status']) || selectedTask.status,
       assignedTo: editingTaskAssignedTo || selectedTask.assignedTo,
@@ -572,15 +546,8 @@ export default function ProjectDetailsPage() {
     };
 
     try {
-      // 3. Invoke the PUT API call using the projectId and taskId.
-      // The `updateTask` function is imported from `lib/api.ts` and handles the fetch request.      
       await updateTask(projectData.id, taskIdToUpdate , taskUpdatePayload);
-      // 4. Re-fetch the entire project to ensure the UI is perfectly in sync with the database.
-      // This is a robust strategy that ensures any changes to the task (e.g., status, department)
-      // are reflected correctly across all components on the page (progress bars, department cards, etc.).
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
-      setSelectedTask(refreshedProject?.tasks.find(t => t.id === selectedTask.id) || null);
+      await fetchProject();
       toast({ title: "Task Updated", description: `Task "${selectedTask.name}" has been updated.` });
       setIsViewTaskDialogOpen(false);
     } catch (error) {
@@ -655,10 +622,9 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         if (!addReplyFn(taskToUpdate.comments)) throw new Error("Parent comment for reply not found");
 
         updateProject(projectData.id, projectToUpdate);
-        const updatedProject = await getProjectById(projectData.id);
-        setProjectData(updatedProject || null);
+        await fetchProject();
         if (selectedTask && selectedTask.id === taskId) {
-            setSelectedTask(updatedProject?.tasks.find(t => t.id === taskId) || null);
+            setSelectedTask(projectToUpdate?.tasks.find(t => t.id === taskId) || null);
         }
         toast({ title: "Reply Posted", description: "Your reply has been added." });
     } catch (error) {
@@ -784,8 +750,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     
     try {
         updateProject(currentProject.id, { blockers: currentProject.blockers });
-        const refreshedProject = await getProjectById(currentProject.id);
-        setProjectData(refreshedProject || null);
+        await fetchProject();
         toast({ title: "Blocker Status Updated", description: `Blocker resolution status has been changed.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to update blocker status.", variant: "destructive" });
@@ -800,8 +765,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     const updatedBlockers = (currentProject.blockers || []).filter(b => b.id !== blockerId);
     try {
         updateProject(currentProject.id, { blockers: updatedBlockers });
-        const refreshedProject = await getProjectById(currentProject.id);
-        setProjectData(refreshedProject || null);
+        await fetchProject();
         toast({ title: "Blocker Removed", description: `The blocker has been removed from the project.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to remove blocker.", variant: "destructive" });
@@ -825,8 +789,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     };
     try {
       addMemberToProject(projectData.id, memberPayload);
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Member Added", description: `${memberPayload.name} has been added to the project.` });
       setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false);
       setIsAddMemberDialogOpen(false);
@@ -843,8 +806,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     setIsRemovingMember(true);
     try {
       await removeMemberFromProject(projectData.id, memberToRemoveInfo.email);
-      const refreshedProject = await getProjectById(projectData.id);
-      setProjectData(refreshedProject || null);
+      await fetchProject();
       toast({ title: "Member Removed", description: `${memberToRemoveInfo.name} has been removed from the project.` });
       setMemberToRemoveInfo(null); setIsConfirmRemoveMemberDialogOpen(false); 
     } catch (error) {
@@ -868,6 +830,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     return Math.round((completedTasks / tasks.length) * 100);
   };
+
+  const projectComments = projectData.discussion || projectData.comments || [];
 
   return (
     <section className="project-details-content flex flex-col gap-6" aria-labelledby="project-details-heading">
@@ -1091,7 +1055,12 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskAssignedTo" className="sm:text-right">Assign To</Label>
-                  <Input id="taskAssignedTo" value={newTaskAssignedTo} onChange={(e) => setNewTaskAssignedTo(e.target.value)} className="sm:col-span-3" placeholder="e.g. Priya Sharma" disabled={isSubmittingTask}/>
+                  <Select value={newTaskAssignedTo} onValueChange={setNewTaskAssignedTo} disabled={isSubmittingTask}>
+                      <SelectTrigger className="sm:col-span-3"><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                      <SelectContent>
+                          {allUsers.map(u => (<SelectItem key={u.id} value={u.name}>{u.name} ({u.email})</SelectItem>))}
+                      </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskPriority" className="sm:text-right">Priority</Label>
@@ -1230,108 +1199,12 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="departments">
-        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3 md:grid-cols-6">
-          <TabsTrigger value="departments">Departments</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
+      <Tabs defaultValue="tasks">
+        <TabsList className="grid w-full grid-cols-1 h-auto sm:h-10 sm:grid-cols-3">
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
-          {!isUserMember && <TabsTrigger value="files">Files</TabsTrigger>}
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="comments">Discussion</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="departments" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {departments.property && <DepartmentCard title="Property Team" icon={Landmark} tasks={departments.property.tasks || []} notes={departments.property.notes} onClick={() => handleOpenDepartmentDialog('Property Team', 'Property', departments.property?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Property')} />}
-            {departments.project && <DepartmentCard title="Project Team" icon={Target} tasks={departments.project.tasks || []} notes={departments.project.notes} onClick={() => handleOpenDepartmentDialog('Project Team', 'Project', departments.project?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Project')}>
-                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Project')) && projectData.threeDRenderUrl && (
-                  <div className="my-2">
-                    <p className="text-xs font-medium mb-1">3D Store Visual:</p>
-                    <a href={projectData.threeDRenderUrl} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
-                        <Image src={projectData.threeDRenderUrl} alt="3D Store Render" width={300} height={200} className="rounded-md object-cover w-full aspect-video" data-ai-hint="store render"/>
-                    </a>
-                  </div>
-                )}
-              </DepartmentCard>}
-            {departments.merchandising && <DepartmentCard title="Merchandising Team" icon={Paintbrush} tasks={departments.merchandising.tasks || []} notes={departments.merchandising.virtualPlanUrl ? `Virtual Plan: ${departments.merchandising.virtualPlanUrl}` : undefined} onClick={() => handleOpenDepartmentDialog('Merchandising Team', 'Merchandising', departments.merchandising?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Merchandising')} />}
-            {departments.hr && <DepartmentCard title="HR Team" icon={UsersIcon} tasks={departments.hr.tasks || []} notes={departments.hr.recruitmentStatus} onClick={() => handleOpenDepartmentDialog('HR Team', 'HR', departments.hr?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'HR')}>
-                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'HR')) && departments.hr.totalNeeded && (
-                  <p className="text-xs text-muted-foreground">Staff: {departments.hr.staffHired || 0} / {departments.hr.totalNeeded} hired</p>
-                )}
-              </DepartmentCard>}
-            {departments.marketing && <DepartmentCard title="Marketing Team" icon={Volume2} tasks={departments.marketing.tasks || []} onClick={() => handleOpenDepartmentDialog('Marketing Team', 'Marketing', departments.marketing?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Marketing')}>
-                {!(isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'Marketing')) && departments.marketing.preLaunchCampaigns && departments.marketing.preLaunchCampaigns.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs font-medium mb-1">Pre-Launch Campaigns:</p>
-                    <ul className="space-y-0.5 text-xs">
-                      {departments.marketing.preLaunchCampaigns.slice(0, 2).map(c => <li key={c.id}>{c.name} ({c.status})</li>)}
-                      {departments.marketing.preLaunchCampaigns.length > 2 && <li>+{departments.marketing.preLaunchCampaigns.length - 2} more</li>}
-                    </ul>
-                  </div>
-                )}
-              </DepartmentCard>}
-            {departments.it && <DepartmentCard title="IT Team" icon={MilestoneIcon} tasks={departments.it.tasks || []} notes={departments.it.notes} onClick={() => handleOpenDepartmentDialog('IT Team', 'IT', departments.it?.tasks)} isLockedForCurrentUser={isUserMember && (!currentUserProjectMembership || currentUserProjectMembership.department !== 'IT')} />}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="members" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle id="project-members-heading">Project Members ({projectData.members?.length || 0})</CardTitle>
-                <CardDescription>Team members assigned to this project.</CardDescription>
-              </div>
-              {canEditProject && (
-                 <Dialog open={isAddMemberDialogOpen} onOpenChange={(isOpen) => {
-                    setIsAddMemberDialogOpen(isOpen);
-                    if (!isOpen) { setSelectedNewMemberEmail(""); setNewMemberRoleInProject(""); setNewMemberIsProjectHod(false); }
-                 }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" disabled={isAddingMember}><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader><DialogTitle>Add Project Member</DialogTitle><DialogDescription>Select a person and assign their role.</DialogDescription></DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="select-member">Select Person</Label>
-                        <Select value={selectedNewMemberEmail} onValueChange={setSelectedNewMemberEmail} disabled={isAddingMember}>
-                          <SelectTrigger id="select-member"><SelectValue placeholder="Choose a person" /></SelectTrigger>
-                          <SelectContent>
-                            {availableMembersToAdd.length > 0 ? (
-                              availableMembersToAdd.map(person => (<SelectItem key={person.email} value={person.email}>{person.name} ({person.department})</SelectItem>))
-                            ) : (<div className="p-2 text-sm text-muted-foreground text-center">No unassigned contacts.</div>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2"><Label htmlFor="member-role">Role in Project</Label><Input id="member-role" value={newMemberRoleInProject} onChange={(e) => setNewMemberRoleInProject(e.target.value)} placeholder="e.g., Lead Developer" disabled={isAddingMember}/></div>
-                      <div className="flex items-center space-x-2"><Checkbox id="member-is-hod" checked={newMemberIsProjectHod} onCheckedChange={(checked) => setNewMemberIsProjectHod(!!checked)} disabled={isAddingMember}/><Label htmlFor="member-is-hod" className="text-sm font-normal text-muted-foreground">Assign HOD rights</Label></div>
-                    </div>
-                    <DialogFooter><DialogClose asChild><Button variant="outline" disabled={isAddingMember}>Cancel</Button></DialogClose><Button onClick={handleAddProjectMember} disabled={!selectedNewMemberEmail || isAddingMember}>{isAddingMember ? "Adding..." : "Add Member"}</Button></DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </CardHeader>
-            <CardContent>
-              {(projectData.members && projectData.members.length > 0) ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {projectData.members.map(member => (
-                    <Card key={member.email} className="flex flex-col">
-                      <CardHeader className="flex flex-row items-start gap-3 p-4">
-                        <Avatar className="h-12 w-12"><AvatarImage src={`https://picsum.photos/seed/${member.avatarSeed || member.email}/80/80`} alt={member.name} data-ai-hint="person portrait"/><AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{member.name}</CardTitle><CardDescription className="text-xs">{member.email}</CardDescription>
-                          {member.isProjectHod && (<Badge variant="secondary" className="mt-1 text-xs bg-amber-100 text-amber-700 border-amber-300"><Crown className="mr-1 h-3 w-3" /> Project HOD</Badge>)}
-                        </div>
-                        {canManageAnyMember && (<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => openRemoveMemberDialog(member)} aria-label={`Remove ${member.name}`} disabled={isRemovingMember}><UserX className="h-4 w-4" /></Button>)}
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0 flex-grow">{member.roleInProject && <p className="text-sm font-medium text-primary">{member.roleInProject}</p>}{member.department && <p className="text-xs text-muted-foreground">{member.department}</p>}</CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (<p className="text-muted-foreground text-center py-4">No members assigned yet.</p>)}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">
           <Card>
@@ -1370,40 +1243,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
           </Card>
         </TabsContent>
 
-        {!isUserMember && (
-       <TabsContent value="files" className="mt-4">
-  <Card>
-    <CardHeader>
-      <CardTitle id="project-files-heading">Files ({projectFiles.length})</CardTitle>
-      <CardDescription>All project-related files. Click a card to view.</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {filesLoading ? (
-        <p className="text-muted-foreground text-center py-4">Loading files...</p>
-      ) : projectFiles.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {projectFiles.map((doc) => (
-            <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:shadow-lg transition-shadow rounded-lg">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="p-3 pb-1 flex flex-row items-center gap-2">
-                  <Paperclip className="h-4 w-4 text-muted-foreground" />
-                  <CardTitle className="text-base truncate">{doc.name}</CardTitle>
-                  <Badge variant="secondary" className="ml-auto">{doc.type}</Badge>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 flex-1">
-                  <p className="text-xs text-muted-foreground truncate">{doc.uploadedBy}</p>
-                </CardContent>
-              </Card>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-center py-4">No files viewable by you for this project yet.</p>
-      )}
-    </CardContent>
-  </Card>
-</TabsContent>
-        )}
+
 
         <TabsContent value="timeline" className="mt-4">
           <Card>
@@ -1508,7 +1348,12 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 {selectedTask.dueDate && (<div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2"><Label className="sm:text-right text-muted-foreground">Due Date:</Label><div className="sm:col-span-2">{format(new Date(selectedTask.dueDate), "PPP")}</div></div>)}
                 <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-x-4 gap-y-2">
                   <Label htmlFor="taskAssignedToEdit" className="sm:text-right text-muted-foreground">Assigned To:</Label>
-                  <Input id="taskAssignedToEdit" value={editingTaskAssignedTo} onChange={(e) => setEditingTaskAssignedTo(e.target.value)} className="sm:col-span-2" placeholder="Assignee name" disabled={(isUserMember && !( (selectedTask.assignedTo === user?.email || selectedTask.assignedTo === user?.name) || (!selectedTask.assignedTo && currentUserProjectMembership?.department === selectedTask.department) )) || isUpdatingTask}/>
+                  <Select value={editingTaskAssignedTo} onValueChange={setEditingTaskAssignedTo} disabled={isUpdatingTask || !(isUserAdmin || isUserSuperAdmin)}>
+                      <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                      <SelectContent>
+                          {allUsers.map(u => (<SelectItem key={u.id} value={u.name}>{u.name} ({u.email})</SelectItem>))}
+                      </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="mt-6 pt-4 border-t">

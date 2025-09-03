@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { mockProjects } from '@/lib/data';
 import type { Comment } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -166,3 +168,4 @@ export async function POST(
     );
   }
 }
+    

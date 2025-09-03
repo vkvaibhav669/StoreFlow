@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { mockProjects } from '@/lib/data';
 import type { Task } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Extract all tasks from projects
@@ -22,3 +24,5 @@ export async function GET() {
     );
   }
 }
+
+    

@@ -230,7 +230,15 @@ export default function MyStoresPage() {
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={newStoreOpeningDate} onSelect={setNewStoreOpeningDate} initialFocus />
+                                    <Calendar
+                                      mode="single"
+                                      selected={newStoreOpeningDate}
+                                      onSelect={setNewStoreOpeningDate}
+                                      captionLayout="dropdown-buttons"
+                                      fromYear={new Date().getFullYear() - 5}
+                                      toYear={new Date().getFullYear() + 5}
+                                      initialFocus
+                                    />
                                 </PopoverContent>
                             </Popover>
                         </div>

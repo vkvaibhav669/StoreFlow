@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { ThumbsUp, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 
 interface CommentCardProps {
@@ -19,8 +19,6 @@ interface CommentCardProps {
 export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
   const [showReplyForm, setShowReplyForm] = React.useState(false);
   const [replyText, setReplyText] = React.useState("");
-  const [likes, setLikes] = React.useState(Math.floor(Math.random() * 25)); // Random likes for demo
-  const [liked, setLiked] = React.useState(false);
 
   // Handle both old and new comment formats
   const commentId = comment.id || comment._id || '';
@@ -34,11 +32,6 @@ export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
       setShowReplyForm(false);
     }
   };
-
-  const handleLike = () => {
-    setLikes(prevLikes => liked ? prevLikes -1 : prevLikes + 1);
-    setLiked(!liked);
-  }
 
   return (
     <Card className={`mb-4 ${level > 0 ? 'ml-6 shadow-sm' : 'shadow-md'} bg-card`}>
@@ -63,9 +56,6 @@ export function CommentCard({ comment, onReply, level = 0 }: CommentCardProps) {
         </div>
       </CardHeader>
       <CardFooter className="p-4 pt-0 flex items-center space-x-2">
-        <Button variant="ghost" size="sm" onClick={handleLike} className={`text-muted-foreground hover:text-primary ${liked ? 'text-primary' : ''}`}>
-          <ThumbsUp className="mr-1.5 h-3.5 w-3.5" /> {likes} Like{likes !== 1 ? 's' : ''}
-        </Button>
         {onReply && (
         <Button variant="ghost" size="sm" onClick={() => setShowReplyForm(!showReplyForm)} className="text-muted-foreground hover:text-primary">
           <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Reply

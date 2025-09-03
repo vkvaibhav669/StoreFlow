@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { mockStores } from '@/lib/data';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Check if MongoDB is configured
@@ -99,3 +101,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+    

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react"; 
@@ -18,7 +19,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation"; 
-import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase, Globe } from "lucide-react"; 
+import { Bell, Package2, PanelLeft, PanelRight, LogIn, UserPlus, LogOut, Settings, Sun, Moon, Laptop, Palette, Briefcase, Globe, X, UserCog, Languages, ShieldPlus } from "lucide-react"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -27,6 +28,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext"; 
@@ -36,9 +41,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { User, UserRole } from "@/types";
+import type { User, UserRole, Department } from "@/types";
 import type { NavItem } from "@/types/nav";
-
+import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { registerUser } from "@/lib/auth";
 
 interface SidebarNavProps {
   items: NavItem[];
@@ -150,180 +157,132 @@ interface AppNotification {
 
 type Theme = "light" | "dark" | "system" | "blue-theme" | "pink-theme" | "green-theme";
 
-function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
-  // const [selectedLanguage, setSelectedLanguage] = React.useState("en");
-  const { toast } = useToast();
+function AddUserForm({ setDialogOpen }: { setDialogOpen: (open: boolean) => void }) {
+    const { toast } = useToast();
+    const [name, setName] = React.useState('');
+    const [department, setDepartment] = React.useState('');
+    const [email, setEmail] = React.useState('');
+    const [role, setRole] = React.useState<UserRole>('Member');
+    const [isLoading, setIsLoading] = React.useState(false);
 
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedTheme = localStorage.getItem("theme") as Theme | null;
-      const initialTheme = storedTheme || "blue-theme"; 
-      setCurrentTheme(initialTheme);
-      applyTheme(initialTheme);
+    const departments: Department[] = ["Property", "Project", "Merchandising", "HR", "Marketing", "IT", "Finance", "Executive Office", "Operations", "Visual Merchandising"];
+    const roles: UserRole[] = ["Member", "Admin", "SuperAdmin"];
 
-      // const storedLanguage = localStorage.getItem("appLanguage") || "en";
-      // setSelectedLanguage(storedLanguage);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            const response = await fetch('http://3.109.154.71:8000/api/auth/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, role, department, password: "TestAdmin@123" }),
+            });
 
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = () => {
-        if (localStorage.getItem("theme") === "system") { 
-          applyTheme("system");
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to add user');
+            }
+            
+            toast({
+                title: "User Added",
+                description: `Successfully added ${name} to the application.`,
+            });
+            setDialogOpen(false);
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: (error as Error).message,
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoading(false);
         }
-      };
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-  }, []);
+    };
 
-  const applyTheme = (theme: Theme) => {
-    if (typeof window === "undefined") return;
-    const root = window.document.documentElement;
-    root.classList.remove("light", "dark", "theme-blue", "theme-pink", "theme-green");
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required disabled={isLoading} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoading} />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Select value={department} onValueChange={setDepartment} required disabled={isLoading}>
+                    <SelectTrigger><SelectValue placeholder="Select a department" /></SelectTrigger>
+                    <SelectContent>
+                        {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={(value) => setRole(value as UserRole)} required disabled={isLoading}>
+                    <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
+                    <SelectContent>
+                         {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isLoading}>Cancel</Button>
+                <Button type="submit" disabled={isLoading}>{isLoading ? 'Adding...' : 'Add User'}</Button>
+            </div>
+        </form>
+    );
+}
 
-    let effectiveTheme = theme;
-    if (theme === "system") {
-      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      root.classList.add(effectiveTheme);
-    } else if (theme === "blue-theme") {
-      root.classList.add("theme-blue");
-    } else if (theme === "pink-theme") {
-      root.classList.add("theme-pink");
-    } else if (theme === "green-theme") {
-      root.classList.add("theme-green");
-    }
-     else {
-      root.classList.add(theme); 
-    }
-  };
 
-  const handleThemeChange = (newTheme: Theme) => {
-    setCurrentTheme(newTheme);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("theme", newTheme);
-    }
-    applyTheme(newTheme);
-  };
+function SettingsDialog({ open, onOpenChange, user }: { open: boolean; onOpenChange: (open: boolean) => void, user: User | null }) {
+  const { toast } = useToast();
+  const canManageUsers = user?.role === 'Admin' || user?.role === 'SuperAdmin';
+  const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   
-  // const handleLanguageChange = (langCode: string) => {
-  //   setSelectedLanguage(langCode);
-  //   if (typeof window !== "undefined") {
-  //     localStorage.setItem("appLanguage", langCode);
-  //   }
-  //   const langName = langCode === "hi" ? "Hindi" : langCode === "ta" ? "Tamil" : langCode === "bn" ? "Bengali" : langCode === "te" ? "Telugu" : langCode === "mr" ? "Marathi" : "English";
-  //   toast({
-  //     title: "Language Preference Updated",
-  //     description: `Language set to ${langName}. Full application translation is not yet implemented.`,
-  //   });
-  // };
-  
-  const isCustomThemeActive = currentTheme === "blue-theme" || currentTheme === "pink-theme" || currentTheme === "green-theme";
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open && !isAddUserOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Manage your account and application appearance.
+            Manage your account and application preferences.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="appearance" className="w-full pt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          </TabsList>
-          <TabsContent value="account" className="pt-6 space-y-6">
-             <div>
-                <Label className="text-base font-medium">Profile Management</Label>
-                 <p className="text-sm text-muted-foreground mt-1">
-                    Account management features (e.g., change password, update profile details, language preferences) are not fully implemented in this prototype.
-                </p>
+        <div className="pt-6 space-y-6">
+             <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-medium">Profile Management</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage your personal account details.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                     <Button variant="outline" className="w-full justify-start" disabled>
+                        <UserCog className="mr-2 h-4 w-4"/> Update Profile Details
+                     </Button>
+                     <Button variant="outline" className="w-full justify-start" disabled>
+                        <ShieldPlus className="mr-2 h-4 w-4"/> Change Password
+                     </Button>
+                  </div>
+                </div>
+                {canManageUsers && (
+                  <div>
+                    <Label className="text-base font-medium">User Administration</Label>
+                     <p className="text-sm text-muted-foreground mt-1">
+                      Manage application users (Admin only).
+                    </p>
+                     <div className="mt-3 space-y-2">
+                       <Button variant="outline" className="w-full justify-start" onClick={() => setIsAddUserOpen(true)}>
+                          <UserPlus className="mr-2 h-4 w-4"/> Add New User
+                       </Button>
+                    </div>
+                  </div>
+                )}
             </div>
-          </TabsContent>
-          <TabsContent value="appearance" className="pt-6">
-            <div className="space-y-3">
-              <Label className="text-base font-medium block">Theme</Label>
-              <p className="text-sm text-muted-foreground">
-                Select the theme for the application.
-              </p>
-              <RadioGroup
-                value={isCustomThemeActive ? "" : currentTheme} 
-                onValueChange={(value) => handleThemeChange(value as Theme)}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
-              >
-                <div>
-                  <RadioGroupItem value="light" id="theme-light" className="peer sr-only" />
-                  <Label
-                    htmlFor="theme-light"
-                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
-                  >
-                    <Sun className="h-4 w-4" />
-                    Light
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem value="dark" id="theme-dark" className="peer sr-only" />
-                  <Label
-                    htmlFor="theme-dark"
-                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
-                  >
-                    <Moon className="h-4 w-4" />
-                    Dark
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem value="system" id="theme-system" className="peer sr-only" />
-                  <Label
-                    htmlFor="theme-system"
-                    className="flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm w-full"
-                  >
-                    <Laptop className="h-4 w-4" />
-                    System
-                  </Label>
-                </div>
-              </RadioGroup>
-              <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <Button 
-                    onClick={() => handleThemeChange("blue-theme")} 
-                    variant="outline"
-                    size="default" 
-                    className={cn(
-                        "w-full", 
-                        currentTheme === "blue-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
-                    )}
-                >
-                    <Palette className="mr-2 h-4 w-4" /> 
-                    {currentTheme === "blue-theme" ? "Navy (Active)" : "Navy"}
-                </Button>
-                <Button 
-                    onClick={() => handleThemeChange("pink-theme")} 
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                        "w-full",
-                        currentTheme === "pink-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
-                    )}
-                >
-                    <Palette className="mr-2 h-4 w-4" /> 
-                     {currentTheme === "pink-theme" ? "Pink (Active)" : "Pink"}
-                </Button>
-                 <Button 
-                    onClick={() => handleThemeChange("green-theme")} 
-                    variant="outline"
-                    size="default"
-                    className={cn(
-                        "w-full",
-                        currentTheme === "green-theme" && "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground),0.9)] hover:text-[hsl(var(--background),0.9)]"
-                    )}
-                >
-                    <Palette className="mr-2 h-4 w-4" /> 
-                     {currentTheme === "green-theme" ? "Green (Active)" : "Green"}
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
         <div className="flex justify-end pt-6">
           <DialogClose asChild>
             <Button variant="outline">Close</Button>
@@ -331,6 +290,19 @@ function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
         </div>
       </DialogContent>
     </Dialog>
+
+     <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add New User</DialogTitle>
+                <DialogDescription>
+                    Fill in the form to add a new user to the application. A default password will be set.
+                </DialogDescription>
+            </DialogHeader>
+            <AddUserForm setDialogOpen={setIsAddUserOpen} />
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -341,26 +313,72 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<AppNotification[]>([]);
+  const [currentTheme, setCurrentTheme] = React.useState<Theme>("blue-theme");
+
+  const applyTheme = React.useCallback((theme: Theme) => {
+    if (typeof window === "undefined") return;
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark", "theme-blue", "theme-pink", "theme-green");
+
+    let effectiveTheme = theme;
+    if (theme === "system") {
+      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    
+    if (effectiveTheme === "light" || effectiveTheme === "dark") {
+        root.classList.add(effectiveTheme);
+    } else if (theme === "blue-theme") {
+      root.classList.add("theme-blue");
+    } else if (theme === "pink-theme") {
+      root.classList.add("theme-pink");
+    } else if (theme === "green-theme") {
+      root.classList.add("theme-green");
+    } else {
+        root.classList.add(effectiveTheme);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedTheme = localStorage.getItem("theme") as Theme | null;
+      const initialTheme = storedTheme || "blue-theme"; 
+      setCurrentTheme(initialTheme);
+      applyTheme(initialTheme);
+
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => {
+        if (localStorage.getItem("theme") === "system") { 
+          applyTheme("system");
+        }
+      };
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [applyTheme]);
+
+  const handleThemeChange = (newTheme: Theme) => {
+    setCurrentTheme(newTheme);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("theme", newTheme);
+    }
+    applyTheme(newTheme);
+  };
+
 
   React.useEffect(() => {
     if (user) {
-      const currentNotifications: AppNotification[] = [
-        { id: 1, text: "Task 'Review safety protocols (Mumbai)' overdue for Mumbai Phoenix Mall Flagship.", href: "/projects/proj-001", seen: false },
-        { id: 2, text: "New comment on Bangalore Orion Mall Outlet project.", href: "/projects/proj-002", seen: false },
-        { id: 3, text: "StoreFlow version 1.1 is now available.", href: "/release-notes", seen: true },
-        { id: 4, text: "Maintenance check for 'Delhi Connaught Place Express' due tomorrow.", href: "/projects/proj-003", seen: false},
-        { id: 5, text: "Marketing budget for Q3 approved.", href: "/dashboard", seen: true},
-        { id: 6, text: "New approval request: 'Vacation request - R. Sharma'", href: "/my-approvals", seen: false },
-        { id: 7, text: "Project 'Chennai Emporium' milestone 'Site Survey' completed.", href: "/projects/proj-004", seen: true },
-      ];
-      setNotifications(currentNotifications);
+      setNotifications([]);
     } else {
       setNotifications([]); 
     }
   }, [user]);
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
   };
   
   const unseenNotificationCount = notifications.filter(n => !n.seen).length;
@@ -382,7 +400,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         ['/dashboard', '/my-stores', '/my-tasks', '/my-approvals'].includes(item.href)
       );
     }
-    // Admin and SuperAdmin see all items by default from siteConfig
     return siteConfig.sidebarNav;
   };
 
@@ -395,42 +412,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarTrigger className="md:hidden" />
         <div className="ml-auto flex items-center gap-4">
           {user && (
-            <DropdownMenu onOpenChange={handleNotificationOpenChange}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full relative">
-                  <Bell className="h-5 w-5" />
-                  {unseenNotificationCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs">
-                      {unseenNotificationCount}
-                    </Badge>
-                  )}
-                  <span className="sr-only">Toggle notifications</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[300px] sm:w-[350px]">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {notifications.length > 0 ? (
-                  notifications.map(notification => (
-                    <DropdownMenuItem key={notification.id} asChild>
-                      <Link href={notification.href} className={cn("text-sm p-2 block hover:bg-accent", !notification.seen && "font-semibold")}>
-                        {notification.text}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <DropdownMenuItem disabled>
-                    <span className="text-sm p-2 text-muted-foreground">No new notifications</span>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="justify-center p-0">
-                  <Button variant="link" asChild className="w-full text-sm text-primary hover:underline">
-                    <Link href="/notifications">View all notifications</Link>
-                  </Button>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button asChild variant="ghost" size="icon" className="rounded-full relative">
+              <Link href="/notifications">
+                <Bell className="h-5 w-5" />
+                <span className="sr-only">View notifications</span>
+              </Link>
+            </Button>
           )}
 
           {loading ? (
@@ -461,6 +448,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <DropdownMenuItem onClick={() => setIsSettingsDialogOpen(true)}>
                       <Settings className="mr-2 h-4 w-4" />Settings
                     </DropdownMenuItem>
+                     <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Palette className="mr-2 h-4 w-4" />
+                        <span>Theme</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem onClick={() => handleThemeChange('light')}>
+                            <Sun className="mr-2 h-4 w-4" /> Light
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleThemeChange('dark')}>
+                            <Moon className="mr-2 h-4 w-4" /> Dark
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleThemeChange('system')}>
+                            <Laptop className="mr-2 h-4 w-4" /> System
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                           <DropdownMenuItem onClick={() => handleThemeChange('blue-theme')}>Navy</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleThemeChange('pink-theme')}>Pink</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleThemeChange('green-theme')}>Green</DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -551,7 +561,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </SidebarInset>
         </div>
       </div>
-      {user && <SettingsDialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen} />}
+      <SettingsDialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen} user={user}/>
     </SidebarProvider>
   );
 }

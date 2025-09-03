@@ -1,7 +1,10 @@
+
 import { NextResponse } from 'next/server';
 //import { mockProjects } from '@/lib/data';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
   try {
     // Check if MongoDB is configured
     if (process.env.MONGODB_URI) {
@@ -70,10 +73,18 @@ export async function GET() {
         }
       );
     }
+
+    
+    // Return empty array if no data source worked
+    return NextResponse.json([]);
+
+
   } catch (error) {
     console.error('General error in GET:', error);
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+
+      { error: 'Failed to fetch projects' },
+
       {
         status: 500,
         headers: {
@@ -84,6 +95,23 @@ export async function GET() {
       }
     );
   }
+}
+
+
+
+// Add OPTIONS handler for CORS preflight requests
+export async function OPTIONS(request: Request) {
+  return NextResponse.json(
+    {},
+    {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': 'http://localhost:3000', // Allow requests from your frontend origin
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    }
+  );
 }
 
 
@@ -213,3 +241,6 @@ export async function POST(request: Request) {
     );
   }
 }
+
+    
+

@@ -1,6 +1,6 @@
 
 import type { NavItem } from "@/types/nav";
-import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store } from "lucide-react";
+import { LayoutDashboard, ListChecks, Settings, ClipboardList, UserPlus, Home, LogIn, KanbanSquare, ClipboardCheck, Briefcase, CheckSquare, Store, FileText, UserCheck, ShieldQuestion, StickyNote } from "lucide-react";
 
 interface SiteConfig {
   name: string;
@@ -12,7 +12,7 @@ interface SiteConfig {
 
 export const siteConfig: SiteConfig = {
   name: "StoreFlow",
-  description: "Streamline, track, and manage new store launches.",
+  description: "Streamline, track, and manage new store launch projects.",
   mainNav: [
     {
       title: "Dashboard",
@@ -37,9 +37,19 @@ export const siteConfig: SiteConfig = {
       icon: ClipboardList,
     },
     {
-      title: "My Tasks", // This will now be the combined page
-      href: "/my-tasks",
+      title: "Files",
+      href: "/documents",
+      icon: FileText,
+    },
+    {
+      title: "Task assigned to me",
+      href: "/my-assigned-tasks",
       icon: ListChecks,
+    },
+    {
+      title: "Assign a Task",
+      href: "/my-tasks",
+      icon: UserCheck,
     },
     {
       title: "Task Tracker",
@@ -47,9 +57,19 @@ export const siteConfig: SiteConfig = {
       icon: KanbanSquare,
     },
     {
-      title: "Approvals",
+      title: "Requests",
       href: "/my-approvals",
       icon: CheckSquare,
+    },
+    {
+      title: "Awaiting Approvals",
+      href: "/awaiting-approvals",
+      icon: ShieldQuestion,
+    },
+    {
+      title: "Notes",
+      href: "/notes",
+      icon: StickyNote,
     },
   ],
   authNav: [
@@ -60,4 +80,3 @@ export const siteConfig: SiteConfig = {
     },
   ]
 };
-

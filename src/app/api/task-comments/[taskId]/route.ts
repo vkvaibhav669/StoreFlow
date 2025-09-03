@@ -3,6 +3,8 @@ import clientPromise, { isValidObjectId, toObjectId, transformMongoDocument } fr
 import { mockProjects } from '@/lib/data';
 import type { Comment } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ taskId: string }> }
@@ -150,3 +152,4 @@ export async function POST(
     );
   }
 }
+    
