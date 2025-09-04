@@ -5,7 +5,7 @@
  */
 
 // Mock environment variables for testing
-process.env.NEXT_PUBLIC_API_BASE_URL = 'http://3.109.154.71:8000';
+process.env.NEXT_PUBLIC_API_BASE_URL = 'http://13.200.174.148:8000';
 
 // Mock fetch to capture the URL being called
 let capturedUrl = '';
@@ -42,7 +42,7 @@ describe('Login URL Formation Test', () => {
       await signIn('test@example.com', 'testpassword');
       
       // Verify the URL is formed correctly
-      expect(capturedUrl).toBe('http://3.109.154.71:8000/api/auth/login');
+      expect(capturedUrl).toBe('http://13.200.174.148:8000/api/auth/login');
       
       // Verify the request is POST with correct headers
       expect(capturedOptions.method).toBe('POST');
@@ -54,7 +54,7 @@ describe('Login URL Formation Test', () => {
       expect(body.password).toBe('testpassword');
       
       console.log('✅ URL formation test passed!');
-      console.log('📡 Expected URL: http://3.109.154.71:8000/api/auth/login');
+      console.log('📡 Expected URL: http://13.200.174.148:8000/api/auth/login');
       console.log('📡 Actual URL:', capturedUrl);
       
     } catch (error) {
