@@ -159,6 +159,13 @@ export default function ProjectDetailsPage() {
   const [newCommentText, setNewCommentText] = React.useState("");
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
 
+  // Comments loaded from DB
+  const [dbComments, setDbComments] = React.useState<Comment[]>([]);
+  const [dbCommentsLoading, setDbCommentsLoading] = React.useState(false);
+  // Files state
+  // const [projectFiles, setProjectFiles] = React.useState<DocumentFile[]>([]);
+  // const [filesLoading, setFilesLoading] = React.useState(false);
+  
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = React.useState(false);
   const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
   const [newTaskName, setNewTaskName] = React.useState("");
@@ -168,13 +175,13 @@ export default function ProjectDetailsPage() {
   const [newTaskAssignedTo, setNewTaskAssignedTo] = React.useState("");
   const [newTaskPriority, setNewTaskPriority] = React.useState<TaskPriority>("Medium");
 
-  const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = React.useState(false);
-  const [isSubmittingDocument, setIsSubmittingDocument] = React.useState(false);
-  const [newDocumentFile, setNewDocumentFile] = React.useState<File | null>(null);
-  const [newDocumentName, setNewDocumentName] = React.useState("");
-  const [newDocumentType, setNewDocumentType] = React.useState<DocumentFile['type'] | "">("");
-  const [newDocumentDataAiHint, setNewDocumentDataAiHint] = React.useState("");
-  const [newDocumentHodOnly, setNewDocumentHodOnly] = React.useState(false);
+  // const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = React.useState(false);
+  // const [isSubmittingDocument, setIsSubmittingDocument] = React.useState(false);
+  // const [newDocumentFile, setNewDocumentFile] = React.useState<File | null>(null);
+  // const [newDocumentName, setNewDocumentName] = React.useState("");
+  // const [newDocumentType, setNewDocumentType] = React.useState<DocumentFile['type'] | "">("");
+  // const [newDocumentDataAiHint, setNewDocumentDataAiHint] = React.useState("");
+  // const [newDocumentHodOnly, setNewDocumentHodOnly] = React.useState(false);
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
   const [allUsers, setAllUsers] = React.useState<User[]>([]);
@@ -279,17 +286,6 @@ export default function ProjectDetailsPage() {
     }
     fetchProject();
   }, [projectId, user, authLoading, router, fetchProject]);
-
-  // Fetch files from API when projectData.id changes
-  React.useEffect(() => {
-    if (!projectData?.id) return;
-    setFilesLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/projects/${projectData.id}/documents`)
-      .then(res => res.ok ? res.json() : Promise.reject("Failed to fetch files"))
-      .then(data => setProjectFiles(data))
-      .catch(() => setProjectFiles([]))
-      .finally(() => setFilesLoading(false));
-  }, [projectData?.id]);
 
   // Fetch comments from API when projectData.id changes
   React.useEffect(() => {
@@ -418,47 +414,49 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setNewDocumentFile(file);
-      setNewDocumentName(file.name);
-    }
-  };
+  // Add Document feature removed — related state commented out
+  // const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (file) {
+  //     setNewDocumentFile(file);
+  //     setNewDocumentName(file.name);
+  //   }
+  // };
 
-  const handleAddNewDocument = async () => {
-    if (!newDocumentFile || !newDocumentName || !newDocumentType) {
-      toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
-      return;
-    }
-    if (!projectData || !user) return;
+  // Add Document functionality removed
+  // const handleAddNewDocument = async () => {
+  //   if (!newDocumentFile || !newDocumentName || !newDocumentType) {
+  //     toast({ title: "Error", description: "File, Document Name, and Document Type are required.", variant: "destructive" });
+  //     return;
+  //   }
+  //   if (!projectData || !user) return;
 
-    setIsSubmittingDocument(true);
-    const formData = new FormData();
-    formData.append('file', newDocumentFile);
-    formData.append('name', newDocumentName);
-    formData.append('type', newDocumentType);
-    formData.append('uploadedBy', user.name || user.email || "System");
-    formData.append('dataAiHint', newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : "");
-    formData.append('hodOnly', String(newDocumentHodOnly));
+  //   setIsSubmittingDocument(true);
+  //   const formData = new FormData();
+  //   formData.append('file', newDocumentFile);
+  //   formData.append('name', newDocumentName);
+  //   formData.append('type', newDocumentType);
+  //   formData.append('uploadedBy', user.name || user.email || "System");
+  //   formData.append('dataAiHint', newDocumentType === "3D Render" ? (newDocumentDataAiHint || "abstract design") : "");
+  //   formData.append('hodOnly', String(newDocumentHodOnly));
 
-    try {
+  //   try {
+  //     // await the API helper so addedDocument is the created object
+  //     const addedDocument = await addDocumentToProject(projectData.id, formData);
+  //     // Refresh project data asynchronously
+  //     await fetchProject();
 
-      const addedDocument = addDocumentToProject(projectData.id, formData);
-      // Refresh project data asynchronously
-      await fetchProject();
-
-      toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
-      setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
-      setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
-      setIsAddDocumentDialogOpen(false);
-    } catch (error) {
-      console.error("Error adding document:", error);
-      toast({ title: "Error", description: (error as Error).message || "Failed to add document.", variant: "destructive" });
-    } finally {
-      setIsSubmittingDocument(false);
-    }
-  };
+  //     toast({ title: "Document Added", description: `Document "${addedDocument.name}" has been uploaded.` });
+  //     setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
+  //     setNewDocumentDataAiHint(""); setNewDocumentHodOnly(false);
+  //     setIsAddDocumentDialogOpen(false);
+  //   } catch (error) {
+  //     console.error("Error adding document:", error);
+  //     toast({ title: "Error", description: (error as Error).message || "Failed to add document.", variant: "destructive" });
+  //   } finally {
+  //     setIsSubmittingDocument(false);
+  //   }
+  // };
 
   const handleAddComment = async () => {
     if (newCommentText.trim() && projectData && user) {
@@ -485,7 +483,7 @@ export default function ProjectDetailsPage() {
   const handleReplyToComment = async (commentId: string, replyText: string) => {
       if (!projectData || !user || !replyText.trim()) return;
       setIsSubmittingComment(true);
-    
+
       const replyPayload: Partial<Comment> = {
           author: user.name || user.email || "Anonymous User",
           addedByName: user.name || user.email || "Anonymous User",
@@ -498,7 +496,8 @@ export default function ProjectDetailsPage() {
       };
 
       try {
-          addReplyToProjectComment(projectData.id, commentId, replyPayload);
+          // ensure we await the update helper
+          await addReplyToProjectComment(projectData.id, commentId, replyPayload);
           await fetchProject(); // Refetch the project to get all updates
           toast({ title: "Reply Posted", description: "Your reply has been added." });
       } catch (error) {
@@ -562,7 +561,7 @@ export default function ProjectDetailsPage() {
   const handlePostNewTaskComment = async () => {
     if (!selectedTask || !newTaskCommentTextForTask.trim() || !user) return;
     setIsSubmittingTaskComment(true);
-    
+
     const commentPayload = {
       author: user.name || user.email || "Anonymous User",
       text: newTaskCommentTextForTask,
@@ -581,7 +580,7 @@ export default function ProjectDetailsPage() {
     }
   };
 
-const handleReplyToTaskComment = async (taskId: string, commentId: string, replyText: string) => {
+  const handleReplyToTaskComment = async (taskId: string, commentId: string, replyText: string) => {
     if (!projectData || !user || !replyText.trim()) return;
     setIsSubmittingTaskComment(true);
 
@@ -1085,7 +1084,8 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isAddDocumentDialogOpen} onOpenChange={(isOpen) => {
+          {/* Add Document feature removed — Dialog and UI controls commented out */}
+          {/* <Dialog open={isAddDocumentDialogOpen} onOpenChange={(isOpen) => {
             setIsAddDocumentDialogOpen(isOpen);
             if (!isOpen) {
               setNewDocumentFile(null); setNewDocumentName(""); setNewDocumentType("");
@@ -1147,7 +1147,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
                 <Button onClick={handleAddNewDocument} disabled={!newDocumentFile || isSubmittingDocument}>{isSubmittingDocument ? "Uploading..." : "Save Document"}</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
         </div>
          <Badge variant={projectData.status === "Launched" ? "default" : "secondary"} className={cn("flex-shrink-0 self-start sm:self-center", projectData.status === "Launched" ? "bg-accent text-accent-foreground" : "")}>
             {projectData.status}
@@ -1177,10 +1177,7 @@ const handleReplyToTaskComment = async (taskId: string, commentId: string, reply
               <p className="text-muted-foreground">{projectData.franchiseType}</p>
             </div>
           )}
-          <div className={projectData.franchiseType ? "" : "md:col-span-2"}>
-            <p className="text-sm font-medium">Overall Progress: {projectData.currentProgress}%</p>
-            <Progress value={projectData.currentProgress} className="mt-1" />
-          </div>
+          {/* Overall Progress removed */}
           {projectData.propertyDetails && (
             <div>
               <p className="text-sm font-medium">Property Status</p>
