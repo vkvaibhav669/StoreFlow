@@ -5,7 +5,7 @@
  */
 
 // Mock environment variables for testing
-process.env.NEXT_PUBLIC_API_BASE_URL = 'http://13.200.174.148:8000';
+process.env.NEXT_PUBLIC_API_BASE_URL = 'https://13.200.174.148:8000';
 
 // Mock fetch to capture the URL being called
 let capturedUrl = '';
