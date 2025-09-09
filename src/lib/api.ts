@@ -1,14 +1,37 @@
-import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment, ApprovalRequest } from '@/types';
+import type { StoreProject, StoreItem, Task, User, DocumentFile, Note, Comment, ApprovalRequest, ImprovementPoint, StoreTask } from '@/types';
 
-// Normalise the base URL coming from env
-const RAW_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
-export const API_BASE = RAW_BASE.replace(/\/+$/, ''); // remove trailing slash(es)
+// Read env value (may be '', relative path like '/api', or full absolute URL)
+const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '').trim();
 
-// Backwards-compatible alias used in older code
-const BASE_URL = API_BASE;
+function resolveApiBase(): string {
+  const raw = RAW_BASE.replace(/\/+$/, '');
+  if (!raw) return ''; // use relative /api paths
+
+  // If env value begins with '/', treat as relative (use app origin)
+  if (raw.startsWith('/')) return '';
+
+  try {
+    const parsed = new URL(raw);
+
+    // In browser avoid mixed-content: if page is https and API is http -> use relative
+    if (typeof window !== 'undefined') {
+      if (window.location.protocol === 'https:' && parsed.protocol === 'http:') {
+        return '';
+      }
+      // If API base is same origin, return origin to preserve absolute origin
+      if (parsed.origin === window.location.origin) return parsed.origin;
+    }
+
+    // server-side or safe absolute origin
+    return parsed.origin;
+  } catch {
+    // not a full URL; fallback to relative
+    return '';
+  }
+}
+
+export const API_BASE = resolveApiBase(); // empty -> use relative '/api/...' endpoints
+const BASE_URL = API_BASE || ''; // backwards compatible alias
 
 
 // Build a canonical API URL. Call with '/projects' or 'projects' or '/api/projects' — it will return
@@ -18,7 +41,8 @@ export function buildApiUrl(path: string) {
   path = path.replace(/^\/+/, '');
   // ensure a single 'api/' prefix
   if (!path.startsWith('api/')) path = `api/${path}`;
-  return `${API_BASE}/${path}`;
+  // if API_BASE is empty return a relative path to avoid mixed-content
+  return API_BASE ? `${API_BASE}/${path}` : `/${path}`;
 }
 
 // Error handling utility
@@ -142,7 +166,7 @@ export async function updateStore(id: string, storeData: Partial<StoreItem>): Pr
 // Tasks API
 export async function getTasksForUser(userId: string): Promise<Task[]> {
   // Use URL encoding for the userId to handle special characters in emails
-  return apiFetch<Task>(`/users/${encodeURIComponent(userId)}/tasks-assigned`);
+  return apiFetch<Task[]>(`/users/${encodeURIComponent(userId)}/tasks-assigned`);
 }
 
 
